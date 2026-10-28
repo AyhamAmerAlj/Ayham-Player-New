@@ -1,0 +1,9 @@
+{
+  "name": "Ayham Player",
+  "short_name": "Ayham",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07040f",
+  "theme_color": "#07040f",
+  "icons": [{ "src": "/icon.png", "sizes": "512x512", "type": "image/png" }]
+}

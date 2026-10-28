@@ -1,0 +1,14 @@
+{
+  "name": "ayham-player-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ayham Player Web: private IPTV web player with built-in proxy",
+  "scripts": {
+    "start": "node server.js",
+    "postinstall": "node scripts/vendor.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "hls.js": "1.5.17"
+  }
+}
