@@ -156,12 +156,12 @@ class ExtAudioSession(
         .setMaxVideoSize(640, 360)
         .build()
 
-    fun setPip(on: Boolean) {
+    fun changePip(on: Boolean) {
         pip = on
         player?.let { it.trackSelectionParameters = pipParams(it) }
     }
 
-    fun setMainVolume(v: Float) {
+    fun changeMainVolume(v: Float) {
         mainVolume = v.coerceIn(0f, 1f)
         if (mutedMain) main.volume = mainVolume
     }

@@ -1065,7 +1065,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Chip(t("pip_show") + ": " + t(if (extSession.pip) "on" else "off"), extSession.pip) {
-                                    extSession.setPip(!extSession.pip)
+                                    extSession.changePip(!extSession.pip)
                                 }
                             }
                             RText(t("vol") + ": " + (extVolume * 100).toInt() + "%", 18, C.textDim)
@@ -1075,8 +1075,8 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             }
                             RText(t("main_vol") + ": " + (extSession.mainVolume * 100).toInt() + "%", 18, C.textDim)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                GlowButton("-") { extSession.setMainVolume(extSession.mainVolume - 0.1f) }
-                                GlowButton("+") { extSession.setMainVolume(extSession.mainVolume + 0.1f) }
+                                GlowButton("-") { extSession.changeMainVolume(extSession.mainVolume - 0.1f) }
+                                GlowButton("+") { extSession.changeMainVolume(extSession.mainVolume + 0.1f) }
                             }
                             RText(t("manual_tools"), 16, C.textDim, bold = true)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
