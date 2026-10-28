@@ -23,6 +23,9 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Version code (offset to stay above the old repository's builds)
+        run: echo "VERSION_CODE=$((GITHUB_RUN_NUMBER + 100))" >> "$GITHUB_ENV"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -59,7 +62,7 @@ jobs:
       - name: Publish release (رابط ثابت للتحميل)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: Ayham Player build ${{ github.run_number }}
+          tag_name: build-${{ env.VERSION_CODE }}
+          name: Ayham Player build ${{ env.VERSION_CODE }}
           make_latest: true
           files: AyhamPlayer.apk
