@@ -33,6 +33,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.PictureInPictureAlt
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -164,6 +168,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     var epgList by remember { mutableStateOf<List<com.ayham.player.data.EpgEntry>>(emptyList()) }
     var epgFull by remember { mutableStateOf<List<com.ayham.player.data.EpgEntry>>(emptyList()) }
     val okSwallow = remember { booleanArrayOf(false) }
+    val silentTries = remember { intArrayOf(0) }
     val barFocus = remember { FocusRequester() }
     var pv by remember { mutableStateOf<PlayerView?>(null) }
     var audioOverridden by remember { mutableStateOf(false) }
@@ -407,6 +412,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             override fun onPlaybackStateChanged(state: Int) {
                 buffering = state == Player.STATE_BUFFERING
                 if (state == Player.STATE_READY) {
+                    silentTries[0] = 0
                     errorMsg = null
                     retryCount = 0
                 }
@@ -440,6 +446,27 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     exo.prepare()
                     exo.playWhenReady = true
                     showToast(audioBad)
+                    return
+                }
+                // أخطاء الصوت/الفك: نرجع للمسار الافتراضي بصمت ونكمل بدون ما تظهر رسالة
+                val audioish = error.errorCode in listOf(
+                    PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED,
+                    PlaybackException.ERROR_CODE_AUDIO_TRACK_WRITE_FAILED,
+                    PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
+                    PlaybackException.ERROR_CODE_DECODING_FAILED,
+                    PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES,
+                    PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
+                )
+                if (silentTries[0] < 3) {
+                    silentTries[0]++
+                    if (audioish) {
+                        exo.trackSelectionParameters = exo.trackSelectionParameters.buildUpon()
+                            .clearOverridesOfType(MC.TRACK_TYPE_AUDIO)
+                            .setTrackTypeDisabled(MC.TRACK_TYPE_AUDIO, false)
+                            .build()
+                    }
+                    exo.prepare()
+                    exo.playWhenReady = true
                     return
                 }
                 errorMsg = "$errText (${error.errorCodeName})"
@@ -711,25 +738,38 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             ) { RText("🎧 " + extName.orEmpty(), 15, C.primaryLight, maxLines = 1) }
         }
 
-        // صورة مصغّرة لقناة التعليق (للمقارنة بالعين وضبط الفرق)
+        // صورة مصغّرة لقناة التعليق (يسار الشاشة): تكبير/تصغير/إزالة من الأزرار تحتها أو من الإعدادات
         if (extSession.pip && extSession.player != null) {
-            Box(
-                Modifier.align(Alignment.TopEnd).padding(if (compact) 10.dp else 22.dp)
-                    .width(if (compact) 150.dp else 280.dp).aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(12.dp)).background(Color.Black)
-                    .border(2.dp, C.primary, RoundedCornerShape(12.dp)),
+            val pw = when (extSession.pipSize) { 0 -> 190; 1 -> 290; else -> 430 }
+            val pwDp = (if (compact) pw * 0.55f else pw.toFloat()).dp
+            Column(
+                Modifier.align(Alignment.CenterStart).padding(start = if (compact) 8.dp else 20.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                AndroidView(
-                    factory = { c ->
-                        (android.view.LayoutInflater.from(c).inflate(com.ayham.player.R.layout.pip_view, null) as PlayerView)
-                    },
-                    update = { it.player = extSession.player },
-                    modifier = Modifier.fillMaxSize(),
-                )
-                BodyText(
-                    extName.orEmpty(), 11, Color.White, maxLines = 1,
-                    modifier = Modifier.align(Alignment.BottomStart).background(Color(0x99000000)).padding(horizontal = 6.dp, vertical = 1.dp),
-                )
+                Box(
+                    Modifier.width(pwDp).aspectRatio(16f / 9f)
+                        .clip(RoundedCornerShape(12.dp)).background(Color.Black)
+                        .border(2.dp, C.primary, RoundedCornerShape(12.dp)),
+                ) {
+                    AndroidView(
+                        factory = { c ->
+                            (android.view.LayoutInflater.from(c).inflate(com.ayham.player.R.layout.pip_view, null) as PlayerView)
+                        },
+                        update = { it.player = extSession.player },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    BodyText(
+                        extName.orEmpty(), 11, Color.White, maxLines = 1,
+                        modifier = Modifier.align(Alignment.BottomStart).background(Color(0x99000000)).padding(horizontal = 6.dp, vertical = 1.dp),
+                    )
+                }
+                if (controls && panel == null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconBtn(Icons.Filled.Remove, size = 40.dp) { extSession.cyclePipSize(-1); touch() }
+                        IconBtn(Icons.Filled.Add, size = 40.dp) { extSession.cyclePipSize(1); touch() }
+                        IconBtn(Icons.Filled.Close, size = 40.dp) { extSession.changePip(false); touch() }
+                    }
+                }
             }
         }
 
@@ -804,6 +844,9 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                     showToast(if (fav) favRemovedT else favAddedT)
                                     touch()
                                 }
+                            }
+                            if (queue[index].isLive && extName != null) {
+                                IconBtn(Icons.Filled.PictureInPictureAlt, active = extSession.pip) { extSession.changePip(!extSession.pip); touch() }
                             }
                             IconBtn(Icons.Filled.Audiotrack, active = extName != null) { panel = Panel.AUDIO; controls = false }
                             IconBtn(Icons.Filled.Tune) { panel = Panel.MENU; controls = false }
@@ -980,7 +1023,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                     sub = if (supported) null else audioUnsupported,
                                     modifier = if (n == 0) Modifier.autoFocus() else Modifier,
                                 ) {
-                                    if (!supported) { showToast(audioUnsupported); return@PanelItem }
+                                    if (!supported) return@PanelItem
                                     audioOverridden = true
                                     exo.trackSelectionParameters = exo.trackSelectionParameters.buildUpon()
                                         .setTrackTypeDisabled(MC.TRACK_TYPE_AUDIO, false)
@@ -1066,6 +1109,12 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Chip(t("pip_show") + ": " + t(if (extSession.pip) "on" else "off"), extSession.pip) {
                                     extSession.changePip(!extSession.pip)
+                                }
+                            }
+                            if (extSession.pip) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    GlowButton(t("pip_smaller")) { extSession.cyclePipSize(-1) }
+                                    GlowButton(t("pip_bigger")) { extSession.cyclePipSize(1) }
                                 }
                             }
                             RText(t("vol") + ": " + (extVolume * 100).toInt() + "%", 18, C.textDim)

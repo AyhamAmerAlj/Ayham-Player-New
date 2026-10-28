@@ -102,17 +102,14 @@ fun PosterCard(
                 }
             }
             Img(item.image, Modifier.fillMaxSize())
+            // طبقة واحدة صغيرة تحت الاسم بدل طبقة كاملة فوق البوستر (أخف على التلفاز)
             Box(
-                Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(
-                        colorStops = arrayOf(0.55f to Color.Transparent, 1f to Color(0xEE0B0614)),
-                    ),
-                ),
-            )
-            BodyText(
-                item.name, 12, C.text, bold = true, maxLines = 2,
-                modifier = Modifier.align(Alignment.BottomStart).padding(8.dp),
-            )
+                Modifier.align(Alignment.BottomStart).fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xEE0B0614))))
+                    .padding(start = 8.dp, end = 8.dp, top = 18.dp, bottom = 7.dp),
+            ) {
+                BodyText(item.name, 12, C.text, bold = true, maxLines = 2)
+            }
         }
     }
 }

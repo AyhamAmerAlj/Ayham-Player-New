@@ -60,6 +60,8 @@ class ExtAudioSession(
     var autoSync by mutableStateOf(true)
     /** صورة مصغّرة لقناة التعليق (للمقارنة اليدوية). الإيقاف يوقف فك ترميز الفيديو فقط، والصوت يبقى. */
     var pip by mutableStateOf(false); private set
+    /** حجم الصورة المصغّرة: 0 صغير، 1 متوسط، 2 كبير. */
+    var pipSize by androidx.compose.runtime.mutableIntStateOf(1); private set
     /** مستوى الصوت الأصلي أثناء عمل الصوت الخارجي (الافتراضي 0 = مكتوم). */
     var mainVolume by mutableFloatStateOf(0f); private set
     var manualMs by mutableLongStateOf(0L); private set
@@ -160,6 +162,8 @@ class ExtAudioSession(
         pip = on
         player?.let { it.trackSelectionParameters = pipParams(it) }
     }
+
+    fun cyclePipSize(d: Int) { pipSize = (pipSize + d).coerceIn(0, 2) }
 
     fun changeMainVolume(v: Float) {
         mainVolume = v.coerceIn(0f, 1f)

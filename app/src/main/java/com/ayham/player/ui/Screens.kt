@@ -618,7 +618,6 @@ fun BrowseTab(vm: AppViewModel, kind: Kind) {
             }
         } else if (current == null && !asList) {
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 40.dp)) {
-                if (featured != null) item { HeroBanner(vm, featured) }
                 similar.forEach { (base, list) ->
                     if (list.size >= 3) item(key = "sim_" + base.key) { ContentRow(t("because_watched") + " " + base.name, list) { vm.openDetail(it) } }
                 }
@@ -626,7 +625,7 @@ fun BrowseTab(vm: AppViewModel, kind: Kind) {
                 item { ContentRow(t(if (isMovie) "recent_movies" else "recent_series"), recentItems) { vm.openDetail(it) } }
                 if (isMovie) item { ContentRow(t("top_movies"), topItems) { vm.openDetail(it) } }
                 items(cats, key = { it.id }, contentType = { "catrow" }) { c ->
-                    LazyCategoryRow(c.name, vm.dataVersion, { vm.inCategory(kind, c.id, 20, 0) }) { vm.openDetail(it) }
+                    LazyCategoryRow(c.name, vm.dataVersion, { vm.inCategory(kind, c.id, 16, 0) }) { vm.openDetail(it) }
                 }
             }
         } else {
