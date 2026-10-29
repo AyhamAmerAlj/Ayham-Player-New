@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>باقات Ayham Player</title>
+<title>باقات Ayham Player | Ayham Store</title>
 <meta name="description" content="باقات Ayham Player: Basic وPro وElite. اطلب مباشرة عبر واتساب.">
 <meta name="theme-color" content="#07040f">
 <link rel="icon" href="icon.png">
@@ -135,13 +135,57 @@ h2.t{font-size:30px}
 .why h2{font-size:28px;margin:0 0 10px}
 .why p{color:#b7abd6;line-height:1.9;font-size:17px;margin:0}
 .why b{display:block;color:#fff;margin-top:14px;font-size:19px}
+/* حركات الموقع (يضاف داخل <style>) */
+html{scroll-behavior:smooth}
+.fx .rv{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.fx .rv.in{opacity:1;transform:none}
+header.stick{position:sticky;top:0;z-index:50;background:transparent;transition:background .3s,box-shadow .3s,backdrop-filter .3s}
+header.stick.scrolled{background:#07040fd9;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 1px 0 #2a1a4d}
+header.stick .nav{padding:12px 0;transition:padding .3s}
+.prog{position:fixed;top:0;left:0;right:0;height:3px;z-index:60;background:linear-gradient(90deg,#8b5cf6,#c4b5fd);transform:scaleX(0);transform-origin:right;pointer-events:none}
+.wafab{position:fixed;bottom:18px;left:18px;z-index:55;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#22c55e,#15803d);box-shadow:0 10px 30px #16a34a77;animation:pulse 2.6s infinite}
+.wafab svg{width:28px;height:28px;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.wafab:hover{transform:scale(1.08)}
+@keyframes pulse{0%{box-shadow:0 10px 30px #16a34a77,0 0 0 0 #22c55e66}70%{box-shadow:0 10px 30px #16a34a77,0 0 0 18px #22c55e00}100%{box-shadow:0 10px 30px #16a34a77,0 0 0 0 #22c55e00}}
+.logo-mark{animation:float 5s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.glow:before{animation:breathe 6s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.12)}}
+.hero h1 span{background-size:200% 100%;animation:shine 5s linear infinite}
+@keyframes shine{0%{background-position:0 0}100%{background-position:-200% 0}}
+.btn{transition:transform .2s,filter .2s,box-shadow .2s;position:relative;overflow:hidden}
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:scale(.97)}
+.btn:not(.ghost)::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,#ffffff40,transparent);transform:skewX(-20deg);animation:sweep 4.5s ease-in-out infinite}
+@keyframes sweep{0%,60%{left:-60%}100%{left:130%}}
+.f,.plan,.box,.pm,.log>div{transition:transform .25s,border-color .25s,box-shadow .25s}
+.f:hover,.pm:hover,.box:hover{transform:translateY(-6px);box-shadow:0 18px 40px #5b21b644}
+.plan:hover{transform:translateY(-8px)}
+.plan.elite:hover{transform:translateY(-22px)}
+.f,.plan,.box,.pm{position:relative;overflow:visible;background-image:radial-gradient(260px circle at var(--mx,50%) var(--my,-40%),#8b5cf622,transparent 70%)}
+details{transition:border-color .2s,background .2s}
+details[open]{border-color:#8b5cf6;background:#1a0d3d}
+summary{list-style:none;position:relative;padding-inline-end:28px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";position:absolute;inset-inline-end:0;top:0;font-size:24px;line-height:1;color:#a78bfa;transition:transform .25s}
+details[open] summary::after{transform:rotate(45deg)}
+.shots{cursor:grab;scrollbar-width:thin;scrollbar-color:#3b2a6b transparent}
+.shots.drag{cursor:grabbing;scroll-snap-type:none}
+.shots img{transition:transform .3s}
+.shots figure:hover img{transform:scale(1.02)}
+.sbtn{position:absolute;top:44%;z-index:5;width:44px;height:44px;border-radius:50%;border:1px solid #ffffff30;background:#07040fcc;color:#fff;font-size:26px;line-height:1;cursor:pointer;display:none}
+.sbtn.l{left:6px}.sbtn.r{right:6px}
+@media (hover:hover) and (min-width:901px){.sbtn{display:block}}
+.sbtn:hover{background:#8b5cf6}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+
 </style>
 </head>
 <body>
 <div class="ap">
 <header class="wrap">
 <div class="nav">
-<a class="brand" href="./"><img src="icon.png" alt="شعار Ayham Player"><span>Ayham Player</span></a>
+<a class="brand" href="./"><img src="icon.png" alt="شعار Ayham Player"><span>Ayham Store</span></a>
 <a class="btn ghost" href="./" style="min-height:42px;font-size:15px">الرئيسية</a>
 </div>
 <div class="pg">
@@ -158,10 +202,11 @@ h2.t{font-size:30px}
 <b>Ayham Player | شاهد بطريقتك</b>
 </section>
 </main>
-<footer class="foot"><div class="wrap">© Ayham Player</div></footer>
+<footer class="foot"><div class="wrap">© Ayham Store</div></footer>
 </div>
 <noscript><p style="text-align:center;color:#fff">فعّل JavaScript لعرض الباقات أو تواصل معنا عبر واتساب.</p></noscript>
 <script src="plans.js"></script>
 <script>window.renderPlans(document.getElementById('plans'));</script>
+<script src="fx.js"></script>
 </body>
 </html>
