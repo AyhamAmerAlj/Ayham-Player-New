@@ -1,0 +1,35 @@
+name: Deploy license server
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['license/**']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: license
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Test
+        run: node test/test.mjs
+      - name: Check secrets
+        id: sec
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ] && [ -n "$ADMIN_KEY" ]; then echo "ready=1" >> "$GITHUB_OUTPUT"; else echo "::warning::Secrets not set yet (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, ADMIN_KEY): skipping deploy"; fi
+      - name: Deploy
+        if: steps.sec.outputs.ready == '1'
+        run: npx --yes wrangler@4 deploy
+      - name: Set admin key
+        if: steps.sec.outputs.ready == '1'
+        run: printf '%s' "$ADMIN_KEY" | npx --yes wrangler@4 secret put ADMIN_KEY

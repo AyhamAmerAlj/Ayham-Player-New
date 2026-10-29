@@ -10,6 +10,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.lifecycleScope
+import androidx.compose.runtime.LaunchedEffect
+import com.ayham.player.data.LicState
+import com.ayham.player.data.LicenseManager
+import kotlinx.coroutines.launch
+import com.ayham.player.ui.LicenseScreen
 import com.ayham.player.ui.AyhamTheme
 import com.ayham.player.ui.DetailScreen
 import com.ayham.player.ui.LoadingScreen
@@ -27,17 +33,29 @@ class MainActivity : ComponentActivity() {
         requestedOrientation = if (com.ayham.player.ui.isTvDevice(this))
             android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_USER
+        LicenseManager.init(this)
+        lifecycleScope.launch { LicenseManager.start(); LicenseManager.heartbeat() }
         setContent {
             AyhamTheme(vm.lang) {
                 Root(vm)
             }
         }
-        vm.start()
+    }
+
+    override fun onDestroy() {
+        if (isFinishing) LicenseManager.release()
+        super.onDestroy()
     }
 }
 
 @Composable
 private fun Root(vm: AppViewModel) {
+    when (LicenseManager.state) {
+        LicState.CHECKING -> { SplashScreen(); return }
+        LicState.NEED_CODE -> { LicenseScreen(); return }
+        LicState.OK -> {}
+    }
+    LaunchedEffect(Unit) { vm.start() }
     when (vm.phase) {
         Phase.SPLASH -> SplashScreen()
         Phase.LOGIN -> LoginScreen(vm)

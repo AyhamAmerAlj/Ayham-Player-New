@@ -12,6 +12,7 @@ android {
         applicationId = "com.ayham.player"
         minSdk = 23
         targetSdk = 34
+        buildConfigField("String", "LICENSE_URL", "\"" + (System.getenv("LICENSE_URL") ?: "") + "\"")
         versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
         versionName = "1.0." + (System.getenv("VERSION_CODE") ?: "0")
     }
@@ -45,6 +46,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     lint {
         abortOnError = false
