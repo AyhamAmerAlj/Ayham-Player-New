@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ayham Player - مشغّل IPTV بسعر 7000 دينار مدى الحياة</title>
+<meta name="description" content="Ayham Player: مشغّل IPTV سلس لشاشات Android TV وGoogle TV وأجهزة أندرويد. 7000 دينار عراقي مرة واحدة، تحديثات مجانية ودعم 24/7.">
+<meta property="og:title" content="Ayham Player">
+<meta property="og:description" content="مشغّل IPTV سلس وأنيق. 7000 دينار مدى الحياة.">
+<meta property="og:image" content="icon.png">
+<meta name="theme-color" content="#07040f">
+<link rel="icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#07040f}
+a{text-decoration:none;color:inherit}
+.ap{font-family:'Cairo',system-ui,sans-serif;background:#07040f;color:#f1ecff;overflow:hidden}
+.wrap{max-width:1160px;margin:0 auto;padding:0 20px;box-sizing:border-box}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:18px 0;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;font-weight:900;font-size:22px}
+.brand img{width:44px;height:44px;border-radius:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:0 26px;border-radius:14px;font-weight:700;font-size:17px;border:1px solid #a78bfa66;background:linear-gradient(135deg,#8b5cf6,#5b21b6);color:#fff;cursor:pointer;box-shadow:0 10px 30px #7c3aed55}
+.btn:hover{filter:brightness(1.12)}
+.btn.wa{background:linear-gradient(135deg,#22c55e,#15803d);border-color:#4ade8066;box-shadow:0 10px 30px #16a34a44}
+.btn.ghost{background:#ffffff12;border-color:#ffffff30;box-shadow:none}
+.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding:50px 0 70px}
+.hero h1{font-size:58px;line-height:1.2;margin:0 0 18px;font-weight:900}
+.hero h1 span{background:linear-gradient(90deg,#c4b5fd,#8b5cf6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{font-size:20px;line-height:1.8;color:#c9bfe6;margin:0 0 28px}
+.cta{display:flex;gap:12px;flex-wrap:wrap}
+.glow{position:relative;display:grid;place-items:center}
+.glow:before{content:"";position:absolute;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,#7c3aed88,transparent 65%);filter:blur(10px)}
+.logo-card{position:relative;width:280px;height:280px;border-radius:64px;border:1px solid #a78bfa55;box-shadow:0 30px 80px #5b21b688}
+.chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
+.chip{padding:8px 16px;border-radius:99px;background:#8b5cf61f;border:1px solid #8b5cf655;color:#ddd1ff;font-size:15px}
+h2.t{font-size:40px;font-weight:900;margin:0 0 12px;text-align:center}
+p.sub{text-align:center;color:#b7abd6;font-size:18px;margin:0 auto 44px;max-width:640px;line-height:1.8}
+.sec{padding:70px 0}
+.alt{background:linear-gradient(#0d0719,#07040f)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.f{background:#140b26;border:1px solid #2a1a4d;border-radius:20px;padding:24px}
+.f:hover{border-color:#8b5cf6}
+.f svg{width:34px;height:34px;stroke:#a78bfa;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;margin-bottom:14px}
+.f h3{margin:0 0 8px;font-size:20px}
+.f p{margin:0;color:#b7abd6;line-height:1.8;font-size:16px}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.box{border-radius:20px;padding:26px;border:1px solid #2a1a4d;background:#140b26}
+.box.on{border-color:#8b5cf6;background:linear-gradient(160deg,#241046,#140b26)}
+.box h3{margin:0 0 14px;font-size:22px}
+.box ul{margin:0;padding:0;list-style:none;display:grid;gap:10px}
+.box li{display:flex;gap:10px;line-height:1.7;color:#cfc5ea}
+.box li:before{content:"•";color:#8b5cf6;font-weight:900}
+.price{max-width:560px;margin:0 auto;background:linear-gradient(160deg,#2a1260,#140b26 60%);border:1.5px solid #a78bfa;border-radius:28px;padding:38px;text-align:center;box-shadow:0 30px 90px #5b21b655}
+.price .n{font-size:76px;font-weight:900;line-height:1}
+.price .n small{font-size:22px;font-weight:700;color:#c4b5fd;margin-inline-start:8px}
+.price ul{list-style:none;margin:24px 0;padding:0;display:grid;gap:10px;text-align:start}
+.price li{display:flex;gap:10px;align-items:center;color:#e4dcfa}
+.price li svg{width:20px;height:20px;stroke:#4ade80;fill:none;stroke-width:2.5;flex:none}
+.pay{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:40px}
+.pm{background:#140b26;border:1px solid #2a1a4d;border-radius:20px;padding:22px;text-align:center}
+.pm b{display:block;font-size:20px;margin-bottom:6px}
+.pm span{display:block;color:#b7abd6;font-size:15px}
+.pm code{display:inline-block;margin-top:10px;padding:6px 14px;border-radius:10px;background:#0f0820;border:1px dashed #8b5cf6;color:#ddd1ff;font-size:17px;direction:ltr;font-family:inherit}
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:44px}
+.st{text-align:center;padding:10px}
+.st i{display:grid;place-items:center;width:46px;height:46px;margin:0 auto 12px;border-radius:50%;background:#8b5cf6;font-style:normal;font-weight:900;font-size:20px}
+.st p{margin:0;color:#c9bfe6;line-height:1.7;font-size:16px}
+details{background:#140b26;border:1px solid #2a1a4d;border-radius:16px;padding:18px 22px;margin-bottom:12px}
+summary{cursor:pointer;font-weight:700;font-size:18px}
+details p{color:#b7abd6;line-height:1.9;margin:12px 0 0;font-size:16px}
+.note{background:#1a0f33;border:1px solid #3b2a6b;border-radius:16px;padding:18px 22px;color:#cfc5ea;line-height:1.9;font-size:15.5px;max-width:860px;margin:36px auto 0}
+.foot{border-top:1px solid #2a1a4d;padding:30px 0;text-align:center;color:#8f84ad;font-size:14px}
+@media (max-width:900px){
+.hero{grid-template-columns:1fr;text-align:center;padding-top:20px}
+.hero h1{font-size:40px}.hero p{font-size:17px}
+.cta,.chips{justify-content:center}
+.logo-card{width:200px;height:200px;border-radius:46px}
+.glow:before{width:300px;height:300px}
+.grid,.pay{grid-template-columns:1fr 1fr}
+.steps{grid-template-columns:1fr 1fr}
+h2.t{font-size:30px}
+.cmp{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+.grid,.pay,.steps{grid-template-columns:1fr}
+.price .n{font-size:58px}
+.sec{padding:48px 0}
+.btn{width:100%}
+}
+</style>
+</head>
+<body>
+
+
+
+<div class="ap">
+
+<header class="wrap">
+<div class="nav">
+<div class="brand"><img src="icon.png" alt="شعار Ayham Player"><span>Ayham Player</span></div>
+<a class="btn ghost" href="#buy" style="min-height:42px;font-size:15px">اشترِ الآن</a>
+</div>
+
+<div class="hero">
+<div>
+<h1>مشغّل IPTV <span>سلس وأنيق</span> مصمم لشاشتك</h1>
+<p>تطبيق Ayham Player لتشغيل اشتراكك على التلفاز والهاتف بواجهة عربية سريعة، تنقّل بالريموت بدون تعليق، ومميزات ما تلقاها بالمشغلات الاعتيادية. تدفع مرة واحدة فقط: <b style="color:#fff">7000 دينار مدى الحياة</b>.</p>
+<div class="cta">
+<a class="btn" href="#buy">احصل عليه بـ 7000 دينار</a>
+<a class="btn wa" href="https://wa.me/9647828244399?text=%D9%85%D8%B1%D8%AD%D8%A8%D9%8B%D8%A7%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%B4%D8%B1%D8%A7%D8%A1%20%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20Ayham%20Player">تواصل عبر واتساب</a>
+</div>
+<div class="chips">
+<span class="chip">Android TV</span>
+<span class="chip">الهاتف</span>
+<span class="chip">عربي / English</span>
+<span class="chip">بدون اشتراك شهري</span>
+</div>
+</div>
+<div class="glow"><img class="logo-card" src="icon.png" alt="Ayham Player"></div>
+</div>
+</header>
+
+<section class="sec alt">
+<div class="wrap">
+<h2 class="t">ليش Ayham Player مختلف؟</h2>
+<p class="sub">مو مجرد مشغّل، هذي تجربة مصممة حتى تحس إن كل شي بمكانه وبسرعة.</p>
+<div class="grid">
+<div class="f"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h16"></path></svg><h3>واجهة سريعة للريموت</h3><p>قائمة جانبية وتنقل منظم، وزر الرجوع يعيدك للقائمة بدل ما يطلعك من التطبيق.</p></div><div class="f"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5zM15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"></path></svg><h3>صوت معلّق خارجي ذكي</h3><p>اختر أي قناة كصوت للمباراة مع مزامنة تلقائية، وأدوات ضبط يدوي للتأخير والتقديم.</p></div><div class="f"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 109-9M3 4v5h5M12 7v5l3 2"></path></svg><h3>رجوع بالبث المباشر</h3><p>ارجع لما فاتك بالقنوات المباشرة، وارجع للبث الحي بضغطة (حسب نافذة الرجوع من مزوّدك).</p></div><div class="f"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3zM13 12h6v5h-6z"></path></svg><h3>نافذة معاينة للقناة</h3><p>شاهد قناة المعلّق بنافذة صغيرة بالجنب، تكبّرها أو تصغّرها أو تشيلها.</p></div><div class="f"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM4 9h16M9 4v16"></path></svg><h3>أفلام ومسلسلات مرتبة</h3><p>بوسترات، تقييمات، مواسم وحلقات، ومتابعة المشاهدة من حيث وقفت.</p></div><div class="f"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-5-5"></path></svg><h3>بحث ذكي بالعربي</h3><p>ابحث عن أي فيلم أو قناة بسرعة، البحث يتجاوز اختلاف الهمزات والتشكيل.</p></div><div class="f"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.6-9-9.5C1.7 8 4 5 7 5c2 0 3.4 1 5 3 1.6-2 3-3 5-3 3 0 5.3 3 4 6.5-2 4.9-9 9.5-9 9.5z"></path></svg><h3>مفضلة وسجل وترجمة</h3><p>احفظ مفضلتك، شوف سجل المشاهدة، وأضف ملفات الترجمة.</p></div><div class="f"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 16H3L12 3zM12 10v4M12 17h.01"></path></svg><h3>تعافي هادئ من الأخطاء</h3><p>لو تقطع البث أو الصوت يحاول يرجع لحاله بدون رسائل تزعجك.</p></div><div class="f"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"></path></svg><h3>تحديث من داخل التطبيق</h3><p>تصلك النسخ الجديدة وتثبتها مباشرة، وكلها مجانًا بعد الاشتراك.</p></div><div class="f"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"></path></svg><h3>شاشة كاملة للأقسام</h3><p>القنوات والأفلام والمسلسلات تفتح بشاشة كاملة بدون القائمة الجانبية، والرجوع يعيدك بسهولة.</p></div><div class="f"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z"></path></svg><h3>تقييم IMDb وتفاصيل</h3><p>تقييم، سنة، تصنيف ووصف لكل فيلم ومسلسل عند التحديد.</p></div><div class="f"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8a1 1 0 011 1v16a1 1 0 01-1 1H8a1 1 0 01-1-1V4a1 1 0 011-1zM11 18h2"></path></svg><h3>وضع الهاتف</h3><p>نفس التطبيق يتكيف مع شاشة الهاتف والتابلت وشاشات التلفاز.</p></div><div class="f"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h8M8 3v2M6 5c0 4 3 7 6 8M10 5c0 3-2 6-6 8M13 21l4-10 4 10M14.5 18h5"></path></svg><h3>عربي وإنجليزي</h3><p>واجهة كاملة بالعربية مع خيار الإنجليزية.</p></div><div class="f"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 01-12.4 7.4L3 20l1.2-5.3A8.4 8.4 0 1121 11.5z"></path></svg><h3>دعم فوري 24/7</h3><p>أي سؤال أو مشكلة، تواصل معنا على واتساب بأي وقت.</p></div>
+</div>
+</div>
+</section>
+
+<section class="sec">
+<div class="wrap">
+<h2 class="t">شنو تحصل مقارنة بالمشغلات الاعتيادية</h2>
+<p class="sub">اختلاف يلمسه المستخدم من أول يوم.</p>
+<div class="cmp">
+<div class="box">
+<h3>مشغّل اعتيادي</h3>
+<ul>
+<li>قوائم ثقيلة تتأخر عند التنقل السريع</li>
+<li>ما يوجد صوت معلّق خارجي، أو يتعطل بسهولة</li>
+<li>ما تقدر ترجع بالبث المباشر لما فاتك</li>
+<li>أخطاء تظهر وتقاطع المشاهدة</li>
+</ul>
+</div>
+<div class="box on">
+<h3>Ayham Player</h3>
+<ul>
+<li>واجهة خفيفة مبنية للريموت، وقوائم تتحرك بسلاسة</li>
+<li>صوت معلّق خارجي مع مزامنة ذكية وضبط يدوي</li>
+<li>رجوع بالبث المباشر على قنوات HLS التي يتيح مزوّدك فيها نافذة رجوع</li>
+<li>إعادة اتصال هادئة عند تقطع الصوت أو البث</li>
+</ul>
+</div>
+</div>
+</div>
+</section>
+
+<section class="sec alt" id="buy">
+<div class="wrap">
+<h2 class="t">سعر واحد، بدون اشتراك</h2>
+<p class="sub">ادفع مرة واحدة واستخدم التطبيق للأبد.</p>
+<div class="price">
+<div class="n">7,000<small>دينار عراقي</small></div>
+<div style="color:#c4b5fd;margin-top:8px;font-weight:700">دفعة واحدة · مدى الحياة</div>
+<ul>
+<li><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>كل المميزات المذكورة أعلاه</li>
+<li><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>جميع التحديثات الجديدة مجانًا بعد الاشتراك</li>
+<li><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>متوفر على Android TV وGoogle TV وأجهزة أندرويد</li>
+<li><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>دعم فوري عبر واتساب 24/7</li>
+</ul>
+<a class="btn wa" href="https://wa.me/9647828244399?text=%D9%85%D8%B1%D8%AD%D8%A8%D9%8B%D8%A7%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%B4%D8%B1%D8%A7%D8%A1%20%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20Ayham%20Player" style="width:100%;box-sizing:border-box">اطلب عبر واتساب</a>
+</div>
+
+<h2 class="t" style="font-size:30px;margin-top:70px">طريقة الشراء</h2>
+<p class="sub" style="margin-bottom:24px">حوّل المبلغ عبر SuperQi أو Zain Cash، ثم ارسل لنا لقطة شاشة (Screenshot) التحويل على واتساب.</p>
+<div class="pay" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+<div class="pm"><b>SuperQi</b><span>رقم الحساب</span><code>7118689392</code></div>
+<div class="pm"><b>Zain Cash</b><span>رقم المحفظة</span><code>07828244399</code></div>
+<div class="pm"><b>واتساب</b><span>إرسال لقطة التحويل والدعم</span><code>07828244399</code></div>
+</div>
+<div style="text-align:center;margin-top:26px"><a class="btn wa" href="https://wa.me/9647828244399?text=%D9%85%D8%B1%D8%AD%D8%A8%D9%8B%D8%A7%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%B4%D8%B1%D8%A7%D8%A1%20%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20Ayham%20Player" style="display:inline-flex">ارسل لقطة التحويل عبر واتساب</a></div>
+
+<div class="steps">
+<div class="st"><i>1</i><p>حوّل 7000 دينار عبر SuperQi أو Zain Cash</p></div>
+<div class="st"><i>2</i><p>ارسل Screenshot التحويل على واتساب</p></div>
+<div class="st"><i>3</i><p>نرسل لك رابط تحميل التطبيق</p></div>
+<div class="st"><i>4</i><p>ثبّته وضيف بيانات اشتراكك واستمتع</p></div>
+</div>
+</div>
+</section>
+
+<section class="sec">
+<div class="wrap" style="max-width:860px">
+<h2 class="t">أسئلة شائعة</h2>
+<p class="sub">قبل ما تشتري، هذا الي تحتاج تعرفه.</p>
+<details><summary>هل التطبيق يتضمن قنوات أو اشتراك؟</summary><p>لا. Ayham Player مشغّل فقط. تحتاج اشتراك IPTV خاص بك بنظام Xtream Codes، وتدخل بياناته داخل التطبيق.</p></details>
+<details><summary>على أي أجهزة يشتغل؟</summary><p>متوفر على جميع شاشات Android TV وGoogle TV، وعلى أجهزة أندرويد (الهاتف والتابلت). ما يتوفر حاليًا على آيفون.</p></details>
+<details><summary>شنو معنى مدى الحياة؟</summary><p>تدفع مرة واحدة ولا يوجد اشتراك شهري أو سنوي لاستخدام التطبيق.</p></details>
+<details><summary>مزامنة صوت المعلّق، هل تضمن؟</summary><p>التطبيق يوفر مزامنة تلقائية وأدوات ضبط يدوي. دقة المزامنة تعتمد على نوع البث والقنوات، فلذلك يوجد ضبط يدوي كخيار دائم.</p></details>
+<details><summary>الرجوع بالبث المباشر، يشتغل على كل القنوات؟</summary><p>يشتغل على القنوات الي يتيح مزوّد اشتراكك فيها نافذة رجوع. طول المدة يحددها المزوّد.</p></details>
+<details><summary>هل التحديثات مجانية؟</summary><p>نعم، جميع التحديثات الجديدة مجانًا بعد الاشتراك.</p></details>
+<details><summary>شنو لو واجهت مشكلة؟</summary><p>يوجد دعم فوري عبر واتساب على مدار الساعة.</p></details>
+<div class="note">ملاحظة: Ayham Player لا يوفر أي محتوى ولا يبيع اشتراكات. المستخدم مسؤول عن المحتوى الذي يشغّله ومصدره.</div>
+</div>
+</section>
+
+<section class="sec alt">
+<div class="wrap" style="text-align:center">
+<h2 class="t">جاهز تجرب؟</h2>
+<p class="sub">7000 دينار، مرة واحدة، ومدى الحياة.</p>
+<a class="btn wa" href="https://wa.me/9647828244399?text=%D9%85%D8%B1%D8%AD%D8%A8%D9%8B%D8%A7%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%B4%D8%B1%D8%A7%D8%A1%20%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20Ayham%20Player" style="display:inline-flex;max-width:360px">تواصل عبر واتساب</a>
+</div>
+</section>
+
+<footer class="foot"><div class="wrap">© Ayham Player</div></footer>
+
+</div>
+
+</body>
+</html>
