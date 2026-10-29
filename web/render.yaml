@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: ayham-player-web
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: ACCESS_PASSWORD
+        sync: false
+      - key: XTREAM_URL
+        sync: false
+      - key: XTREAM_USER
+        sync: false
+      - key: XTREAM_PASS
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
