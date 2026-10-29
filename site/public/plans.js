@@ -60,3 +60,22 @@ window.PLANS = [
     ]
   }
 ];
+
+/* رسم بطاقات الباقات (تستخدمه الصفحة الرئيسية وصفحة الباقات) */
+window.renderPlans = function (el) {
+  var CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7"></path></svg>';
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function fmt(n) { return Number(n).toLocaleString('en-US'); }
+  el.innerHTML = window.PLANS.map(function (p) {
+    var per = p.period === 'month' ? 'شهريًا' : 'دفعة واحدة';
+    var bd = (p.badges || []).map(function (b, i) { return '<span class="bd' + (i === 0 && p.period !== 'month' ? ' g' : '') + '">' + esc(b) + '</span>'; }).join('');
+    var msg = 'مرحبًا، أريد الاشتراك في ' + p.name + ' بسعر ' + fmt(p.price) + ' دينار عراقي (' + per + ')';
+    var href = 'https://wa.me/' + window.WA_NUMBER + '?text=' + encodeURIComponent(msg);
+    var feats = (p.features || []).map(function (f) {
+      var t = typeof f === 'string' ? f : f.t, soon = typeof f !== 'string' && f.soon;
+      return '<li>' + CHECK + '<span>' + esc(t) + (soon ? '<span class="soon">قريبًا</span>' : '') + '</span></li>';
+    }).join('');
+    var btn = p.style === 'elite' ? 'btn gold' : (p.style === 'pro' ? 'btn' : 'btn ghost');
+    return '<article class="plan ' + (p.style || 'simple') + '">' + (p.ribbon ? '<div class="ribbon">' + esc(p.ribbon) + '</div>' : '') + '<div class="badges">' + bd + '</div><h2>' + esc(p.name) + '</h2><p class="d">' + esc(p.desc || '') + '</p><div class="p">' + fmt(p.price) + '<small>دينار عراقي</small></div><div class="per">' + per + '</div><ul>' + feats + '</ul><a class="' + btn + '" href="' + href + '" target="_blank" rel="noopener">اشترك الآن</a></article>';
+  }).join('');
+};

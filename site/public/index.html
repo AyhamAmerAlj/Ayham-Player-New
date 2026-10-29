@@ -104,6 +104,32 @@ h2.t{font-size:30px}
 .shots figcaption{margin-top:10px;text-align:center;color:#b7abd6;font-size:15px}
 .shots figure{margin:0;flex:none;scroll-snap-align:center}
 .shots img{display:block;height:340px;width:auto;max-width:80vw;border-radius:16px;border:1px solid #3b2a6b;box-shadow:0 14px 40px #00000088}
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:20px;max-width:960px;margin:34px auto 0;align-items:stretch}
+.plan{position:relative;display:flex;flex-direction:column;background:#140b26;border:1px solid #2a1a4d;border-radius:24px;padding:28px 24px;text-align:start}
+.plan.hot{border-color:#a78bfa;background:linear-gradient(160deg,#2a1260,#140b26 62%);box-shadow:0 24px 70px #5b21b655}
+.plan h2{margin:0 0 6px;font-size:24px}
+.plan .d{color:#b7abd6;line-height:1.8;font-size:15.5px;margin:0 0 14px}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.bd{padding:4px 12px;border-radius:99px;font-size:13.5px;font-weight:700;background:#8b5cf61f;border:1px solid #8b5cf655;color:#ddd1ff}
+.bd.g{background:#16a34a22;border-color:#16a34a66;color:#86efac}
+.plan .p{font-size:54px;font-weight:900;line-height:1.1}
+.plan .p small{font-size:18px;font-weight:700;color:#c4b5fd;margin-inline-start:6px}
+.plan .per{color:#c4b5fd;font-weight:700;margin:4px 0 16px}
+.plan ul{list-style:none;margin:0 0 22px;padding:0;display:grid;gap:10px;flex:1}
+.plan li{display:flex;gap:10px;align-items:flex-start;color:#e4dcfa;line-height:1.7}
+.plan li svg{width:20px;height:20px;stroke:#4ade80;fill:none;stroke-width:2.5;flex:none;margin-top:3px}
+.plan .btn{width:100%;box-sizing:border-box}
+
+.plans{grid-template-columns:repeat(3,minmax(0,1fr));max-width:1100px;align-items:end}
+@media(max-width:900px){.plans{grid-template-columns:1fr}.plan.elite{transform:none}}
+.plan.simple{background:#0f0820}
+.plan.pro{border-color:#8b5cf6;background:linear-gradient(165deg,#3b1a8f,#1a0d3d 70%);box-shadow:0 20px 60px #6d28d955}
+.plan.elite{border:1.5px solid #e9d5ff;background:radial-gradient(120% 90% at 50% 0%,#5b21b6 0,#1a0d3d 55%,#07040f 100%);box-shadow:0 30px 90px #a78bfa66,inset 0 0 0 1px #ffffff14;padding-top:40px;transform:translateY(-14px)}
+.ribbon{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:linear-gradient(90deg,#fde68a,#f59e0b);color:#3b2a00;font-weight:900;font-size:14px;padding:6px 18px;border-radius:99px;box-shadow:0 8px 24px #f59e0b55;white-space:nowrap}
+.elite .p{background:linear-gradient(90deg,#fff,#e9d5ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.btn.gold{background:linear-gradient(135deg,#fde68a,#f59e0b);color:#3b2a00;border-color:#fde68a;box-shadow:0 10px 30px #f59e0b44}
+.soon{flex:none;font-size:12px;font-weight:700;background:#f59e0b22;border:1px solid #f59e0b66;color:#fcd34d;border-radius:99px;padding:1px 9px;margin-inline-start:6px;white-space:nowrap}
+
 </style>
 </head>
 <body>
@@ -185,26 +211,14 @@ h2.t{font-size:30px}
 
 <section class="sec alt" id="buy">
 <div class="wrap">
-<h2 class="t">سعر واحد، بدون اشتراك</h2>
-<p class="sub">ادفع مرة واحدة واستخدم التطبيق للأبد.</p>
-<div class="price">
-<div class="old">8,000 دينار</div><div class="off">خصم 37.5%</div>
-<div class="n">5,000<small>دينار عراقي</small></div>
-<div style="color:#c4b5fd;margin-top:8px;font-weight:700">دفعة واحدة · مدى الحياة</div>
-<ul>
-<li><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>كل المميزات المذكورة أعلاه</li>
-<li><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>جميع التحديثات الجديدة مجانًا بعد الاشتراك</li>
-<li><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>متوفر على Android TV وGoogle TV وأجهزة أندرويد</li>
-<li><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>دعم فوري عبر واتساب 24/7</li>
-<li><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>كود تفعيل شخصي باسمك</li>
-<li><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>ضمان على التفعيل والتشغيل</li>
-</ul>
-<a class="btn wa" href="https://wa.me/9647828244399?text=%D9%85%D8%B1%D8%AD%D8%A8%D9%8B%D8%A7%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%B4%D8%B1%D8%A7%D8%A1%20%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20Ayham%20Player" style="width:100%;box-sizing:border-box">اطلب عبر واتساب</a>
-</div>
+<h2 class="t">الباقات</h2>
+<p class="sub">اختر الباقة المناسبة لك وأكمل الطلب عبر واتساب.</p>
+<div class="plans" id="plans"></div>
+<p style="text-align:center;margin-top:16px"><a href="packages.html" style="color:#a78bfa;font-weight:700">عرض صفحة الباقات كاملة ←</a></p>
 
 <div class="notice"><b>تنبيه:</b> بمجرد الاشتراك يصلك <b>كود تفعيل شخصي باسمك</b>، خاص بك وحدك. <br>والتطبيق عليه <b>ضمان</b>: إذا واجهت مشكلة بالتفعيل أو التشغيل، نحلّها لك عبر الدعم على واتساب.</div>
 
-<h2 class="t" style="font-size:30px;margin-top:70px">طريقة الشراء</h2>
+<h2 class="t" style="font-size:30px;margin-top:70px">طريقة الدفع والشراء</h2>
 <p class="sub" style="margin-bottom:24px">حوّل المبلغ عبر SuperQi أو Zain Cash، ثم ارسل لنا لقطة شاشة (Screenshot) التحويل على واتساب.</p>
 <div class="pay" style="grid-template-columns:repeat(3,minmax(0,1fr))">
 <div class="pm"><b>SuperQi</b><span>رقم الحساب</span><code>7118689392</code></div>
@@ -214,7 +228,7 @@ h2.t{font-size:30px}
 <div style="text-align:center;margin-top:26px"><a class="btn wa" href="https://wa.me/9647828244399?text=%D9%85%D8%B1%D8%AD%D8%A8%D9%8B%D8%A7%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%B4%D8%B1%D8%A7%D8%A1%20%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20Ayham%20Player" style="display:inline-flex">ارسل لقطة التحويل عبر واتساب</a></div>
 
 <div class="steps">
-<div class="st"><i>1</i><p>حوّل 5000 دينار عبر SuperQi أو Zain Cash</p></div>
+<div class="st"><i>1</i><p>اختر باقتك وحوّل المبلغ عبر SuperQi أو Zain Cash</p></div>
 <div class="st"><i>2</i><p>ارسل Screenshot التحويل على واتساب</p></div>
 <div class="st"><i>3</i><p>نرسل لك رابط تحميل التطبيق</p></div>
 <div class="st"><i>4</i><p>ثبّته وضيف بيانات اشتراكك واستمتع</p></div>
@@ -282,5 +296,7 @@ h2.t{font-size:30px}
 
 </div>
 
+<script src="plans.js"></script>
+<script>window.renderPlans(document.getElementById('plans'));</script>
 </body>
 </html>
