@@ -32,6 +32,8 @@ a{text-decoration:none;color:inherit}
 .glow{position:relative;display:grid;place-items:center}
 .glow:before{content:"";position:absolute;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,#7c3aed88,transparent 65%);filter:blur(10px)}
 .logo-card{position:relative;width:280px;height:280px;border-radius:64px;border:1px solid #a78bfa55;box-shadow:0 30px 80px #5b21b688}
+.logo-mark{position:relative;width:310px;max-width:70vw;height:auto;border-radius:36px;filter:drop-shadow(0 20px 50px #7c3aed99)}
+.tag{display:inline-block;margin-bottom:14px;padding:6px 16px;border-radius:99px;background:#8b5cf61f;border:1px solid #8b5cf655;color:#ddd1ff;font-size:16px;font-weight:600}
 .chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
 .chip{padding:8px 16px;border-radius:99px;background:#8b5cf61f;border:1px solid #8b5cf655;color:#ddd1ff;font-size:15px}
 h2.t{font-size:40px;font-weight:900;margin:0 0 12px;text-align:center}
@@ -72,6 +74,7 @@ details p{color:#b7abd6;line-height:1.9;margin:12px 0 0;font-size:16px}
 .note{background:#1a0f33;border:1px solid #3b2a6b;border-radius:16px;padding:18px 22px;color:#cfc5ea;line-height:1.9;font-size:15.5px;max-width:860px;margin:36px auto 0}
 .foot{border-top:1px solid #2a1a4d;padding:30px 0;text-align:center;color:#8f84ad;font-size:14px}
 @media (max-width:900px){
+.logo-mark{width:210px}
 .hero{grid-template-columns:1fr;text-align:center;padding-top:20px}
 .hero h1{font-size:40px}.hero p{font-size:17px}
 .cta,.chips{justify-content:center}
@@ -115,6 +118,7 @@ h2.t{font-size:30px}
 
 <div class="hero">
 <div>
+<div class="tag">كل ما تحب مشاهدته في مكان واحد</div>
 <h1>مشغّل IPTV <span>سلس وأنيق</span> مصمم لشاشتك</h1>
 <p>تطبيق Ayham Player لتشغيل اشتراكك على التلفاز والهاتف بواجهة عربية سريعة، تنقّل بالريموت بدون تعليق، ومميزات ما تلقاها بالمشغلات الاعتيادية. تدفع مرة واحدة فقط: <b style="color:#fff">5000 دينار مدى الحياة</b> بدل <s style="color:#9a8fb8">8000</s>.</p>
 <div class="cta">
@@ -128,7 +132,7 @@ h2.t{font-size:30px}
 <span class="chip">بدون اشتراك شهري</span>
 </div>
 </div>
-<div class="glow"><img class="logo-card" src="icon.png" alt="Ayham Player"></div>
+<div class="glow"><img class="logo-mark" src="logo-mark.jpg" alt="شعار Ayham Player" width="310" height="320"></div>
 </div>
 </header>
 
