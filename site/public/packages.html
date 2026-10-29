@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>الباقات - Ayham Player</title>
-<meta name="description" content="باقات Ayham Player وأسعارها. اطلب مباشرة عبر واتساب.">
+<title>باقات Ayham Player</title>
+<meta name="description" content="باقات Ayham Player: Basic وPro وElite. اطلب مباشرة عبر واتساب.">
 <meta name="theme-color" content="#07040f">
 <link rel="icon" href="icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -101,7 +101,6 @@ h2.t{font-size:30px}
 .shots figcaption{margin-top:10px;text-align:center;color:#b7abd6;font-size:15px}
 .shots figure{margin:0;flex:none;scroll-snap-align:center}
 .shots img{display:block;height:340px;width:auto;max-width:80vw;border-radius:16px;border:1px solid #3b2a6b;box-shadow:0 14px 40px #00000088}
-
 .pg{padding:56px 0 30px;text-align:center}
 .pg h1{font-size:44px;font-weight:900;margin:0 0 10px}
 .pg p{color:#b7abd6;font-size:18px;line-height:1.8;max-width:640px;margin:0 auto}
@@ -122,6 +121,20 @@ h2.t{font-size:30px}
 .plan .btn{width:100%;box-sizing:border-box}
 .fine{max-width:760px;margin:36px auto 0;color:#9a8fb8;font-size:14.5px;line-height:1.9;text-align:center}
 @media (max-width:560px){.pg h1{font-size:32px}.plan .p{font-size:46px}}
+
+.plans{grid-template-columns:repeat(3,minmax(0,1fr));max-width:1100px;align-items:end}
+@media(max-width:900px){.plans{grid-template-columns:1fr}.plan.elite{transform:none}}
+.plan.simple{background:#0f0820}
+.plan.pro{border-color:#8b5cf6;background:linear-gradient(165deg,#3b1a8f,#1a0d3d 70%);box-shadow:0 20px 60px #6d28d955}
+.plan.elite{border:1.5px solid #e9d5ff;background:radial-gradient(120% 90% at 50% 0%,#5b21b6 0,#1a0d3d 55%,#07040f 100%);box-shadow:0 30px 90px #a78bfa66,inset 0 0 0 1px #ffffff14;padding-top:40px;transform:translateY(-14px)}
+.ribbon{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:linear-gradient(90deg,#fde68a,#f59e0b);color:#3b2a00;font-weight:900;font-size:14px;padding:6px 18px;border-radius:99px;box-shadow:0 8px 24px #f59e0b55;white-space:nowrap}
+.elite .p{background:linear-gradient(90deg,#fff,#e9d5ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.btn.gold{background:linear-gradient(135deg,#fde68a,#f59e0b);color:#3b2a00;border-color:#fde68a;box-shadow:0 10px 30px #f59e0b44}
+.soon{flex:none;font-size:12px;font-weight:700;background:#f59e0b22;border:1px solid #f59e0b66;color:#fcd34d;border-radius:99px;padding:1px 9px;margin-inline-start:6px;white-space:nowrap}
+.why{max-width:760px;margin:46px auto 0;text-align:center}
+.why h2{font-size:28px;margin:0 0 10px}
+.why p{color:#b7abd6;line-height:1.9;font-size:17px;margin:0}
+.why b{display:block;color:#fff;margin-top:14px;font-size:19px}
 </style>
 </head>
 <body>
@@ -132,13 +145,18 @@ h2.t{font-size:30px}
 <a class="btn ghost" href="./" style="min-height:42px;font-size:15px">الرئيسية</a>
 </div>
 <div class="pg">
-<h1>الباقات</h1>
-<p>اختر الباقة المناسبة واطلبها مباشرة عبر واتساب. تصلك رسالة جاهزة باسم الباقة وسعرها.</p>
+<h1>باقات Ayham Player</h1>
+<p>اختر الباقة المناسبة لك واستمتع بتجربة مشاهدة أكثر تطورًا ومرونة مع Ayham Player.</p>
 </div>
 </header>
 <main class="wrap">
 <div class="plans" id="plans" aria-live="polite"></div>
-<p class="fine">الدفع عبر SuperQi أو Zain Cash، ثم ارسل لقطة شاشة (Screenshot) التحويل على واتساب ويصلك كود التفعيل الشخصي.</p>
+<p class="fine">كل الباقات تشمل دعمًا مستمرًا وتحديثات. المميزات المعلّمة «قريبًا» قيد التطوير وتصلك تلقائيًا عند إطلاقها. Ayham Player مشغّل فقط ولا يتضمن قنوات أو اشتراكات بث. الدفع عبر SuperQi أو Zain Cash، ثم ارسل لقطة شاشة (Screenshot) التحويل على واتساب ويصلك كود التفعيل.</p>
+<section class="why">
+<h2>لماذا Ayham Player؟</h2>
+<p>لأننا نعمل باستمرار على تطوير تجربة المشاهدة، وإضافة أدوات وخصائص جديدة تجعل استخدام التطبيق أكثر سهولة واحترافية.</p>
+<b>Ayham Player | شاهد بطريقتك</b>
+</section>
 </main>
 <footer class="foot"><div class="wrap">© Ayham Player</div></footer>
 </div>
@@ -152,10 +170,16 @@ h2.t{font-size:30px}
   function fmt(n){return Number(n).toLocaleString('en-US');}
   el.innerHTML=window.PLANS.map(function(p){
     var per=p.period==='month'?'شهريًا':'دفعة واحدة';
-    var bd=(p.badges||[]).map(function(b,i){return '<span class="bd'+(i===0?' g':'')+'">'+esc(b)+'</span>';}).join('');
-    var msg='مرحبًا، أريد طلب '+p.name+' بسعر '+fmt(p.price)+' دينار عراقي ('+(p.period==='month'?'شهريًا':'دفعة واحدة')+')';
+    var bd=(p.badges||[]).map(function(b,i){return '<span class="bd'+(i===0&&p.period!=='month'?' g':'')+'">'+esc(b)+'</span>';}).join('');
+    var msg='مرحبًا، أريد الاشتراك في '+p.name+' بسعر '+fmt(p.price)+' دينار عراقي ('+per+')';
     var href='https://wa.me/'+window.WA_NUMBER+'?text='+encodeURIComponent(msg);
-    return '<article class="plan'+(p.hot?' hot':'')+'"><div class="badges">'+bd+'</div><h2>'+esc(p.name)+'</h2><p class="d">'+esc(p.desc)+'</p><div class="p">'+fmt(p.price)+'<small>دينار عراقي</small></div><div class="per">'+per+'</div><ul>'+(p.features||[]).map(function(f){return '<li>'+CHECK+'<span>'+esc(f)+'</span></li>';}).join('')+'</ul><a class="btn wa" href="'+href+'" target="_blank" rel="noopener">اطلب عبر واتساب</a></article>';
+    var feats=(p.features||[]).map(function(f){
+      var t=typeof f==='string'?f:f.t, soon=typeof f!=='string'&&f.soon;
+      return '<li>'+CHECK+'<span>'+esc(t)+(soon?'<span class="soon">قريبًا</span>':'')+'</span></li>';
+    }).join('');
+    var cls='plan '+(p.style||'simple');
+    var btn=p.style==='elite'?'btn gold':(p.style==='pro'?'btn':'btn ghost');
+    return '<article class="'+cls+'">'+(p.ribbon?'<div class="ribbon">'+esc(p.ribbon)+'</div>':'')+'<div class="badges">'+bd+'</div><h2>'+esc(p.name)+'</h2><p class="d">'+esc(p.desc||'')+'</p><div class="p">'+fmt(p.price)+'<small>دينار عراقي</small></div><div class="per">'+per+'</div><ul>'+feats+'</ul><a class="'+btn+'" href="'+href+'" target="_blank" rel="noopener">اشترك الآن</a></article>';
   }).join('');
 })();
 </script>
