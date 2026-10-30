@@ -25,3 +25,16 @@ eq((await call('/v1/check', { code, device: 'd3' })).ok, true, 'after reset new 
 const l = await call('/admin/api', { action: 'list' }, { 'x-admin-key': 'k' }); eq(l.items.length, 1, 'list');
 eq((await w.fetch(new Request('http://x/other', { method: 'POST', body: '{}' }), env)).status, 404, 'unknown path');
 const big = await w.fetch(new Request('http://x/v1/check', { method: 'POST', body: 'x'.repeat(5000) }), env); eq(big.status, 413, 'oversize body');
+
+// ---- المزامنة ----
+const code2 = (await call('/admin/api', { action: 'create', note: 'sync', max: 2 }, { 'x-admin-key': 'k' })).code;
+await call('/v1/check', { code: code2, device: 's1' }); await call('/v1/release', { code: code2, device: 's1' });
+eq((await call('/v1/sync/get', { code: code2, device: 'nope' })).err, 'invalid', 'sync needs registered device');
+eq((await call('/v1/sync/get', { code: code2, device: 's1', profile: 'Ali' })).data, null, 'sync empty');
+eq((await call('/v1/sync/put', { code: code2, device: 's1', profile: 'Ali', base: 0, data: { a: 1 } })).ver, 1, 'sync put v1');
+eq((await call('/v1/sync/put', { code: code2, device: 's1', profile: 'Ali', base: 0, data: { a: 2 } })).err, 'conflict', 'sync conflict');
+eq((await call('/v1/sync/get', { code: code2, device: 's1', profile: 'Ali' })).data, { a: 1 }, 'sync get');
+eq((await call('/v1/sync/get', { code: code2, device: 's1', profile: 'Sara' })).data, null, 'profiles separate');
+eq((await call('/v1/sync/put', { code: code2, device: 's1', profile: 'Ali', base: 1, data: { x: 'y'.repeat(130000) } })).err, 'too_big', 'sync too big');
+await call('/admin/api', { action: 'revoke', code: code2 }, { 'x-admin-key': 'k' });
+eq((await call('/v1/sync/get', { code: code2, device: 's1', profile: 'Ali' })).err, 'revoked', 'sync revoked');

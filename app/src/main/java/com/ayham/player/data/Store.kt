@@ -70,7 +70,8 @@ class Store(ctx: Context) {
 
     fun clearProgress() {
         val e = sp.edit()
-        sp.all.keys.filter { it.startsWith("p_") }.forEach { e.remove(it) }
+        sp.all.keys.filter { it.startsWith("p_") && it != "p_cleared" || it.startsWith("pt_") }.forEach { e.remove(it) }
+        e.putLong("p_cleared", System.currentTimeMillis())
         e.apply()
     }
 
@@ -94,9 +95,12 @@ class Store(ctx: Context) {
         }.getOrNull() ?: emptyList()
     }
 
-    fun saveList(name: String, items: List<Item>) {
-        sp.edit().putString("list_$name", gson.toJson(items)).apply()
+    fun saveList(name: String, items: List<Item>, time: Long = System.currentTimeMillis()) {
+        sp.edit().putString("list_$name", gson.toJson(items)).putLong("lt_$name", time).apply()
     }
+
+    /** وقت آخر تعديل للقائمة (للمزامنة). */
+    fun listTime(name: String): Long = sp.getLong("lt_$name", 0L)
 
     /** التقدم: نخزن "الموضع/المدة" بالمللي ثانية. */
     fun getProgress(key: String): Pair<Long, Long>? {
@@ -108,7 +112,43 @@ class Store(ctx: Context) {
         return p to d
     }
 
-    fun setProgress(key: String, pos: Long, dur: Long) {
-        sp.edit().putString("p_$key", "$pos/$dur").apply()
+    fun setProgress(key: String, pos: Long, dur: Long, time: Long = System.currentTimeMillis()) {
+        sp.edit().putString("p_$key", "$pos/$dur").putLong("pt_$key", time).apply()
+    }
+
+    /** كل تقدم المشاهدة مع وقت تسجيله: المفتاح -> (الموضع، المدة، الوقت). */
+    fun allProgress(): Map<String, Triple<Long, Long, Long>> {
+        val out = HashMap<String, Triple<Long, Long, Long>>()
+        for ((k, v) in sp.all) {
+            if (!k.startsWith("p_") || v !is String) continue
+            val key = k.removePrefix("p_")
+            val parts = v.split("/")
+            val p = parts.getOrNull(0)?.toLongOrNull() ?: continue
+            val d = parts.getOrNull(1)?.toLongOrNull() ?: continue
+            out[key] = Triple(p, d, sp.getLong("pt_$key", 0L))
+        }
+        return out
+    }
+
+    fun removeProgress(key: String) { sp.edit().remove("p_$key").remove("pt_$key").apply() }
+
+    /** وقت آخر مسح لسجل التقدم (حتى لا تعيده المزامنة). */
+    var progressClearedAt: Long
+        get() = sp.getLong("p_cleared", 0L)
+        set(v) { sp.edit().putLong("p_cleared", v).apply() }
+
+    /** رقم نسخة البيانات على الخادم التي دمجنا معها آخر مرة. */
+    var syncVer: Int
+        get() = sp.getInt("sync_ver", 0)
+        set(v) { sp.edit().putInt("sync_ver", v).apply() }
+
+    // ---- كاش قسم الرائج (TMDB): قائمة عناوين مع وقت الجلب ----
+    fun trendCache(kind: String): Pair<Long, String>? {
+        val v = sp.getString("trend_$kind", null) ?: return null
+        val i = v.indexOf('|'); if (i < 1) return null
+        return (v.substring(0, i).toLongOrNull() ?: return null) to v.substring(i + 1)
+    }
+    fun setTrendCache(kind: String, json: String) {
+        sp.edit().putString("trend_$kind", System.currentTimeMillis().toString() + "|" + json).apply()
     }
 }

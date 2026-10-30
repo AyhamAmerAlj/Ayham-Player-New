@@ -42,6 +42,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStop() {
+        vm.flushSync()
+        super.onStop()
+    }
+
     override fun onDestroy() {
         if (isFinishing) LicenseManager.release()
         super.onDestroy()
@@ -71,6 +76,13 @@ private fun Ready(vm: AppViewModel) {
 
     val top = vm.stack.lastOrNull()
     androidx.compose.runtime.LaunchedEffect(Unit) { vm.checkUpdate(false) }
+    // مزامنة بيانات المشاهدة عند الفتح ثم كل 3 دقائق
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        while (true) {
+            vm.syncOnce()
+            kotlinx.coroutines.delay(3 * 60 * 1000L)
+        }
+    }
     Box(Modifier.fillMaxSize()) {
         when (top) {
             null -> holder.SaveableStateProvider("main") { MainScreen(vm) }

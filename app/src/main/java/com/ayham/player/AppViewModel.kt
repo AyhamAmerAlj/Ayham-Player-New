@@ -48,6 +48,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val store = Store(app)
     private val db = CatalogDb(app)
 
+    // ---- مزامنة بيانات المشاهدة بين الأجهزة ----
+    val sync = com.ayham.player.data.SyncEngine(store) { lists -> applyRemoteLists(lists) }
+    private var syncJob: kotlinx.coroutines.Job? = null
+    private fun applyRemoteLists(m: Map<String, List<Item>>) {
+        viewModelScope.launch(Dispatchers.Main) {
+            m["fav"]?.let { favorites = it }
+            m["later"]?.let { later = it }
+            m["watched"]?.let { watched = it }
+            m["recent"]?.let { recent = it }
+            m["history"]?.let { history = it }
+        }
+    }
+    /** نرفع التغييرات بعد 15 ثانية من آخر تعديل (حتى ما نرسل مع كل حفظ تقدم). */
+    private fun markDirty() {
+        if (!sync.available) return
+        syncJob?.cancel()
+        syncJob = viewModelScope.launch { delay(15_000); sync.run() }
+    }
+    suspend fun syncOnce() { sync.run() }
+    fun flushSync() { if (sync.available) { syncJob?.cancel(); viewModelScope.launch { sync.run() } } }
+
     var lang by mutableStateOf(store.lang)
         private set
     var liveFormat by mutableStateOf(store.liveFormat)
@@ -400,6 +421,38 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val simCache = HashMap<String, List<Item>>()
     /** عناصر مشابهة لعنصر شاهده المستخدم (لصفوف "لأنك شاهدت"). */
+    /** توصيات مبنية على تصنيفاتك المفضلة (من سجل مشاهدتك) بعد استبعاد ما شاهدته. */
+    suspend fun recommendedFor(kind: Kind, n: Int = 24): List<Item> = withContext(Dispatchers.IO) {
+        val seen = (history + watched + favorites + later + recent).filter { it.kind == kind }
+        if (seen.size < 2) return@withContext emptyList()
+        val cats = seen.groupingBy { it.categoryId }.eachCount().filterKeys { it.isNotBlank() }
+            .entries.sortedByDescending { it.value }.take(3).map { it.key }
+        val seenKeys = (history + watched + favorites + later + recent).map { it.key }.toSet()
+        runCatching { db.topInCats(kind, cats, n + seenKeys.size.coerceAtMost(80)) }.getOrDefault(emptyList())
+            .filter { it.key !in seenKeys }.take(n)
+    }
+
+    /** رائج الآن (TMDB) مطابق مع ما هو متوفر عندك فعلًا. */
+    suspend fun trending(kind: Kind, n: Int = 20): List<Item> = withContext(Dispatchers.IO) {
+        if (!com.ayham.player.data.Tmdb.enabled) return@withContext emptyList()
+        val titles = com.ayham.player.data.Tmdb.trending(store, if (kind == Kind.MOVIE) "movie" else "tv")
+        val out = LinkedHashMap<String, Item>()
+        for (t in titles) {
+            if (out.size >= n) break
+            for (cand in listOf(t.title, t.original).filter { it.isNotBlank() }.distinct()) {
+                val q = com.ayham.player.ui.normalizeForSearch(cand)
+                if (q.length < 4) continue
+                val res = runCatching { db.search(kind, q, 12) }.getOrDefault(emptyList())
+                val hit = res.firstOrNull { r ->
+                    val y = Regex("(19|20)\\d{2}").find(r.name)?.value?.toIntOrNull()
+                    y == null || t.year == 0 || kotlin.math.abs(y - t.year) <= 1
+                }
+                if (hit != null) { out.putIfAbsent(hit.key, hit); break }
+            }
+        }
+        out.values.toList()
+    }
+
     suspend fun similarTo(item: Item): List<Item> = withContext(Dispatchers.IO) {
         synchronized(simCache) { simCache[item.key] }?.let { return@withContext it }
         val r = runCatching { db.similar(item, 24) }.getOrDefault(emptyList())
@@ -454,6 +507,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             else -> recent = next
         }
         store.saveList(list, next)
+        markDirty()
     }
 
     fun progressOf(key: String): Pair<Long, Long>? = store.getProgress(key)
@@ -461,6 +515,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun saveProgress(item: Item?, key: String, pos: Long, dur: Long) {
         if (dur <= 0) return
         store.setProgress(key, pos, dur)
+        markDirty()
         if (item == null || item.kind == Kind.LIVE) return
         val finished = pos.toDouble() / dur > 0.92
         if (finished) {

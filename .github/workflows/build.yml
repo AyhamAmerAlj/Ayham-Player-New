@@ -34,6 +34,7 @@ jobs:
       - name: Build release APK
         env:
           LICENSE_URL: ${{ vars.LICENSE_URL }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: |
           set +e
           gradle :app:assembleRelease --no-daemon --stacktrace > build.log 2>&1

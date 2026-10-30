@@ -401,6 +401,18 @@ fun HomeTab(vm: AppViewModel) {
         topMovies = vm.topItems(Kind.MOVIE)
         topSeries = vm.topItems(Kind.SERIES)
     }
+    var trendMovies by remember { mutableStateOf<List<Item>>(emptyList()) }
+    var trendSeries by remember { mutableStateOf<List<Item>>(emptyList()) }
+    LaunchedEffect(vm.dataVersion) {
+        trendMovies = vm.trending(Kind.MOVIE)
+        trendSeries = vm.trending(Kind.SERIES)
+    }
+    var recMovies by remember { mutableStateOf<List<Item>>(emptyList()) }
+    var recSeries by remember { mutableStateOf<List<Item>>(emptyList()) }
+    LaunchedEffect(vm.dataVersion, vm.history.size, vm.watched.size, vm.favorites.size) {
+        recMovies = vm.recommendedFor(Kind.MOVIE)
+        recSeries = vm.recommendedFor(Kind.SERIES)
+    }
     val featured = remember(recentMovies, recentSeries) {
         (recentMovies.take(2) + recentSeries.take(2)).filter { it.image.isNotBlank() }
     }
@@ -422,6 +434,10 @@ fun HomeTab(vm: AppViewModel) {
         item { HomeTiles(vm) }
         item { SquareRow(t("top_rated"), topMovies, open) }
         if (vm.recent.isNotEmpty()) item { FocusRow(t("continue_watching"), vm.recent, vm, open) }
+        if (recMovies.size >= 4) item { FocusRow(t("rec_movies"), recMovies, vm, open) }
+        if (recSeries.size >= 4) item { FocusRow(t("rec_series"), recSeries, vm, open) }
+        if (trendMovies.size >= 3) item { FocusRow(t("trend_movies"), trendMovies, vm, open) }
+        if (trendSeries.size >= 3) item { FocusRow(t("trend_series"), trendSeries, vm, open) }
         similar.forEach { (base, list) ->
             if (list.size >= 3) item(key = "sim_" + base.key) { FocusRow(t("because_watched") + " " + base.name, list, vm, open) }
         }

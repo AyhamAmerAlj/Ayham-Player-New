@@ -50,6 +50,43 @@ export async function release(st, body) {
   return { ok: true };
 }
 
+// ---- مزامنة بيانات المشاهدة بين أجهزة نفس الكود (لكل ملف شخصي مساحة مستقلة) ----
+const SYNC_MAX = 120 * 1024; // حد حجم البيانات لكل ملف شخصي
+const SYNC_PROFILES = 5;
+async function syncAuth(st, body) {
+  const code = normCode(body.code);
+  const dev = String(body.device || '').slice(0, 80);
+  if (code.length !== 12 || !dev) return { err: 'invalid' };
+  const r = await getRec(st, code);
+  if (!r) return { err: 'invalid' };
+  if (r.revoked) return { err: 'revoked' };
+  if (!r.devices || !r.devices[dev]) return { err: 'invalid' };
+  const prof = String(body.profile || 'main').toLowerCase().replace(/[^a-z0-9\u0600-\u06ff_-]/g, '').slice(0, 32) || 'main';
+  return { code, key: 'd:' + code + ':' + prof };
+}
+export async function syncGet(st, body) {
+  const a = await syncAuth(st, body);
+  if (a.err) return { ok: false, err: a.err };
+  const rec = (await st.get(a.key)) || null;
+  return { ok: true, ver: rec ? rec.ver : 0, data: rec ? rec.data : null };
+}
+export async function syncPut(st, body) {
+  const a = await syncAuth(st, body);
+  if (a.err) return { ok: false, err: a.err };
+  if (!body.data || typeof body.data !== 'object') return { ok: false, err: 'bad' };
+  const raw = JSON.stringify(body.data);
+  if (raw.length > SYNC_MAX) return { ok: false, err: 'too_big' };
+  const cur = (await st.get(a.key)) || null;
+  if (!cur) {
+    const l = await st.list({ prefix: 'd:' + a.code + ':' });
+    if (l.size >= SYNC_PROFILES) return { ok: false, err: 'too_many_profiles' };
+  }
+  if ((cur ? cur.ver : 0) !== (+body.base || 0)) return { ok: false, err: 'conflict' };
+  const ver = (cur ? cur.ver : 0) + 1;
+  await st.put(a.key, { ver, data: body.data, t: now() });
+  return { ok: true, ver };
+}
+
 async function admin(st, body) {
   if (body.action === 'create') {
     const code = genCode();
@@ -69,7 +106,12 @@ async function admin(st, body) {
   if (body.action === 'revoke') r.revoked = true;
   else if (body.action === 'unrevoke') r.revoked = false;
   else if (body.action === 'reset') { r.devices = {}; r.active = null; }
-  else if (body.action === 'delete') { await st.delete('c:' + code); return { ok: true }; }
+  else if (body.action === 'delete') {
+    await st.delete('c:' + code);
+    const l = await st.list({ prefix: 'd:' + code + ':' });
+    for (const k of l.keys()) await st.delete(k);
+    return { ok: true };
+  }
   else return { ok: false, err: 'bad_action' };
   await putRec(st, code, r);
   return { ok: true };
@@ -84,6 +126,8 @@ export class Lic {
     if (u.pathname === '/admin/api') return json(await admin(this.st, body));
     if (u.pathname === '/v1/check') return json(await check(this.st, body));
     if (u.pathname === '/v1/release') return json(await release(this.st, body));
+    if (u.pathname === '/v1/sync/get') return json(await syncGet(this.st, body));
+    if (u.pathname === '/v1/sync/put') return json(await syncPut(this.st, body));
     return json({ ok: false }, 404);
   }
 }
@@ -109,9 +153,9 @@ export default {
       if (req.method !== 'POST') return json({ ok: true });
       if (u.pathname === '/admin/api') {
         if (!env.ADMIN_KEY || !safeEq(req.headers.get('x-admin-key'), env.ADMIN_KEY)) return json({ ok: false }, 401);
-      } else if (u.pathname !== '/v1/check' && u.pathname !== '/v1/release') return json({ ok: false }, 404);
+      } else if (u.pathname !== '/v1/check' && u.pathname !== '/v1/release' && u.pathname !== '/v1/sync/get' && u.pathname !== '/v1/sync/put') return json({ ok: false }, 404);
       const text = await req.text();
-      if (text.length > 4096) return json({ ok: false }, 413);
+      if (text.length > (u.pathname === '/v1/sync/put' ? 160 * 1024 : 4096)) return json({ ok: false }, 413);
       const stub = env.LIC.get(env.LIC.idFromName('main'));
       return await stub.fetch(new Request(req.url, { method: 'POST', body: text }));
     } catch (e) { return json({ ok: false, err: 'server' }, 500); }

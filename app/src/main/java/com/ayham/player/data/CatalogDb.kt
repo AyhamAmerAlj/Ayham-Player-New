@@ -157,6 +157,10 @@ class CatalogDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "catalo
 
     fun recent(kind: Kind, n: Int) = query(kind, "added>0", emptyList(), "added DESC", n)
     fun top(kind: Kind, n: Int) = query(kind, "rating>0", emptyList(), "rating DESC", n)
+    fun topInCats(kind: Kind, cats: List<String>, limit: Int): List<Item> {
+        if (cats.isEmpty()) return emptyList()
+        return query(kind, "cat IN (" + cats.joinToString(",") { "?" } + ") AND rating>0", cats, "rating DESC", limit)
+    }
     fun all(kind: Kind, limit: Int, offset: Int) = query(kind, "", emptyList(), "_id", limit, offset)
     fun inCategory(kind: Kind, cid: String, limit: Int, offset: Int) = query(kind, "cat=?", listOf(cid), "_id", limit, offset)
 

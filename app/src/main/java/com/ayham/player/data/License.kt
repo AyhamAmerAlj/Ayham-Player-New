@@ -40,7 +40,7 @@ object LicenseManager {
     private lateinit var appCtx: Context
     private val sp get() = appCtx.getSharedPreferences("ayham_license", Context.MODE_PRIVATE)
 
-    private fun deviceId(): String {
+    fun deviceId(): String {
         @Suppress("HardwareIds")
         val a = Settings.Secure.getString(appCtx.contentResolver, Settings.Secure.ANDROID_ID).orEmpty()
         val d = MessageDigest.getInstance("SHA-256").digest((a + "|" + appCtx.packageName).toByteArray())
@@ -76,6 +76,11 @@ object LicenseManager {
     }
 
     fun init(ctx: Context) { appCtx = ctx.applicationContext }
+
+    /** الكود المحفوظ (للمزامنة). */
+    fun savedCode(): String? = if (::appCtx.isInitialized) sp.getString("code", null) else null
+
+    val isOk: Boolean get() = state == LicState.OK
 
     val hasSaved: Boolean get() = ::appCtx.isInitialized && sp.getString("code", null) != null
 

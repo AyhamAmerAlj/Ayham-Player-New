@@ -1,5 +1,6 @@
 package com.ayham.player.ui
 
+import kotlinx.coroutines.launch
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -817,6 +818,18 @@ fun SettingsTab(vm: AppViewModel) {
         if (info.expDate.isNotEmpty()) BodyText("${t("expires")}: ${info.expDate}", 15, C.textDim)
         if (info.maxConnections.isNotEmpty()) BodyText("${t("connections")}: ${info.maxConnections}", 15, C.textDim)
 
+        if (com.ayham.player.data.LicenseManager.enabled) {
+            RText(t("sync_title"), 22, C.primaryLight, bold = true)
+            val syncScope = androidx.compose.runtime.rememberCoroutineScope()
+            val okMsg = t("sync_done"); val failMsg = t("sync_fail"); val offMsg = t("sync_off")
+            GlowButton(t("sync_now")) {
+                syncScope.launch {
+                    val ok = if (vm.sync.available) vm.sync.run() else null
+                    android.widget.Toast.makeText(ctx, when (ok) { true -> okMsg; false -> failMsg; null -> offMsg }, android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
         RText(t("check_update"), 22, C.primaryLight, bold = true)
         val upd = vm.updState
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -842,6 +855,7 @@ fun SettingsTab(vm: AppViewModel) {
         GlowButton(t("logout")) { vm.logout() }
 
         Spacer(Modifier.height(10.dp))
+        if (com.ayham.player.data.Tmdb.enabled) BodyText(t("tmdb_credit"), 13, C.textDim)
         RText("${t("app")}  ${t("version")} ${com.ayham.player.data.Updater.currentBuild(ctx)}", 18, C.textDim)
     }
 }

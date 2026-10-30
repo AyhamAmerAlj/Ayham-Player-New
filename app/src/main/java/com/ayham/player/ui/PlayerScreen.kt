@@ -46,6 +46,8 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
@@ -162,6 +164,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     var toast by remember { mutableStateOf<String?>(null) }
     var toastId by remember { mutableIntStateOf(0) }
     var aspect by remember { mutableIntStateOf(0) }
+    var speed by remember { mutableFloatStateOf(1f) }
     var subUrl by remember { mutableStateOf("") }
     var subsLoaded by remember { mutableStateOf(false) }
     var barVisible by remember { mutableStateOf(false) }
@@ -273,6 +276,20 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         exo.seekToDefaultPosition()
         exo.prepare()
         exo.playWhenReady = true
+    }
+
+    fun speedLabel(v: Float) = (if (v == v.toInt().toFloat()) v.toInt().toString() else v.toString()) + "x"
+    fun cycleSpeed() {
+        val all = listOf(1f, 1.25f, 1.5f, 2f, 0.5f, 0.75f)
+        speed = all[(all.indexOf(speed) + 1) % all.size]
+        exo.setPlaybackSpeed(speed)
+        showToast(speedLabel(speed))
+    }
+    /** تخطي المقدمة: تقديم 85 ثانية (المزوّد ما يعطي توقيت المقدمة، فالتخطي يدوي). */
+    fun skipIntro() {
+        val dur = if (exo.duration == MC.TIME_UNSET) Long.MAX_VALUE else exo.duration
+        exo.seekTo((exo.currentPosition + 85_000L).coerceIn(0L, dur))
+        showToast("+85")
     }
 
     fun seekBy(ms: Long) {
@@ -837,6 +854,8 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             if (queue.size > 1) IconBtn(Icons.Filled.SkipNext) { go(1); touch() }
                             Spacer(Modifier.width(26.dp))
                             if (!queue[index].isLive) IconBtn(Icons.Filled.Subtitles) { panel = Panel.SUBS; controls = false }
+                            if (!queue[index].isLive) IconBtn(Icons.Filled.Speed, active = speed != 1f) { cycleSpeed(); touch() }
+                            if (!queue[index].isLive && queue.size > 1) IconBtn(Icons.Filled.FastForward) { skipIntro(); touch() }
                             if (queue[index].isLive) {
                                 val fav = vm.isFavKey(queue[index].key)
                                 IconBtn(if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, active = fav) {
@@ -881,6 +900,10 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                         RText(t("settings"), 26, C.text, bold = true)
                         if (!queue[index].isLive) PanelItem(t("subtitles"), modifier = Modifier.autoFocus()) { panel = Panel.SUBS }
                         PanelItem(t("audio_tracks"), modifier = if (queue[index].isLive) Modifier.autoFocus() else Modifier) { panel = Panel.AUDIO }
+                        if (!queue[index].isLive) {
+                            PanelItem(t("speed"), sub = speedLabel(speed)) { cycleSpeed() }
+                            PanelItem(t("skip_intro"), sub = t("skip_intro_sub")) { skipIntro(); closePanel() }
+                        }
                         PanelItem(t("smart_audio"), selected = extName != null, sub = extName) { panel = Panel.EXT }
                         if (extName != null) PanelItem(t("sync")) { panel = Panel.SYNC }
                         PanelItem(t("aspect"), sub = aspectLabels[aspect]) {

@@ -13,6 +13,7 @@ android {
         minSdk = 23
         targetSdk = 34
         buildConfigField("String", "LICENSE_URL", "\"" + (System.getenv("LICENSE_URL") ?: "").filter { it.code in 33..126 && it != '"' && it != '\\' } + "\"")
+        buildConfigField("String", "TMDB_KEY", "\"" + (System.getenv("TMDB_API_KEY") ?: "").filter { it.isLetterOrDigit() } + "\"")
         versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
         versionName = "1.0." + (System.getenv("VERSION_CODE") ?: "0")
     }
