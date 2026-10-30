@@ -21,6 +21,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -40,19 +46,31 @@ fun NewsDialog(vm: AppViewModel) {
         onDismissRequest = { vm.dismissNews() },
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false),
     ) {
-    Box(
-        Modifier.fillMaxSize().background(Color(0xD9000000)),
+    val scroll = rememberScrollState()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    androidx.compose.foundation.layout.BoxWithConstraints(
+        Modifier.fillMaxSize().background(Color(0xD9000000))
+            // الريموت: فوق/تحت يمرّر المحتوى لرؤية كل الميزات
+            .onPreviewKeyEvent { ev ->
+                if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (ev.key) {
+                    Key.DirectionDown -> { scope.launch { scroll.animateScrollBy(260f) }; true }
+                    Key.DirectionUp -> { scope.launch { scroll.animateScrollBy(-260f) }; true }
+                    else -> false
+                }
+            },
         contentAlignment = Alignment.Center,
     ) {
+        val maxH = maxHeight * 0.92f
         val shape = RoundedCornerShape(24.dp)
         Column(
-            Modifier.widthIn(max = 560.dp).fillMaxWidth(0.92f).heightIn(max = 640.dp)
+            Modifier.widthIn(max = 560.dp).fillMaxWidth(0.92f).heightIn(max = maxH)
                 .clip(shape).background(Color(0xFF120A26)).border(1.5.dp, C.primary, shape).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             RText(t("whats_new"), 28, Color.White, bold = true)
             Column(
-                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                Modifier.weight(1f, fill = false).verticalScroll(scroll),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 list.forEach { e -> NewsBlock(e, en) }
