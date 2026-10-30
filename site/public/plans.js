@@ -77,6 +77,6 @@ window.renderPlans = function (el) {
       return '<li>' + CHECK + '<span>' + esc(t) + (soon ? '<span class="soon">قريبًا</span>' : '') + '</span></li>';
     }).join('');
     var btn = p.style === 'elite' ? 'btn gold' : (p.style === 'pro' ? 'btn' : 'btn ghost');
-    return '<article class="plan ' + (p.style || 'simple') + '">' + (p.ribbon ? '<div class="ribbon">' + esc(p.ribbon) + '</div>' : '') + '<div class="badges">' + bd + '</div><h2>' + esc(p.name) + '</h2><p class="d">' + esc(p.desc || '') + '</p><div class="p">' + fmt(p.price) + '<small>دينار عراقي</small></div><div class="per">' + per + '</div><ul>' + feats + '</ul><a class="' + btn + '" href="' + href + '" target="_blank" rel="noopener">اشترك الآن</a></article>';
+    return '<article class="plan ' + (p.style || 'simple') + '">' + (p.ribbon ? '<div class="ribbon">' + esc(p.ribbon) + '</div>' : '') + '<div class="badges">' + bd + '</div><h2>' + esc(p.name) + '</h2><p class="d">' + esc(p.desc || '') + '</p>' + (p.old ? '<div class="was"><s>' + fmt(p.old) + '</s><span>خصم</span></div>' : '') + '<div class="p">' + fmt(p.price) + '<small>دينار عراقي</small></div><div class="per">' + per + '</div><ul>' + feats + '</ul><a class="' + btn + '" href="' + href + '" target="_blank" rel="noopener">اشترك الآن</a></article>';
   }).join('');
 };
