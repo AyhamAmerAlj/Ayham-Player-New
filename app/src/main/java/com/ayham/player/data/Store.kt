@@ -143,7 +143,7 @@ class Store(ctx: Context) {
 
     /** تحديثات "ما الجديد؟" التي شاهدها المستخدم (لا تظهر مرتين). */
     fun newsSeen(): Set<String> = (sp.getString("news_seen", "") ?: "").split(",").filter { it.isNotBlank() }.toSet()
-    fun markNewsSeen(id: String) { sp.edit().putString("news_seen", (newsSeen() + id).takeLast(100).joinToString(",")).apply() }
+    fun markNewsSeen(id: String) { sp.edit().putString("news_seen", (newsSeen() + id).toList().takeLast(100).joinToString(",")).apply() }
 
     fun removeProgress(key: String) { sp.edit().remove("p_$key").remove("pt_$key").apply() }
 
