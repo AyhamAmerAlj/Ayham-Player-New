@@ -130,6 +130,17 @@ class Store(ctx: Context) {
         return out
     }
 
+    /** ضبط المقدمة لكل مسلسل: (البداية، النهاية) بالمللي ثانية. النهاية 0 = غير مضبوطة. */
+    fun introProfile(key: String): Pair<Long, Long>? {
+        val v = sp.getString("intro_$key", null) ?: return null
+        val p = v.split("/")
+        return (p.getOrNull(0)?.toLongOrNull() ?: return null) to (p.getOrNull(1)?.toLongOrNull() ?: return null)
+    }
+    fun setIntro(key: String, start: Long, end: Long) {
+        if (start <= 0L && end <= 0L) sp.edit().remove("intro_$key").apply()
+        else sp.edit().putString("intro_$key", "$start/$end").apply()
+    }
+
     fun removeProgress(key: String) { sp.edit().remove("p_$key").remove("pt_$key").apply() }
 
     /** وقت آخر مسح لسجل التقدم (حتى لا تعيده المزامنة). */

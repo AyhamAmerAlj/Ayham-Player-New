@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -152,6 +153,8 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     val subClearedT = t("sub_cleared")
     val audioUnsupported = t("audio_unsupported")
     val liveEdgeT = t("live_edge_limit")
+    val skipIntroT = t("skip_intro")
+    val introSavedT = t("intro_saved")
 
     var index by remember { mutableIntStateOf(req.index.coerceIn(0, queue.lastIndex)) }
     var isPlaying by remember { mutableStateOf(false) }
@@ -165,6 +168,10 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     var toastId by remember { mutableIntStateOf(0) }
     var aspect by remember { mutableIntStateOf(0) }
     var speed by remember { mutableFloatStateOf(1f) }
+    // ---- تخطي المقدمة (مثل نتفلكس) ----
+    val isSeries = req.item?.kind == com.ayham.player.data.Kind.SERIES
+    var introPos by remember { mutableLongStateOf(0L) }
+    var introTick by remember { mutableIntStateOf(0) }
     var subUrl by remember { mutableStateOf("") }
     var subsLoaded by remember { mutableStateOf(false) }
     var barVisible by remember { mutableStateOf(false) }
@@ -292,6 +299,28 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         showToast("+85")
     }
 
+    /** لو الزر يظهر الآن يرجع موضع الانتقال، وإلا null. المقدمة المضبوطة للمسلسل تتبع كل حلقاته. */
+    fun introTarget(): Long? {
+        if (!isSeries || queue[index].isLive || introTick < 0) return null
+        val p = introPos
+        val prof = req.item?.key?.let { vm.store.introProfile(it) }
+        val st = prof?.first ?: 0L
+        val en = prof?.second ?: 0L
+        return if (en > st && en > 0L) {
+            if (p >= st && p < en - 1500L) en else null
+        } else {
+            if (p >= st && p < st + 180_000L) p + 85_000L else null
+        }
+    }
+    fun doSkip() {
+        val tgt = introTarget()
+        if (tgt != null) {
+            val dur = if (exo.duration == MC.TIME_UNSET) Long.MAX_VALUE else exo.duration
+            exo.seekTo(tgt.coerceIn(0L, dur))
+            showToast(skipIntroT)
+        } else skipIntro()
+    }
+
     fun seekBy(ms: Long) {
         val live = queue[index].isLive
         if (live && !exo.isCurrentMediaItemSeekable) {
@@ -386,6 +415,12 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         }
         if (panel != null || controls) return false
         val live = queue[index].isLive
+        if (!live && introTarget() != null &&
+            (code == AKeyEvent.KEYCODE_DPAD_CENTER || code == AKeyEvent.KEYCODE_ENTER || code == AKeyEvent.KEYCODE_NUMPAD_ENTER)) {
+            okSwallow[0] = true
+            doSkip()
+            return true
+        }
         val ok = code == AKeyEvent.KEYCODE_DPAD_CENTER || code == AKeyEvent.KEYCODE_ENTER || code == AKeyEvent.KEYCODE_NUMPAD_ENTER
         if (live) {
             // القنوات: يمين/يسار = تبديل القناة، OK = إظهار أزرار التحكم (إيقاف، تقديم، تأخير)
@@ -526,6 +561,15 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             delay(3000)
             retryCount++
             retry()
+        }
+    }
+
+    // موضع التشغيل لزر تخطي المقدمة
+    LaunchedEffect(exo, index, isSeries) {
+        if (!isSeries) return@LaunchedEffect
+        while (true) {
+            introPos = exo.currentPosition
+            delay(500)
         }
     }
 
@@ -855,7 +899,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             Spacer(Modifier.width(26.dp))
                             if (!queue[index].isLive) IconBtn(Icons.Filled.Subtitles) { panel = Panel.SUBS; controls = false }
                             if (!queue[index].isLive) IconBtn(Icons.Filled.Speed, active = speed != 1f) { cycleSpeed(); touch() }
-                            if (!queue[index].isLive && queue.size > 1) IconBtn(Icons.Filled.FastForward) { skipIntro(); touch() }
+                            if (!queue[index].isLive && queue.size > 1) IconBtn(Icons.Filled.FastForward) { doSkip(); touch() }
                             if (queue[index].isLive) {
                                 val fav = vm.isFavKey(queue[index].key)
                                 IconBtn(if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, active = fav) {
@@ -873,6 +917,17 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     }
                 }
             }
+        }
+
+        val introGo = if (!controls && panel == null) introTarget() else null
+        if (introGo != null) {
+            Box(
+                Modifier.align(Alignment.BottomEnd).padding(end = 28.dp, bottom = 90.dp)
+                    .background(Color(0xCC140A26), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                    .border(2.dp, Color.White, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                    .clickable { doSkip(); touch() }
+                    .padding(horizontal = 22.dp, vertical = 12.dp),
+            ) { RText(skipIntroT, 20, Color.White, bold = true) }
         }
 
         if (panel == Panel.TRYSUB) {
@@ -902,7 +957,23 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                         PanelItem(t("audio_tracks"), modifier = if (queue[index].isLive) Modifier.autoFocus() else Modifier) { panel = Panel.AUDIO }
                         if (!queue[index].isLive) {
                             PanelItem(t("speed"), sub = speedLabel(speed)) { cycleSpeed() }
-                            PanelItem(t("skip_intro"), sub = t("skip_intro_sub")) { skipIntro(); closePanel() }
+                            PanelItem(t("skip_intro"), sub = t("skip_intro_sub")) { doSkip(); closePanel() }
+                            if (isSeries) {
+                                val key = req.item?.key.orEmpty()
+                                PanelItem(t("intro_start")) {
+                                    val en = vm.store.introProfile(key)?.second ?: 0L
+                                    vm.store.setIntro(key, exo.currentPosition, if (en > exo.currentPosition) en else 0L)
+                                    introTick++; showToast(introSavedT); closePanel()
+                                }
+                                PanelItem(t("intro_end")) {
+                                    val st = vm.store.introProfile(key)?.first ?: 0L
+                                    vm.store.setIntro(key, if (st < exo.currentPosition) st else 0L, exo.currentPosition)
+                                    introTick++; showToast(introSavedT); closePanel()
+                                }
+                                if (vm.store.introProfile(key) != null) PanelItem(t("intro_reset")) {
+                                    vm.store.setIntro(key, 0L, 0L); introTick++; closePanel()
+                                }
+                            }
                         }
                         PanelItem(t("smart_audio"), selected = extName != null, sub = extName) { panel = Panel.EXT }
                         if (extName != null) PanelItem(t("sync")) { panel = Panel.SYNC }
