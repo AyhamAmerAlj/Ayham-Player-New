@@ -22,3 +22,8 @@ jobs:
           node-version: 20
       - name: Deploy
         run: npx --yes wrangler@4 deploy
+      - name: Deploy to Cloudflare Pages (رابط مختصر ayhamstore.pages.dev)
+        continue-on-error: true
+        run: |
+          npx --yes wrangler@4 pages project create ayhamstore --production-branch main || true
+          npx --yes wrangler@4 pages deploy public --project-name=ayhamstore --branch=main --commit-dirty=true
