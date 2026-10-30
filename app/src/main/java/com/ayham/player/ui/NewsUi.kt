@@ -1,6 +1,5 @@
 package com.ayham.player.ui
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,10 +35,13 @@ fun NewsDialog(vm: AppViewModel) {
     val list = vm.newsShow ?: return
     if (list.isEmpty()) return
     val en = vm.lang == "en"
-    BackHandler { vm.dismissNews() }
+    // نافذة مستقلة (Dialog): تأخذ التركيز كاملًا فلا تتحرك القوائم خلفها بالريموت، والرجوع يغلقها
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = { vm.dismissNews() },
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false),
+    ) {
     Box(
-        Modifier.fillMaxSize().background(Color(0xD9000000))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { },
+        Modifier.fillMaxSize().background(Color(0xD9000000)),
         contentAlignment = Alignment.Center,
     ) {
         val shape = RoundedCornerShape(24.dp)
@@ -57,6 +59,7 @@ fun NewsDialog(vm: AppViewModel) {
             }
             GlowButton(t("lets_go"), primary = true, modifier = Modifier.fillMaxWidth().autoFocus()) { vm.dismissNews() }
         }
+    }
     }
 }
 
