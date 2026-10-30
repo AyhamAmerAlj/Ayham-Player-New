@@ -4,6 +4,7 @@
    name     : اسم الباقة
    desc     : وصف قصير
    price    : السعر بالأرقام فقط (دينار عراقي)
+   old      : السعر قبل الخصم (يظهر مشطوبًا)
    period   : "once" = دفعة واحدة، "month" = شهري
    badges   : شارات صغيرة فوق السعر
    features : قائمة مميزات. اكتب نصًا عاديًا، أو {t:"النص", soon:true} لإظهار شارة "قريبًا"
@@ -15,7 +16,7 @@ window.PLANS = [
   {
     id: 'basic', name: 'Ayham Basic', style: 'simple',
     desc: 'كل ما تحتاجه لمشغّل وسائط متكامل بواجهة عصرية.',
-    price: 5000, period: 'once', badges: ['شراء مرة واحدة','مدى الحياة'],
+    price: 3000, old: 5000, period: 'once', badges: ['شراء مرة واحدة','مدى الحياة'],
     features: [
       'مشغل وسائط متكامل',
       'دعم تشغيل البث المباشر والأفلام والمسلسلات',
@@ -29,7 +30,7 @@ window.PLANS = [
   {
     id: 'pro', name: 'Ayham Pro', style: 'pro',
     desc: 'مرونة أكثر وتجربة أفضل، مع أولوية في الدعم.',
-    price: 6000, period: 'month', badges: ['اشتراك شهري'],
+    price: 6000, old: 8000, period: 'month', badges: ['اشتراك شهري'],
     features: [
       'جميع مميزات الباقة الأساسية',
       'الاستخدام على جهازين (جهاز واحد يعمل بالوقت نفسه)',
@@ -45,7 +46,7 @@ window.PLANS = [
   {
     id: 'elite', name: 'Ayham Elite', style: 'elite', ribbon: '★ الأكثر تميزًا',
     desc: 'أقصى مرونة وأعلى أولوية، مع وصول مبكر لكل جديد.',
-    price: 10000, period: 'month', badges: ['اشتراك شهري'],
+    price: 10000, old: 12000, period: 'month', badges: ['اشتراك شهري'],
     features: [
       'جميع مميزات باقة Pro',
       'تسجيل حتى 3 أجهزة (جهاز واحد يعمل بالوقت نفسه)',
