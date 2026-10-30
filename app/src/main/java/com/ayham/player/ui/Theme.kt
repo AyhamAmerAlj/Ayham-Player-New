@@ -48,14 +48,14 @@ object C {
     val surface = Color(0xFF1C1033)
     val surfaceHi = Color(0xFF2A1850)
     val primary = Color(0xFF8B5CF6)
-    val primaryLight = Color(0xFFC4A1FF)
-    val accent = Color(0xFFE879F9)
+    val primaryLight: Color get() = if (Season.halloween) Color(0xFFFFB36B) else Color(0xFFC4A1FF)
+    val accent: Color get() = if (Season.halloween) Color(0xFFFF8A1F) else Color(0xFFE879F9)
     val text = Color(0xFFF5F0FF)
     val textDim = Color(0xFFA99BC4)
     val danger = Color(0xFFFF6B8B)
     val ok = Color(0xFF5EEAD4)
 
-    val glow = Brush.linearGradient(listOf(primary, accent))
+    val glow: Brush get() = Brush.linearGradient(listOf(primary, accent))
 }
 
 val AppFont = FontFamily(

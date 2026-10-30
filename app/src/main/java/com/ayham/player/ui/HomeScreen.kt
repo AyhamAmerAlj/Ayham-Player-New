@@ -413,6 +413,11 @@ fun HomeTab(vm: AppViewModel) {
         recMovies = vm.recommendedFor(Kind.MOVIE)
         recSeries = vm.recommendedFor(Kind.SERIES)
     }
+    var horrorMovies by remember { mutableStateOf<List<Item>>(emptyList()) }
+    var horrorSeries by remember { mutableStateOf<List<Item>>(emptyList()) }
+    LaunchedEffect(vm.dataVersion) {
+        if (Season.halloween) { horrorMovies = vm.horror(Kind.MOVIE); horrorSeries = vm.horror(Kind.SERIES) }
+    }
     val featured = remember(recentMovies, recentSeries) {
         (recentMovies.take(2) + recentSeries.take(2)).filter { it.image.isNotBlank() }
     }
@@ -429,9 +434,12 @@ fun HomeTab(vm: AppViewModel) {
     val playLive: (Item, List<Item>) -> Unit = { it, src -> vm.playLive(it, LiveSource(favs = src)) }
 
     LazyColumn(contentPadding = PaddingValues(top = 2.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (Season.halloween) item { HalloweenBanner() }
         item { SetupCard(vm) }
         item { FeaturedBanner(vm, featured) }
         item { HomeTiles(vm) }
+        if (Season.halloween && horrorMovies.size >= 3) item { FocusRow(t("hall_movies"), horrorMovies, vm, open) }
+        if (Season.halloween && horrorSeries.size >= 3) item { FocusRow(t("hall_series"), horrorSeries, vm, open) }
         item { SquareRow(t("top_rated"), topMovies, open) }
         if (vm.recent.isNotEmpty()) item { FocusRow(t("continue_watching"), vm.recent, vm, open) }
         if (recMovies.size >= 4) item { FocusRow(t("rec_movies"), recMovies, vm, open) }
@@ -492,6 +500,25 @@ fun SubsPage(vm: AppViewModel) {
         items(withSubs, key = { it.key }) { it ->
             VodRow(it) { vm.openDetail(it) }
             BodyText(vm.savedSubs(it.key).size.toString() + " " + t("subs_saved"), 13, C.textDim, modifier = Modifier.padding(start = 8.dp))
+        }
+    }
+}
+
+
+/** شريط موسم الهالوين (يظهر 3 أيام فقط). */
+@Composable
+fun HalloweenBanner() {
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 28.dp)
+            .background(Color(0xFF1A0D06), shape).border(2.dp, C.accent, shape).padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        RText("🎃", 34, Color.White)
+        androidx.compose.foundation.layout.Column {
+            RText(t("hall_title"), 22, C.accent, bold = true)
+            BodyText(t("hall_sub"), 14, C.textDim)
         }
     }
 }

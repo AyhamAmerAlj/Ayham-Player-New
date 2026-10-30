@@ -76,6 +76,11 @@ private fun Ready(vm: AppViewModel) {
 
     val top = vm.stack.lastOrNull()
     androidx.compose.runtime.LaunchedEffect(Unit) { vm.checkUpdate(false) }
+    // ما الجديد؟: جلب مرة واحدة بعد الفتح بخيط خلفي (لا يؤثر على السرعة)
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(2500)
+        vm.loadNews(true)
+    }
     // مزامنة بيانات المشاهدة عند الفتح ثم كل 3 دقائق
     androidx.compose.runtime.LaunchedEffect(Unit) {
         while (true) {
@@ -92,5 +97,6 @@ private fun Ready(vm: AppViewModel) {
             is Screen.Player -> PlayerScreen(vm, top.req) { vm.pop() }
         }
         if (top !is Screen.Player) com.ayham.player.ui.UpdateDialog(vm)
+        if (top !is Screen.Player && (vm.updInfo == null || vm.updDismissed)) com.ayham.player.ui.NewsDialog(vm)
     }
 }

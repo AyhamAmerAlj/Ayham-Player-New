@@ -66,6 +66,40 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         syncJob?.cancel()
         syncJob = viewModelScope.launch { delay(15_000); sync.run() }
     }
+    // ---- ما الجديد؟ ----
+    var newsList by mutableStateOf<List<com.ayham.player.data.NewsEntry>>(emptyList())
+        private set
+    var newsShow by mutableStateOf<List<com.ayham.player.data.NewsEntry>?>(null)
+        private set
+    private fun curBuild() = com.ayham.player.data.Updater.currentBuild(getApplication())
+    /** auto=true: يعرض أحدث تحديث منشور لم يره المستخدم بعد (مرة واحدة). */
+    suspend fun loadNews(auto: Boolean) {
+        val r = withContext(Dispatchers.IO) { com.ayham.player.data.NewsApi.fetch() } ?: return
+        newsList = r
+        if (auto) {
+            val seen = store.newsSeen()
+            val c = r.firstOrNull { it.id !in seen && (it.build == 0 || it.build <= curBuild()) }
+            if (c != null && newsShow == null) newsShow = listOf(c)
+        }
+    }
+    fun openNewsAll() {
+        val l = newsList.filter { it.build == 0 || it.build <= curBuild() }
+        if (l.isNotEmpty()) newsShow = l
+    }
+    fun dismissNews() {
+        newsShow?.forEach { store.markNewsSeen(it.id) }
+        newsShow = null
+    }
+
+    /** أفلام/مسلسلات الرعب من تصنيفات قائمتك فعلًا (لموسم الهالوين). */
+    suspend fun horror(kind: Kind, n: Int = 24): List<Item> = withContext(Dispatchers.IO) {
+        val keys = listOf("horror", "رعب", "scary", "هالوين", "halloween")
+        val cats = runCatching { db.categories(kind) }.getOrDefault(emptyList())
+            .filter { c -> val nn = com.ayham.player.ui.normalizeForSearch(c.name); keys.any { nn.contains(it) } }
+            .take(4).map { it.id }
+        runCatching { db.topInCats(kind, cats, n) }.getOrDefault(emptyList())
+    }
+
     suspend fun syncOnce() { sync.run() }
     fun flushSync() { if (sync.available) { syncJob?.cancel(); viewModelScope.launch { sync.run() } } }
 

@@ -830,6 +830,12 @@ fun SettingsTab(vm: AppViewModel) {
             }
         }
 
+        if (com.ayham.player.data.LicenseManager.enabled) {
+            val newsScope = androidx.compose.runtime.rememberCoroutineScope()
+            GlowButton(t("whats_new")) {
+                newsScope.launch { if (vm.newsList.isEmpty()) vm.loadNews(false); vm.openNewsAll() }
+            }
+        }
         RText(t("check_update"), 22, C.primaryLight, bold = true)
         val upd = vm.updState
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

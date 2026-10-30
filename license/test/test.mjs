@@ -38,3 +38,18 @@ eq((await call('/v1/sync/get', { code: code2, device: 's1', profile: 'Sara' })).
 eq((await call('/v1/sync/put', { code: code2, device: 's1', profile: 'Ali', base: 1, data: { x: 'y'.repeat(130000) } })).err, 'too_big', 'sync too big');
 await call('/admin/api', { action: 'revoke', code: code2 }, { 'x-admin-key': 'k' });
 eq((await call('/v1/sync/get', { code: code2, device: 's1', profile: 'Ali' })).err, 'revoked', 'sync revoked');
+
+// ---- ما الجديد؟ ----
+const A = { 'x-admin-key': 'k' };
+eq((await call('/v1/news', {})).items, [], 'news empty');
+const ns = await call('/admin/api', { action: 'news_save', version: '1.0.130', build: 130, date: '2026-10-31', title: 'T', desc: 'D', items: [{ icon: '🎃', title: 'a', desc: 'b', image: 'http://bad' }, { title: '' }], published: false }, A);
+eq(ns.ok, true, 'news saved');
+eq((await call('/v1/news', {})).items.length, 0, 'unpublished hidden');
+await call('/admin/api', { action: 'news_publish', id: ns.id, published: true }, A);
+const pub = (await call('/v1/news', {})).items;
+eq([pub.length, pub[0].items.length, pub[0].items[0].image], [1, 1, ''], 'published visible, bad image dropped');
+await call('/admin/api', { action: 'news_save', id: ns.id, version: '1.0.130', title: 'T2', published: true }, A);
+eq((await call('/v1/news', {})).items[0].title, 'T2', 'news edit');
+eq((await call('/admin/api', { action: 'news_save', title: 'x' }, A)).err, 'missing', 'needs version');
+await call('/admin/api', { action: 'news_delete', id: ns.id }, A);
+eq((await call('/admin/api', { action: 'news_list' }, A)).items.length, 0, 'news deleted');

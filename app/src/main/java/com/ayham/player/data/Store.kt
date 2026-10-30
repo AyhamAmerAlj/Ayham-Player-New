@@ -141,6 +141,10 @@ class Store(ctx: Context) {
         else sp.edit().putString("intro_$key", "$start/$end").apply()
     }
 
+    /** تحديثات "ما الجديد؟" التي شاهدها المستخدم (لا تظهر مرتين). */
+    fun newsSeen(): Set<String> = (sp.getString("news_seen", "") ?: "").split(",").filter { it.isNotBlank() }.toSet()
+    fun markNewsSeen(id: String) { sp.edit().putString("news_seen", (newsSeen() + id).takeLast(100).joinToString(",")).apply() }
+
     fun removeProgress(key: String) { sp.edit().remove("p_$key").remove("pt_$key").apply() }
 
     /** وقت آخر مسح لسجل التقدم (حتى لا تعيده المزامنة). */
