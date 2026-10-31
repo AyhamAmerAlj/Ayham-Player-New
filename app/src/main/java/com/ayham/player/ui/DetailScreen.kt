@@ -59,6 +59,10 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
         }
     }
 
+    var versions by remember(item.key) { mutableStateOf<List<Item>>(emptyList()) }
+    var showVersions by remember(item.key) { mutableStateOf(false) }
+    LaunchedEffect(item.key) { versions = vm.versionsOf(item) }
+
     var similarItems by remember(item.key) { mutableStateOf<List<Item>>(emptyList()) }
     LaunchedEffect(item.key) { similarItems = vm.similarTo(item).take(20) }
     var imdb by remember(item.key) { mutableStateOf<String?>(null) }
@@ -118,7 +122,7 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
                         val cast = d?.cast.orEmpty()
                         if (cast.isNotBlank() && compact) BodyText("${t("cast")}: $cast", 12, C.textDim, maxLines = 2)
                         Spacer(Modifier.height(4.dp))
-                        if (!compact) ActionButtons(vm, item, eps, curSeason)
+                        if (!compact) ActionButtons(vm, item, eps, curSeason, versions) { showVersions = true }
                     }
                 }
                 if (compact) {
@@ -127,7 +131,7 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
                             poster()
                             info(Modifier.weight(1f))
                         }
-                        ActionButtons(vm, item, eps, curSeason)
+                        ActionButtons(vm, item, eps, curSeason, versions) { showVersions = true }
                     }
                 } else {
                     // تلفاز: خلفية كاملة، والمعلومات أسفلها (بدون بوستر لو توفرت الخلفية)
@@ -171,11 +175,42 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
                 item { ContentRow(t("similar"), similarItems) { vm.openDetail(it) } }
             }
         }
+        if (showVersions && versions.size > 1) {
+            androidx.compose.ui.window.Dialog(
+                onDismissRequest = { showVersions = false },
+                properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+            ) {
+                Box(Modifier.fillMaxSize().background(Color(0xCC000000)), contentAlignment = Alignment.Center) {
+                    Column(
+                        Modifier.fillMaxWidth(if (compact) 0.94f else 0.55f).fillMaxHeight(0.88f).clip(RoundedCornerShape(22.dp))
+                            .background(Color(0xFF120A24)).padding(22.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        RText(com.ayham.player.data.Versions.core(item.name).replaceFirstChar { it.uppercase() }, 24, C.text, bold = true, maxLines = 1)
+                        BodyText(if (vm.lang == "ar") "اختر النسخة (الجودة / اللغة)" else "Choose a version (quality / language)", 14, C.textDim)
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+                            items(versions.size) { n ->
+                                val v = versions[n]
+                                PanelItem(
+                                    v.name,
+                                    selected = v.key == item.key,
+                                    sub = com.ayham.player.data.Versions.tag(v.name).ifBlank { null },
+                                    modifier = if (v.key == item.key) Modifier.autoFocus() else Modifier,
+                                ) {
+                                    showVersions = false
+                                    if (v.key != item.key) { vm.pop(); vm.openDetail(v) }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun ActionButtons(vm: AppViewModel, item: Item, eps: List<Episode>, season: Int) {
+private fun ActionButtons(vm: AppViewModel, item: Item, eps: List<Episode>, season: Int, versions: List<Item>, onVersions: () -> Unit) {
     val isSeries = item.kind == Kind.SERIES
     val progress = if (isSeries) null else vm.progressOf(item.key)
     val canResume = progress != null && progress.first > 10_000 && progress.first < progress.second * 0.92
@@ -208,6 +243,9 @@ private fun ActionButtons(vm: AppViewModel, item: Item, eps: List<Episode>, seas
                     if (isSeries) vm.playEpisodes(item, eps, startIdx) else vm.playMovie(item)
                 }
             }
+        }
+        if (versions.size > 1) item {
+            GlowButton((if (vm.lang == "ar") "اختيار النسخة" else "Versions") + " (${versions.size})") { onVersions() }
         }
         item {
             val on = vm.isIn("fav", item)

@@ -494,6 +494,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         r
     }
 
+    /** نسخ نفس العنوان في القائمة (الجودة/اللغة). ترجع قائمة فارغة لو ما في غير نسخة واحدة. */
+    suspend fun versionsOf(item: Item): List<Item> = withContext(Dispatchers.IO) {
+        runCatching {
+            val c = com.ayham.player.data.Versions.core(item.name)
+            if (c.length < 2) return@runCatching emptyList<Item>()
+            val found = db.search(item.kind, normalizeForSearch(c), 120)
+                .filter { com.ayham.player.data.Versions.core(it.name) == c }
+                .distinctBy { it.key }
+            if (found.none { it.key == item.key }) (listOf(item) + found) else found
+        }.getOrDefault(emptyList()).let { if (it.size > 1) it else emptyList() }
+    }
+
     /** بحث داخل نوع واحد. */
     suspend fun searchKind(kind: Kind, query: String, limit: Int = 80): List<Item> = withContext(Dispatchers.IO) {
         val q = normalizeForSearch(query)
