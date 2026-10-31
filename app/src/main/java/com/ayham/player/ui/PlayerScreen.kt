@@ -1109,68 +1109,122 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     Panel.AUDIO -> {
                         val ar = vm.lang == "ar"
                         val audio = tracks.groups.filter { it.type == MC.TRACK_TYPE_AUDIO }
-                        val inStream = extSession.sameStream
+                        val live = queue[index].isLive
+                        var tab by remember { mutableIntStateOf(0) }
+                        var q by remember { mutableStateOf("") }
+                        var results by remember { mutableStateOf<List<Item>>(emptyList()) }
+                        val recent = remember { vm.extRecent() }
+                        val searching = q.trim().length >= 2
+                        LaunchedEffect(q) {
+                            delay(300)
+                            results = if (q.trim().length >= 2) vm.search(q).first else emptyList()
+                        }
+                        val pager = rememberPager(Unit, 60) { off, lim -> vm.allItems(com.ayham.player.data.Kind.LIVE, lim, off) }
+                        val chosen = extSession.channel()?.key
+                        // التأخير: موجب = التعليق متأخر عن الصورة، سالب = الصورة متأخرة عن التعليق
+                        val commentary = if (extSession.sameStream) -extSession.picDelayMs else extSession.manualMs
+                        val extActive = extSession.player != null
+                        fun ensureSame() {
+                            if (!extSession.sameStream && extSession.player == null) {
+                                val sel = audio.flatMap { g -> (0 until g.length).filter { g.isTrackSelected(it) }.map { g.getTrackFormat(it) } }.firstOrNull()
+                                extSession.start(com.ayham.player.data.Item(com.ayham.player.data.Kind.LIVE, queue[index].key.substringAfter(':'), queue[index].title), true, sel?.let { it.id ?: it.label })
+                            }
+                        }
+                        fun adj(ms: Long) {
+                            if (kotlin.math.abs(commentary + ms) > 30_000L) { showToast(if (ar) "وصلت للحد الأقصى 30 ثانية" else "Max 30 seconds"); return }
+                            val ok = runCatching {
+                                ensureSame()
+                                if (extSession.sameStream) extSession.requestAdjust(-ms) else extSession.nudge(ms)
+                            }.getOrDefault(false)
+                            if (!ok) showToast(notSeekable)
+                        }
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Icon(Icons.Filled.Audiotrack, null, tint = C.accent, modifier = Modifier.size(28.dp))
                             Column {
                                 RText(if (ar) "الصوتيات" else "Audio", 24, C.text, bold = true)
-                                BodyText(if (ar) "التعليق + تأخير الصورة" else "Commentary + picture delay", 13, C.primaryLight)
+                                BodyText(if (ar) "اختر التعليق وزامنه مع الصورة" else "Pick commentary and sync it", 13, C.primaryLight)
                             }
                         }
-                        if (queue[index].isLive) {
-                            fun ensureSame() {
-                                if (!extSession.sameStream) {
-                                    val sel = audio.flatMap { g -> (0 until g.length).filter { g.isTrackSelected(it) }.map { g.getTrackFormat(it) } }.firstOrNull()
-                                    extSession.start(com.ayham.player.data.Item(com.ayham.player.data.Kind.LIVE, queue[index].key.substringAfter(':'), queue[index].title), true, sel?.let { it.id ?: it.label })
-                                }
-                            }
-                            val dly = extSession.picDelayMs
-                            Column(
-                                Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(C.surface.copy(alpha = 0.9f))
-                                    .border(1.dp, if (dly != 0L) C.accent else C.surfaceHi, RoundedCornerShape(18.dp)).padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                BodyText(if (ar) "تأخير الصورة" else "Picture delay", 13, C.textDim)
-                                RText((if (dly > 0) "+" else "") + String.format(Locale.US, "%.1f", dly / 1000f) + (if (ar) " ث" else " s"), 34, if (dly != 0L) C.accent else C.text, bold = true)
-                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    GlowButton("−1", primary = true, modifier = Modifier.weight(1f)) {
-                                        ensureSame(); if (!extSession.requestAdjust(-1000L)) showToast(notSeekable)
-                                    }
-                                    GlowButton("+1", primary = true, modifier = Modifier.weight(1f)) {
-                                        ensureSame(); if (!extSession.requestAdjust(1000L)) showToast(notSeekable)
-                                    }
-                                }
-                                if (inStream && extSession.status.isNotBlank()) BodyText(extSession.status, 12, C.textDim)
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                GlowButton(if (ar) "إعادة الصوت" else "Reset audio", modifier = Modifier.weight(1f)) { if (extSession.sameStream) stopExt() }
-                                GlowButton(if (ar) "إغلاق" else "Close", modifier = Modifier.weight(1f)) { closePanel() }
-                            }
-                        }
-                        RText(if (ar) "مسارات الصوت" else "Audio tracks", 15, C.primaryLight, bold = true)
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
-                            val flatAudio = audio.flatMap { g -> (0 until g.length).map { g to it } }
-                            items(flatAudio.size) { n ->
-                                val (g, i) = flatAudio[n]
-                                val supported = g.isTrackSupported(i)
-                                PanelItem(
-                                    trackLabel(g.getTrackFormat(i), i, vm.lang),
-                                    selected = if (extSession.sameStream) ((g.getTrackFormat(i).let { it.id ?: it.label ?: "" }) == extSession.wantTrack) else g.isTrackSelected(i),
-                                    sub = if (supported) null else audioUnsupported,
-                                    modifier = if (n == 0) Modifier.autoFocus() else Modifier,
-                                ) {
-                                    if (!supported) return@PanelItem
-                                    if (extSession.sameStream) { extSession.selectTrack(g.getTrackFormat(i).let { it.id ?: it.label ?: "" }); return@PanelItem }
-                                    audioOverridden = true
-                                    exo.trackSelectionParameters = exo.trackSelectionParameters.buildUpon()
-                                        .setTrackTypeDisabled(MC.TRACK_TYPE_AUDIO, false)
-                                        .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, i))
-                                        .build()
+                            if (live) {
+                                item {
+                                    val txt = when {
+                                        commentary > 0 -> (if (ar) "التعليق متأخر " else "Commentary delayed ") + String.format(Locale.US, "%.1f", commentary / 1000f) + (if (ar) " ث" else " s")
+                                        commentary < 0 -> (if (ar) "الصورة متأخرة " else "Picture delayed ") + String.format(Locale.US, "%.1f", -commentary / 1000f) + (if (ar) " ث" else " s")
+                                        else -> if (ar) "بدون تأخير" else "No delay"
+                                    }
+                                    Column(
+                                        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(C.surface.copy(alpha = 0.9f))
+                                            .border(1.dp, if (commentary != 0L) C.accent else C.surfaceHi, RoundedCornerShape(18.dp)).padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                    ) {
+                                        RText(txt, 22, if (commentary != 0L) C.accent else C.text, bold = true)
+                                        GlowButton(if (ar) "+ تأخير التعليق ثانية" else "+ Delay commentary 1s", primary = true, modifier = Modifier.fillMaxWidth().autoFocus()) { adj(1000L) }
+                                        GlowButton(if (ar) "− تأخير الصورة ثانية" else "− Delay picture 1s", primary = true, modifier = Modifier.fillMaxWidth()) { adj(-1000L) }
+                                        if (extActive && extSession.status.isNotBlank()) BodyText(extSession.status, 12, C.textDim)
+                                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                            GlowButton(if (ar) "إعادة الصوت" else "Reset audio", modifier = Modifier.weight(1f)) { stopExt() }
+                                            GlowButton(if (ar) "إغلاق" else "Close", modifier = Modifier.weight(1f)) { closePanel() }
+                                        }
+                                    }
                                 }
                             }
-                            item { PanelItem(t("smart_audio"), selected = extName != null, sub = extName) { panel = Panel.EXT } }
-                            item { PanelItem(t("back"), modifier = if (audio.isEmpty()) Modifier.autoFocus() else Modifier) { closePanel() } }
+                            item {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Chip(if (ar) "مسارات البث" else "Stream tracks", tab == 0) { tab = 0 }
+                                    Chip(if (ar) "قنوات التعليق" else "Commentary channels", tab == 1) { tab = 1 }
+                                }
+                            }
+                            if (tab == 0) {
+                                val flatAudio = audio.flatMap { g -> (0 until g.length).map { g to it } }
+                                if (flatAudio.isEmpty()) item { BodyText(if (ar) "لا توجد مسارات صوت في هذا البث" else "No audio tracks in this stream", 14, C.textDim) }
+                                items(flatAudio.size) { n ->
+                                    val (g, i) = flatAudio[n]
+                                    val supported = g.isTrackSupported(i)
+                                    val key = g.getTrackFormat(i).let { it.id ?: it.label ?: "" }
+                                    PanelItem(
+                                        trackLabel(g.getTrackFormat(i), i, vm.lang),
+                                        selected = if (extSession.sameStream) key == extSession.wantTrack else (!extActive && g.isTrackSelected(i)),
+                                        sub = if (supported) null else audioUnsupported,
+                                    ) {
+                                        if (!supported) return@PanelItem
+                                        if (extSession.sameStream) { extSession.selectTrack(key); return@PanelItem }
+                                        if (extActive) stopExt()
+                                        audioOverridden = true
+                                        exo.trackSelectionParameters = exo.trackSelectionParameters.buildUpon()
+                                            .setTrackTypeDisabled(MC.TRACK_TYPE_AUDIO, false)
+                                            .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, i))
+                                            .build()
+                                    }
+                                }
+                            } else {
+                                item {
+                                    AyhamField(q, { q = it }, t("search_hint"), Modifier, imeAction = androidx.compose.ui.text.input.ImeAction.Search)
+                                }
+                                if (extName != null && !extSession.sameStream) {
+                                    item { PanelItem(t("ext_audio_remove")) { stopExt() } }
+                                    item { PanelItem(t("sync")) { panel = Panel.SYNC } }
+                                }
+                                if (searching) {
+                                    items(results, key = { "s" + it.key }) { ch ->
+                                        PanelItem(ch.name, selected = ch.key == chosen && !extSession.sameStream) { startExt(ch) }
+                                    }
+                                } else {
+                                    if (recent.isNotEmpty()) {
+                                        item { RText(t("ext_recent"), 16, C.primaryLight, bold = true) }
+                                        items(recent, key = { "r" + it.key }) { ch ->
+                                            PanelItem(ch.name, selected = ch.key == chosen && !extSession.sameStream) { startExt(ch) }
+                                        }
+                                        item { RText(t("ext_all"), 16, C.primaryLight, bold = true) }
+                                    }
+                                    itemsIndexed(pager.items, key = { _, it -> "a" + it.key }) { idx, ch ->
+                                        if (idx >= pager.items.size - 15) LaunchedEffect(pager.items.size) { pager.loadMore() }
+                                        PanelItem(ch.name, selected = ch.key == chosen && !extSession.sameStream) { startExt(ch) }
+                                    }
+                                }
+                            }
+                            if (!live) item { PanelItem(t("back"), modifier = Modifier.autoFocus()) { closePanel() } }
                         }
                     }
 
