@@ -88,7 +88,7 @@ fun FocusRow(title: String, items: List<Item>, vm: AppViewModel, onItem: (Item) 
                 val shape = RoundedCornerShape(14.dp)
                 Box(
                     Modifier.width(w).height(rowH).clip(shape).background(C.surface)
-                        .then(if (expanded) Modifier.border(3.dp, Color.White, shape) else Modifier)
+                        .then(if (expanded) Modifier.border(2.5.dp, Brush.horizontalGradient(listOf(Color(0xFF8B5CF6), Color(0xFFD946EF))), shape) else Modifier)
                         .onFocusChanged { f ->
                             if (f.isFocused) focusIdx = i else if (focusIdx == i) focusIdx = -1
                         }
@@ -101,10 +101,43 @@ fun FocusRow(title: String, items: List<Item>, vm: AppViewModel, onItem: (Item) 
                         }
                     }
                     Img(bg, Modifier.fillMaxSize(), w = if (expanded) 640 else 240, h = if (expanded) 360 else 360)
+
+                    // شارة التقييم على البوستر غير الممتد
+                    val rating = item.rating.trim().takeIf { it.isNotBlank() && it != "0" && it != "0.0" }
+                    if (!expanded && rating != null) {
+                        Box(
+                            Modifier.align(Alignment.TopEnd).padding(6.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xDD0B0616))
+                                .border(0.8.dp, Color(0x55F5C518), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                RText("★", 11, Color(0xFFF5C518), bold = true)
+                                RText(rating, 11, Color.White, bold = true)
+                            }
+                        }
+                    }
+
+                    // شريط تقدم استكمال المشاهدة عند توفره
+                    val prog = vm.progressOf(item.key)
+                    if (prog != null && prog.second > 0L) {
+                        val fraction = (prog.first.toFloat() / prog.second.toFloat()).coerceIn(0.04f, 1f)
+                        Box(
+                            Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(4.dp)
+                                .background(Color(0x44FFFFFF))
+                        ) {
+                            Box(
+                                Modifier.fillMaxHeight().fillMaxWidth(fraction)
+                                    .background(Brush.horizontalGradient(listOf(Color(0xFF8B5CF6), Color(0xFFD946EF))))
+                            )
+                        }
+                    }
+
                     if (expanded) {
                         Box(
                             Modifier.fillMaxSize().background(
-                                Brush.verticalGradient(colorStops = arrayOf(0.5f to Color.Transparent, 1f to Color(0xDD000000))),
+                                Brush.verticalGradient(colorStops = arrayOf(0.45f to Color.Transparent, 1f to Color(0xEE0B0616))),
                             ),
                         )
                         RText(
