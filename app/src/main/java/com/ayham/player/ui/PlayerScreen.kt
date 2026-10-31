@@ -719,7 +719,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             touch()
                             when {
                                 errorMsg != null -> retry()
-                                panel != null -> if (panel != Panel.TRYSUB) closePanel()
+                                panel != null -> if (panel != Panel.TRYSUB && panel != Panel.AUDIO) closePanel()
                                 else -> controls = !controls
                             }
                         },
@@ -944,10 +944,12 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         val cur = panel
         if (cur != null && cur != Panel.TRYSUB) {
             Column(
-                Modifier.align(Alignment.CenterEnd).fillMaxHeight().widthIn(max = 430.dp)
+                Modifier.align(Alignment.CenterEnd).fillMaxHeight().widthIn(max = if (cur == Panel.AUDIO) 380.dp else 430.dp)
                     .fillMaxWidth(if (compact) 0.88f else 1f)
                     .pointerInput(Unit) { detectTapGestures { } }
-                    .background(Color(0xF2140A26)).padding(20.dp),
+                    .background(if (cur == Panel.AUDIO) androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color(0xB30A0418), Color(0xE60F0720)))
+                                else androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color(0xF2140A26), Color(0xF2140A26))))
+                    .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 when (cur) {
@@ -1104,31 +1106,48 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     }
 
                     Panel.AUDIO -> {
-                        RText(if (vm.lang == "ar") "الصوتيات - التعليق + تأخير الصورة" else "Audio - commentary + picture delay", 24, C.text, bold = true)
+                        val ar = vm.lang == "ar"
                         val audio = tracks.groups.filter { it.type == MC.TRACK_TYPE_AUDIO }
                         val inStream = extSession.sameStream
-                        if (queue[index].isLive) {
-                            RText((if (vm.lang == "ar") "تأخير الصورة: " else "Picture delay: ") + String.format(Locale.US, "%.1f", extSession.picDelayMs / 1000f) + (if (vm.lang == "ar") " ث" else " s"), 18, C.primaryLight, bold = true)
-                            if (extSession.status.isNotBlank() && inStream) BodyText(extSession.status, 13, C.textDim)
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                GlowButton("-1") {
-                                    if (!extSession.sameStream) {
-                                        val sel = audio.flatMap { g -> (0 until g.length).filter { g.isTrackSelected(it) }.map { g.getTrackFormat(it) } }.firstOrNull()
-                                        extSession.start(com.ayham.player.data.Item(com.ayham.player.data.Kind.LIVE, queue[index].key.substringAfter(':'), queue[index].title), true, sel?.let { it.id ?: it.label })
-                                    }
-                                    if (!extSession.requestAdjust(-1000L)) showToast(notSeekable)
-                                }
-                                GlowButton("+1") {
-                                    if (!extSession.sameStream) {
-                                        val sel = audio.flatMap { g -> (0 until g.length).filter { g.isTrackSelected(it) }.map { g.getTrackFormat(it) } }.firstOrNull()
-                                        extSession.start(com.ayham.player.data.Item(com.ayham.player.data.Kind.LIVE, queue[index].key.substringAfter(':'), queue[index].title), true, sel?.let { it.id ?: it.label })
-                                    }
-                                    if (!extSession.requestAdjust(1000L)) showToast(notSeekable)
-                                }
-                                GlowButton(if (vm.lang == "ar") "إعادة الصوت" else "Reset audio") { if (extSession.sameStream) stopExt() }
-                                GlowButton(if (vm.lang == "ar") "إغلاق" else "Close") { closePanel() }
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Icon(Icons.Filled.Audiotrack, null, tint = C.accent, modifier = Modifier.size(28.dp))
+                            Column {
+                                RText(if (ar) "الصوتيات" else "Audio", 24, C.text, bold = true)
+                                BodyText(if (ar) "التعليق + تأخير الصورة" else "Commentary + picture delay", 13, C.primaryLight)
                             }
                         }
+                        if (queue[index].isLive) {
+                            fun ensureSame() {
+                                if (!extSession.sameStream) {
+                                    val sel = audio.flatMap { g -> (0 until g.length).filter { g.isTrackSelected(it) }.map { g.getTrackFormat(it) } }.firstOrNull()
+                                    extSession.start(com.ayham.player.data.Item(com.ayham.player.data.Kind.LIVE, queue[index].key.substringAfter(':'), queue[index].title), true, sel?.let { it.id ?: it.label })
+                                }
+                            }
+                            val dly = extSession.picDelayMs
+                            Column(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(C.surface.copy(alpha = 0.9f))
+                                    .border(1.dp, if (dly != 0L) C.accent else C.surfaceHi, RoundedCornerShape(18.dp)).padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                BodyText(if (ar) "تأخير الصورة" else "Picture delay", 13, C.textDim)
+                                RText((if (dly > 0) "+" else "") + String.format(Locale.US, "%.1f", dly / 1000f) + (if (ar) " ث" else " s"), 34, if (dly != 0L) C.accent else C.text, bold = true)
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    GlowButton("−1", primary = true, modifier = Modifier.weight(1f)) {
+                                        ensureSame(); if (!extSession.requestAdjust(-1000L)) showToast(notSeekable)
+                                    }
+                                    GlowButton("+1", primary = true, modifier = Modifier.weight(1f)) {
+                                        ensureSame(); if (!extSession.requestAdjust(1000L)) showToast(notSeekable)
+                                    }
+                                }
+                                if (inStream && extSession.status.isNotBlank()) BodyText(extSession.status, 12, C.textDim)
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                GlowButton(if (ar) "إعادة الصوت" else "Reset audio", modifier = Modifier.weight(1f)) { if (extSession.sameStream) stopExt() }
+                                GlowButton(if (ar) "إغلاق" else "Close", modifier = Modifier.weight(1f)) { closePanel() }
+                            }
+                        }
+                        RText(if (ar) "مسارات الصوت" else "Audio tracks", 15, C.primaryLight, bold = true)
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
                             val flatAudio = audio.flatMap { g -> (0 until g.length).map { g to it } }
                             items(flatAudio.size) { n ->
