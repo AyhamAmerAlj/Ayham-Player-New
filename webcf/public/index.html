@@ -102,7 +102,7 @@ nav button.on{color:#fff;background:rgba(139,92,246,.35)}
   <h1>Ayham Player</h1>
   <div class="tg">كل ما تحب مشاهدته في مكان واحد</div>
   <form class="card" id="lf" autocomplete="on">
-    <div class="f"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><input id="in-pwd" type="password" placeholder="كلمة السر" autocomplete="current-password" dir="ltr"></div>
+    <div class="f"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><input id="in-pwd" type="text" placeholder="كود التفعيل" autocapitalize="characters" autocomplete="off" spellcheck="false" dir="ltr"></div>
     <div class="msg" id="lmsg"></div>
     <button class="btn" id="lbtn" type="submit">دخول</button>
     <div class="hint">تدخل مرة وحدة فقط، ويبقى جهازك مسجّلًا. بيانات اشتراكك محفوظة على الخادم ولا تصل للمتصفح.</div>
@@ -173,7 +173,7 @@ async function api(action,extra){
 }
 function errText(e){
   switch(e&&e.code){
-    case'auth':return'انتهت الجلسة. ادخل كلمة السر من جديد.';
+    case'auth':return'انتهت الجلسة. ادخل الكود من جديد.';
     case'cfg':return'الموقع غير مهيّأ بعد (أسرار الخادم ناقصة).';
     case'upstream':return'تعذّر الوصول للسيرفر عبر الوسيط. قد يمنع مزوّدك عناوين Cloudflare، أو السيرفر مطفأ.';
     case'net':return'لا يوجد اتصال بالإنترنت.';
@@ -190,12 +190,12 @@ function showLogin(msg){
 $('#lf').addEventListener('submit',async ev=>{
   ev.preventDefault();
   const pw=$('#in-pwd').value;const m=$('#lmsg'),b=$('#lbtn');
-  if(!pw){m.textContent='اكتب كلمة السر.';return}
+  if(!pw){m.textContent='اكتب كود التفعيل.';return}
   b.disabled=true;b.textContent='…';m.textContent='';
   let r;try{r=await fetch('/login',{method:'POST',body:JSON.stringify({password:pw})})}catch(e){m.textContent='لا يوجد اتصال.';b.disabled=false;b.textContent='دخول';return}
   b.disabled=false;b.textContent='دخول';
   if(r.status===503){m.textContent='الموقع غير مهيّأ بعد (أسرار الخادم ناقصة).';return}
-  if(!r.ok){m.textContent='كلمة السر غير صحيحة.';return}
+  if(!r.ok){m.textContent='الكود غير صحيح.';return}
   try{const j=await api('');if(!j.ok){m.textContent='السيرفر رفض بيانات الاشتراك المخزّنة (تحقق من الأسرار).';return}}
   catch(e){m.textContent=errText(e);return}
   startApp();

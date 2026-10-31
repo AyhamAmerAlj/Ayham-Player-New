@@ -27,6 +27,8 @@ async function hmac(env, msg) {
   return s;
 }
 function safeEq(a, b) { a = String(a || ''); b = String(b || ''); let d = a.length ^ b.length; for (let i = 0; i < Math.max(a.length, b.length); i++) d |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0); return d === 0; }
+// لو السر على شكل كود (حروف وأرقام وشرطات) نتجاهل الشرطات وحالة الأحرف.
+const normSecret = (x) => { x = String(x || ''); return /^[A-Za-z0-9-]+$/.test(x) ? x.toUpperCase().replace(/-/g, '') : x; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function makeSession(env) { const exp = Date.now() + DAYS * 864e5; return exp + '.' + (await hmac(env, 'sess|' + exp)); }
@@ -103,7 +105,7 @@ export async function handle(req, env, fetcher = fetch) {
   if (p === '/login') {
     if (req.method !== 'POST') return json({ ok: false }, 405);
     let b = {}; try { b = JSON.parse((await req.text()).slice(0, 512)); } catch (e) { /* */ }
-    if (!safeEq(b.password, env.ACCESS_PASSWORD)) { await sleep(1200); return json({ ok: false, err: 'wrong' }, 401); }
+    if (!safeEq(normSecret(b.password), normSecret(env.ACCESS_PASSWORD))) { await sleep(1200); return json({ ok: false, err: 'wrong' }, 401); }
     const tok = await makeSession(env);
     return json({ ok: true }, 200, { 'set-cookie': COOKIE + '=' + encodeURIComponent(tok) + '; Path=/; Max-Age=' + DAYS * 86400 + '; HttpOnly; Secure; SameSite=Lax' });
   }
