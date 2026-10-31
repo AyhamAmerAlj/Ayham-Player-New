@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -216,9 +217,12 @@ fun FeaturedBanner(vm: AppViewModel, items: List<Item>) {
     }
     val item = items[idx.coerceIn(0, items.lastIndex)]
     var details by remember(item.key) { mutableStateOf<Details?>(null) }
+    var imdb by remember(item.key) { mutableStateOf<String?>(null) }
     var loaded by remember(item.key) { mutableStateOf(false) }
     LaunchedEffect(item.key) {
-        details = runCatching { if (item.kind == Kind.SERIES) vm.seriesInfo(item).details else vm.movieDetails(item) }.getOrNull()
+        val d = runCatching { if (item.kind == Kind.SERIES) vm.seriesInfo(item).details else vm.movieDetails(item) }.getOrNull()
+        details = d
+        if (d != null) imdb = vm.imdbRating(item, d.year)
         loaded = true
     }
     val shape = RoundedCornerShape(22.dp)
@@ -231,21 +235,40 @@ fun FeaturedBanner(vm: AppViewModel, items: List<Item>) {
             Img(bg, Modifier.fillMaxSize(), w = 960, h = 540)
             Box(
                 Modifier.fillMaxSize().background(
-                    Brush.horizontalGradient(listOf(Color(0xF2080414), Color(0xAA080414), Color(0x11080414))),
+                    Brush.horizontalGradient(listOf(Color(0xF8080414), Color(0xDD080414), Color(0x88080414), Color(0x11080414))),
+                ),
+            )
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(colorStops = arrayOf(0.6f to Color.Transparent, 1f to Color(0xEE080414))),
                 ),
             )
             Column(
-                Modifier.align(Alignment.CenterStart).padding(start = if (compact) 16.dp else 32.dp).fillMaxWidth(if (compact) 0.9f else 0.46f),
+                Modifier.align(Alignment.CenterStart).padding(start = if (compact) 16.dp else 32.dp).fillMaxWidth(if (compact) 0.9f else 0.52f),
                 verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 10.dp),
             ) {
-                Box(Modifier.clip(RoundedCornerShape(14.dp)).background(Color(0xFF4C1D95)).padding(horizontal = 14.dp, vertical = 3.dp)) {
-                    RText(t(if (item.kind == Kind.SERIES) "series" else "movies"), 14, Color.White, bold = true)
+                // شارات النوع والجودة
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFF6D28D9)).padding(horizontal = 12.dp, vertical = 3.dp)) {
+                        RText(t(if (item.kind == Kind.SERIES) "series" else "movies"), 13, Color.White, bold = true)
+                    }
+                    QualityPill("4K UHD", Color(0xFF8B5CF6))
+                    val r = imdb
+                    if (r != null) {
+                        ImdbBadge(r)
+                    } else {
+                        val localR = (details?.rating?.takeIf { it.isNotBlank() && it != "0" } ?: item.rating.takeIf { it.isNotBlank() && it != "0" })
+                        if (localR != null) {
+                            Box(Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0x33F5C518)).border(0.8.dp, Color(0x88F5C518), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 2.dp)) {
+                                RText("★ $localR", 13, Color(0xFFF5C518), bold = true)
+                            }
+                        }
+                    }
                 }
                 RText(item.name, if (compact) 24 else 40, Color.White, bold = true, maxLines = 2, lineHeight = if (compact) 30 else 48)
                 val meta = listOfNotNull(
                     details?.year?.takeIf { it.isNotBlank() },
                     details?.genre?.takeIf { it.isNotBlank() }?.split(",", "/")?.firstOrNull()?.trim(),
-                    (details?.rating?.takeIf { it.isNotBlank() && it != "0" } ?: item.rating.takeIf { it.isNotBlank() && it != "0" })?.let { "★ $it" },
                     details?.duration?.takeIf { it.isNotBlank() },
                 ).joinToString("  •  ")
                 if (meta.isNotEmpty()) BodyText(meta, 14, C.primaryLight, bold = true, maxLines = 1)
@@ -285,6 +308,20 @@ fun FeaturedBanner(vm: AppViewModel, items: List<Item>) {
                                 .background(if (f) Color(0x66FFFFFF) else Color(0x33FFFFFF))
                                 .padding(horizontal = 22.dp, vertical = 10.dp),
                         ) { RText(t("details"), 18, Color.White, bold = true, maxLines = 1) }
+                    }
+                    val inFav = vm.isIn("fav", item)
+                    Focusable(shape = RoundedCornerShape(26.dp), focusScale = 1.07f, onClick = { vm.toggle("fav", item) }) { f ->
+                        Row(
+                            Modifier.clip(RoundedCornerShape(26.dp))
+                                .background(if (f) Color(0x558B5CF6) else if (inFav) Color(0x338B5CF6) else Color(0x22FFFFFF))
+                                .border(1.dp, if (inFav) Color(0xFFA78BFA) else Color(0x44FFFFFF), RoundedCornerShape(26.dp))
+                                .padding(horizontal = 18.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(Icons.Filled.Favorite, null, tint = if (inFav) Color(0xFFD946EF) else Color.White, modifier = Modifier.size(18.dp))
+                            RText(t("my_list"), 16, Color.White, bold = true, maxLines = 1)
+                        }
                     }
                 }
             }
@@ -367,18 +404,49 @@ fun SquareRow(title: String, items: List<Item>, onItem: (Item) -> Unit) {
             contentPadding = PaddingValues(horizontal = pad, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            items(items, key = { it.key }) { item ->
+            itemsIndexed(items, key = { _, it -> it.key }) { idx, item ->
                 val shape = RoundedCornerShape(14.dp)
-                Focusable(Modifier.width(h * 1.12f).height(h), shape, 1.07f, onClick = { onItem(item) }) { _ ->
-                    Box(Modifier.fillMaxSize().clip(shape).background(Color(0xFF140A2B))) {
+                Focusable(Modifier.width(h * 1.12f).height(h), shape, 1.07f, onClick = { onItem(item) }) { f ->
+                    Box(
+                        Modifier.fillMaxSize().clip(shape).background(Color(0xFF140A2B))
+                            .then(if (f) Modifier.border(2.5.dp, Brush.horizontalGradient(listOf(Color(0xFF8B5CF6), Color(0xFFD946EF))), shape) else Modifier.border(1.dp, Color(0x228B5CF6), shape))
+                    ) {
                         Img(item.image, Modifier.fillMaxSize(), w = 300, h = 300)
+
+                        // شارة ترتيب Top 10 على الزاوية
+                        Box(
+                            Modifier.align(Alignment.TopStart).padding(8.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Brush.horizontalGradient(listOf(Color(0xFF8B5CF6), Color(0xFF6D28D9))))
+                                .padding(horizontal = 7.dp, vertical = 2.dp)
+                        ) {
+                            RText("#${idx + 1}", 11, Color.White, bold = true)
+                        }
+
+                        // شارة التقييم
+                        val r = item.rating.trim().takeIf { it.isNotBlank() && it != "0" && it != "0.0" }
+                        if (r != null) {
+                            Box(
+                                Modifier.align(Alignment.TopEnd).padding(8.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xDD0B0616))
+                                    .border(0.8.dp, Color(0x55F5C518), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    RText("★", 11, Color(0xFFF5C518), bold = true)
+                                    RText(r, 11, Color.White, bold = true)
+                                }
+                            }
+                        }
+
                         Box(
                             Modifier.fillMaxSize().background(
-                                Brush.verticalGradient(colorStops = arrayOf(0.65f to Color.Transparent, 1f to Color(0xDD000000))),
+                                Brush.verticalGradient(colorStops = arrayOf(0.55f to Color.Transparent, 1f to Color(0xEE05020B))),
                             ),
                         )
                         BodyText(
-                            item.name, 12, Color.White, bold = true, maxLines = 1,
+                            item.name, 12, if (f) Color.White else C.text, bold = true, maxLines = 1,
                             modifier = Modifier.align(Alignment.BottomStart).padding(8.dp),
                         )
                     }
