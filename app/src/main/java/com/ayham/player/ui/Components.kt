@@ -321,6 +321,7 @@ fun AyhamField(
     password: Boolean = false,
     imeAction: ImeAction = ImeAction.Next,
     onDone: () -> Unit = {},
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
 ) {
     OutlinedTextField(
         value = value,
@@ -328,6 +329,7 @@ fun AyhamField(
         modifier = modifier.fillMaxWidth(),
         singleLine = true,
         label = { RText(label, 16, C.textDim) },
+        leadingIcon = if (icon != null) ({ Icon(icon, null, tint = C.primaryLight, modifier = Modifier.size(24.dp)) }) else null,
         textStyle = TextStyle(fontSize = 18.sp, color = C.text),
         visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(
@@ -340,7 +342,7 @@ fun AyhamField(
             focusedTextColor = C.text,
             unfocusedTextColor = C.text,
             cursorColor = C.accent,
-            focusedBorderColor = C.primary,
+            focusedBorderColor = if (icon != null) C.accent else C.primary,
             unfocusedBorderColor = Color(0x44FFFFFF),
             focusedContainerColor = Color(0x22000000),
             unfocusedContainerColor = Color(0x11000000),

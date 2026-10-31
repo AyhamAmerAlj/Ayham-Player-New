@@ -2,6 +2,7 @@ package com.ayham.player.ui
 
 import kotlinx.coroutines.launch
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -38,6 +39,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Movie
@@ -85,49 +89,90 @@ import kotlinx.coroutines.delay
 fun SplashScreen() {
     val a = remember { Animatable(0f) }
     LaunchedEffect(Unit) { a.animateTo(1f, tween(500)) }
+    val inf = androidx.compose.animation.core.rememberInfiniteTransition(label = "sp")
+    val pos by inf.animateFloat(
+        0f, 1f,
+        androidx.compose.animation.core.infiniteRepeatable(tween(1400, easing = androidx.compose.animation.core.LinearEasing)),
+        label = "bar",
+    )
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         Image(
             painterResource(R.drawable.splash), null,
             Modifier.fillMaxSize().alpha(a.value),
             contentScale = ContentScale.Crop,
         )
+        Box(
+            Modifier.align(Alignment.BottomCenter).padding(bottom = 96.dp).width(300.dp).height(5.dp)
+                .clip(RoundedCornerShape(3.dp)).background(Color(0x22FFFFFF)).alpha(a.value),
+        ) {
+            Box(
+                Modifier.fillMaxWidth(0.35f).fillMaxHeight().graphicsLayer { translationX = (pos * 2.0f - 0.35f) * 300.dp.toPx() * 0.5f + 0f }
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(Brush.horizontalGradient(listOf(Color(0xFF7C3AED), Color(0xFFE879F9)))),
+            )
+        }
     }
 }
 
 // ============================ Login ============================
+@Composable
+private fun LoginSteps(step: Int, ar: Boolean) {
+    val labels = if (ar) listOf("السيرفر", "المستخدم", "كلمة المرور") else listOf("Server", "User", "Password")
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        labels.forEachIndexed { n, l ->
+            val done = n < step
+            val on = n == step
+            Box(
+                Modifier.size(28.dp).clip(CircleShape).background(
+                    when { done -> Color(0xFF22C55E); on -> C.primary; else -> Color(0x22FFFFFF) },
+                ),
+                contentAlignment = Alignment.Center,
+            ) { RText(if (done) "✓" else "${n + 1}", 14, if (done) Color(0xFF06210F) else Color.White, bold = true) }
+            BodyText(l, 13, if (on || done) C.text else C.textDim)
+            if (n < labels.lastIndex) Box(Modifier.weight(1f).height(2.dp).background(Color(0x22FFFFFF)))
+        }
+    }
+}
+
 @Composable
 fun LoginScreen(vm: AppViewModel) {
     val saved = vm.savedAccount
     var server by rememberSaveable { mutableStateOf(saved?.server ?: "") }
     var user by rememberSaveable { mutableStateOf(saved?.user ?: "") }
     var pass by rememberSaveable { mutableStateOf(saved?.pass ?: "") }
+    val ar = vm.lang == "ar"
     Box(
         Modifier.fillMaxSize().background(
-            Brush.radialGradient(listOf(Color(0xFF2A1260), C.bg), radius = 1300f),
+            Brush.radialGradient(listOf(Color(0xFF3B1A86), C.bg), radius = 1500f),
         ),
     ) {
         val ctx = androidx.compose.ui.platform.LocalContext.current
         val tv = remember { isTvDevice(ctx) }
         val compact = isCompact()
+        val step = if (server.isBlank()) 0 else if (user.isBlank()) 1 else if (pass.isBlank()) 2 else 3
         val form: @Composable (Modifier) -> Unit = { mod ->
             Column(
-                mod.clip(RoundedCornerShape(24.dp)).background(Color(0x33000000)).padding(if (compact) 18.dp else 28.dp),
+                mod.clip(RoundedCornerShape(28.dp))
+                    .background(Brush.linearGradient(listOf(Color(0x1AFFFFFF), Color(0x0AFFFFFF))))
+                    .border(1.dp, Color(0x55C4A1FF), RoundedCornerShape(28.dp))
+                    .padding(if (compact) 18.dp else 30.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    RText(t("login_title"), 28, C.text, bold = true, modifier = Modifier.weight(1f))
+                    RText(t("login_title"), 30, C.text, bold = true, modifier = Modifier.weight(1f))
                     Chip("العربية", vm.lang == "ar") { vm.changeLang("ar") }
                     Chip("English", vm.lang == "en") { vm.changeLang("en") }
                 }
-                AyhamField(server, { server = it }, t("server"), if (tv) Modifier.autoFocus() else Modifier)
+                LoginSteps(step.coerceAtMost(2), ar)
+                AyhamField(server, { server = it }, t("server"), if (tv) Modifier.autoFocus() else Modifier, icon = androidx.compose.material.icons.Icons.Filled.Language)
                 BodyText(t("server_hint"), 12, C.textDim)
-                AyhamField(user, { user = it }, t("username"))
-                AyhamField(pass, { pass = it }, t("password"), password = true, imeAction = ImeAction.Done) {
+                AyhamField(user, { user = it }, t("username"), icon = androidx.compose.material.icons.Icons.Filled.Person)
+                AyhamField(pass, { pass = it }, t("password"), password = true, imeAction = ImeAction.Done, icon = androidx.compose.material.icons.Icons.Filled.Lock) {
                     vm.connect(server, user, pass)
                 }
                 val err = vm.error
                 if (err != null) BodyText(err, 14, C.danger)
-                GlowButton(t("connect"), primary = true, modifier = Modifier.fillMaxWidth()) {
+                GlowButton(t("connect"), primary = true, height = 54.dp, modifier = Modifier.fillMaxWidth()) {
                     vm.connect(server, user, pass)
                 }
             }
@@ -140,10 +185,12 @@ fun LoginScreen(vm: AppViewModel) {
             ) {
                 Image(
                     painterResource(R.drawable.ic_launcher), null,
-                    Modifier.size(if (compact) 90.dp else 140.dp).clip(RoundedCornerShape(if (compact) 20.dp else 28.dp)),
+                    Modifier.size(if (compact) 96.dp else 170.dp),
                 )
+                RText("Ayham Player", if (compact) 24 else 40, C.text, bold = true)
+                BodyText(if (ar) "كل ما تحب مشاهدته في مكان واحد" else "Everything you love to watch, in one place", if (compact) 13 else 17, C.textDim)
                 // رمز QR فقط للتلفاز (تدخل البيانات من هاتفك)
-                if (tv) QrLoginCard { s, u, p -> vm.connect(s, u, p) }
+                if (tv) { Spacer(Modifier.height(10.dp)); QrLoginCard { s, u, p -> vm.connect(s, u, p) } }
             }
         }
         if (compact) {
@@ -167,18 +214,18 @@ fun LoginScreen(vm: AppViewModel) {
 // ============================ Loading ============================
 @Composable
 fun LoadingScreen(vm: AppViewModel) {
+    // بدون كلمات: شعار نابض فقط حتى يبدو الدخول فوريًا
+    val inf = androidx.compose.animation.core.rememberInfiniteTransition(label = "ld")
+    val sc by inf.animateFloat(
+        0.94f, 1.06f,
+        androidx.compose.animation.core.infiniteRepeatable(tween(700), androidx.compose.animation.core.RepeatMode.Reverse),
+        label = "pulse",
+    )
     Box(
-        Modifier.fillMaxSize().background(
-            Brush.radialGradient(listOf(Color(0xFF2A1260), C.bg), radius = 1300f),
-        ),
+        Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Color(0xFF3B1A86), C.bg), radius = 1300f)),
         contentAlignment = Alignment.Center,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator(color = C.accent, strokeWidth = 4.dp, modifier = Modifier.size(54.dp))
-            Spacer(Modifier.height(20.dp))
-            val key = "connecting"
-            RText(t(key), 24, C.text)
-        }
+        Image(painterResource(R.drawable.ic_launcher), null, Modifier.size(120.dp).graphicsLayer { scaleX = sc; scaleY = sc })
     }
 }
 
