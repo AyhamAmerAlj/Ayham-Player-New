@@ -501,15 +501,23 @@ fun HomeTab(vm: AppViewModel) {
     val recentLive = vm.historyOf(Kind.LIVE)
     val playLive: (Item, List<Item>) -> Unit = { it, src -> vm.playLive(it, LiveSource(favs = src)) }
 
-    LazyColumn(contentPadding = PaddingValues(top = 2.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (Season.halloween) item { HalloweenBanner() }
-        item { SetupCard(vm) }
-        item { FeaturedBanner(vm, featured) }
+    val tvUi = !isCompact()
+    LazyColumn(contentPadding = PaddingValues(top = if (tvUi) 0.dp else 2.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (tvUi) {
+            if (featured.isNotEmpty()) item { TvHero(vm, featured) } else item { Spacer(Modifier.height(96.dp)) }
+            if (vm.recent.isNotEmpty()) item { FocusRow(t("continue_watching"), vm.recent, vm, open) }
+            if (Season.halloween) item { HalloweenBanner() }
+            item { SetupCard(vm) }
+        } else {
+            if (Season.halloween) item { HalloweenBanner() }
+            item { SetupCard(vm) }
+            item { FeaturedBanner(vm, featured) }
+        }
         item { HomeTiles(vm) }
         if (Season.halloween && horrorMovies.size >= 3) item { FocusRow(t("hall_movies"), horrorMovies, vm, open) }
         if (Season.halloween && horrorSeries.size >= 3) item { FocusRow(t("hall_series"), horrorSeries, vm, open) }
         item { SquareRow(t("top_rated"), topMovies, open) }
-        if (vm.recent.isNotEmpty()) item { FocusRow(t("continue_watching"), vm.recent, vm, open) }
+        if (!tvUi && vm.recent.isNotEmpty()) item { FocusRow(t("continue_watching"), vm.recent, vm, open) }
         if (recMovies.size >= 4) item { FocusRow(t("rec_movies"), recMovies, vm, open) }
         if (recSeries.size >= 4) item { FocusRow(t("rec_series"), recSeries, vm, open) }
         if (trendMovies.size >= 3) item { FocusRow(t("trend_movies"), trendMovies, vm, open) }
@@ -587,6 +595,148 @@ fun HalloweenBanner() {
         androidx.compose.foundation.layout.Column {
             RText(t("hall_title"), 22, C.accent, bold = true)
             BodyText(t("hall_sub"), 14, C.textDim)
+        }
+    }
+}
+
+
+// ============================ الواجهة الجديدة للتلفاز: شريط علوي عائم + بانر كامل ============================
+@Composable
+fun TvTopNav(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusRequester) {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(20_000) } }
+    val time = remember(now / 60_000) { SimpleDateFormat("hh:mm a", Locale.ENGLISH).format(Date(now)) }
+    val barBg = Brush.horizontalGradient(listOf(Color(0xCC120A24), Color(0xB30B0616)))
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 36.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        // اليسار: الوقت والملف الشخصي
+        Focusable(shape = RoundedCornerShape(30.dp), focusScale = 1.04f, onClick = { vm.selectTab(6) }) { f ->
+            Row(
+                Modifier.height(52.dp).clip(RoundedCornerShape(30.dp)).background(barBg)
+                    .border(1.dp, if (f) C.accent else Color(0x338B5CF6), RoundedCornerShape(30.dp)).padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                ProfileAvatar(vm, 34.dp)
+                RText(vm.profileName.ifBlank { "Ayham" }, 15, Color.White, bold = true, maxLines = 1)
+                RText(time, 15, C.primaryLight, bold = true, maxLines = 1)
+            }
+        }
+        // الوسط: أيقونات التنقل
+        Row(
+            Modifier.height(56.dp).clip(RoundedCornerShape(32.dp)).background(barBg)
+                .border(1.dp, Color(0x338B5CF6), RoundedCornerShape(32.dp)).padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            sideItems.forEach { si ->
+                val sel = vm.tab == si.tab
+                val shape = RoundedCornerShape(26.dp)
+                Focusable(if (sel) Modifier.focusRequester(selectedFocus) else Modifier, shape, 1.06f, onClick = { vm.selectTab(si.tab) }) { f ->
+                    Row(
+                        Modifier.height(42.dp).clip(shape)
+                            .background(if (f) C.primary else if (sel) Color(0x887C3AED) else Color.Transparent)
+                            .padding(horizontal = if (sel || f) 14.dp else 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Icon(si.icon, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                        if (sel || f) RText(t(si.key), 14, Color.White, bold = true, maxLines = 1)
+                    }
+                }
+            }
+        }
+        // اليمين: الشعار
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Image(painterResource(R.drawable.ic_launcher), null, Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)))
+            Column {
+                RText("Ayham", 16, Color.White, bold = true, maxLines = 1)
+                RText("Player", 14, C.primaryLight, bold = true, maxLines = 1)
+            }
+        }
+    }
+}
+
+@Composable
+fun TvHero(vm: AppViewModel, items: List<Item>) {
+    if (items.isEmpty()) return
+    val screenH = LocalConfiguration.current.screenHeightDp
+    val h = (screenH * 0.74f).dp
+    var idx by remember { mutableIntStateOf(0) }
+    var held by remember { mutableStateOf(false) }
+    LaunchedEffect(idx, held, items.size) {
+        if (!held && items.size > 1) { delay(8000); idx = (idx + 1) % items.size }
+    }
+    val item = items[idx.coerceIn(0, items.lastIndex)]
+    var details by remember(item.key) { mutableStateOf<Details?>(null) }
+    var imdb by remember(item.key) { mutableStateOf<String?>(null) }
+    LaunchedEffect(item.key) {
+        details = runCatching { if (item.kind == Kind.SERIES) vm.seriesInfo(item).details else vm.movieDetails(item) }.getOrNull()
+        imdb = runCatching { vm.imdbRating(item, details?.year.orEmpty()) }.getOrNull()
+    }
+    Box(Modifier.fillMaxWidth().height(h).background(Color(0xFF0B0614))) {
+        val bg = details?.backdrop.orEmpty().ifEmpty { item.image }
+        Img(bg, Modifier.fillMaxSize(), w = 1280, h = 720)
+        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0x660B0614), Color(0x110B0614), Color(0xCC0B0614)))))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color(0x990B0614), 0.22f to Color(0x000B0614), 0.7f to Color(0x000B0614), 1f to Color(0xFF05020B))))
+        Column(
+            Modifier.align(Alignment.BottomStart).padding(start = 48.dp, bottom = 64.dp).fillMaxWidth(0.52f),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            RText(item.name, 52, Color.White, bold = true, maxLines = 2, lineHeight = 60)
+            val meta = listOfNotNull(
+                t(if (item.kind == Kind.SERIES) "series" else "movies"),
+                details?.year?.takeIf { it.isNotBlank() },
+                details?.genre?.takeIf { it.isNotBlank() }?.split(",", "/")?.take(2)?.joinToString(" · ") { it.trim() },
+                details?.duration?.takeIf { it.isNotBlank() },
+            ).joinToString("  •  ")
+            BodyText(meta, 16, Color(0xFFD9CCF5), bold = true, maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                imdb?.let { ImdbBadge(it) }
+                (details?.rating?.takeIf { it.isNotBlank() && it != "0" } ?: item.rating.takeIf { it.isNotBlank() && it != "0" })
+                    ?.let { RText("★ $it", 17, Color(0xFFF5C518), bold = true) }
+            }
+            val plot = details?.plot.orEmpty()
+            if (plot.isNotBlank()) BodyText(plot, 17, Color(0xFFE5DEF5), maxLines = 3)
+            Row(
+                Modifier.onFocusChanged { held = it.hasFocus }.padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Focusable(shape = RoundedCornerShape(28.dp), focusScale = 1.07f, onClick = {
+                    if (item.kind == Kind.MOVIE) vm.playMovie(item) else vm.openDetail(item)
+                }) { f ->
+                    Row(
+                        Modifier.clip(RoundedCornerShape(28.dp))
+                            .background(Brush.horizontalGradient(if (f) listOf(Color(0xFFA855F7), Color(0xFF7C3AED)) else listOf(Color(0xFF8B1FD9), Color(0xFF6D28D9))))
+                            .border(if (f) 2.dp else 1.dp, if (f) Color.White else Color(0x88C4A1FF), RoundedCornerShape(28.dp))
+                            .padding(horizontal = 30.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        RText(t("watch_now"), 20, Color.White, bold = true, maxLines = 1)
+                        Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                    }
+                }
+                Focusable(shape = RoundedCornerShape(28.dp), focusScale = 1.07f, onClick = { vm.openDetail(item) }) { f ->
+                    Box(
+                        Modifier.clip(RoundedCornerShape(28.dp)).background(if (f) Color(0x66FFFFFF) else Color(0x33FFFFFF)).padding(horizontal = 24.dp, vertical = 12.dp),
+                    ) { RText(t("details"), 18, Color.White, bold = true, maxLines = 1) }
+                }
+            }
+        }
+        if (items.size > 1) {
+            Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 22.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items.indices.forEach { i ->
+                    Box(
+                        Modifier.height(6.dp).width(if (i == idx) 34.dp else 8.dp).clip(RoundedCornerShape(3.dp))
+                            .background(if (i == idx) C.primary else Color(0x88FFFFFF)),
+                    )
+                }
+            }
         }
     }
 }

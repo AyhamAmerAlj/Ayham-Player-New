@@ -263,21 +263,16 @@ fun MainScreen(vm: AppViewModel) {
     } else {
         val dir = androidx.compose.ui.platform.LocalLayoutDirection.current
         val sideReq = remember { androidx.compose.ui.focus.FocusRequester() }
-        var sideFocused by remember { mutableStateOf(false) }
         // القنوات والأفلام والمسلسلات تُفتح بالشاشة الكاملة بدون الشريط الجانبي، والرجوع يعيد للرئيسية والشريط
         val full = vm.tab in 1..3
         var focusSideNext by remember { mutableStateOf(false) }
-        androidx.activity.compose.BackHandler(enabled = vm.miniItem == null && (full || !sideFocused)) {
-            if (full) {
-                focusSideNext = true
-                vm.selectTab(0)
-            } else {
-                runCatching { sideReq.requestFocus() }
-            }
+        androidx.activity.compose.BackHandler(enabled = vm.miniItem == null && (full || vm.tab != 0)) {
+            focusSideNext = true
+            vm.selectTab(0)
         }
         LaunchedEffect(vm.tab, focusSideNext) {
             if (focusSideNext && !full) {
-                delay(120)
+                delay(160)
                 runCatching { sideReq.requestFocus() }
                 focusSideNext = false
             }
@@ -297,15 +292,10 @@ fun MainScreen(vm: AppViewModel) {
         if (full) {
             Box(Modifier.fillMaxSize().background(bg)) { content(Modifier.fillMaxSize().then(throttle)) }
         } else {
-            CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
-                Row(Modifier.fillMaxSize().background(bg)) {
-                    Sidebar(vm, sideReq) { sideFocused = it }
-                    Column(Modifier.weight(1f).fillMaxHeight()) {
-                        TopBar(vm)
-                        CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides dir) {
-                            content(Modifier.weight(1f).fillMaxWidth().then(throttle))
-                        }
-                    }
+            Box(Modifier.fillMaxSize().background(bg)) {
+                content(Modifier.fillMaxSize().then(if (vm.tab == 0) Modifier else Modifier.padding(top = 88.dp)).then(throttle))
+                CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
+                    Box(Modifier.align(Alignment.TopCenter)) { TvTopNav(vm, sideReq) }
                 }
             }
         }
