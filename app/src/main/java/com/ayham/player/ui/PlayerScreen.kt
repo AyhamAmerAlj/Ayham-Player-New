@@ -893,6 +893,25 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             }
                         }
                     }
+                    if (queue[index].isLive) {
+                        var tech by remember { mutableStateOf<List<String>>(emptyList()) }
+                        LaunchedEffect(index) {
+                            while (true) {
+                                tech = runCatching { techChips(exo) }.getOrDefault(emptyList())
+                                delay(2000)
+                            }
+                        }
+                        if (tech.isNotEmpty()) Row(
+                            Modifier.align(Alignment.TopStart).padding(start = if (compact) 18.dp else 28.dp, top = if (epgList.isNotEmpty()) (if (compact) 118.dp else 150.dp) else (if (compact) 70.dp else 92.dp)),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            tech.forEach { c ->
+                                Box(Modifier.clip(RoundedCornerShape(10.dp)).background(Color(0x66FFFFFF).copy(alpha = 0.16f)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                                    BodyText(c, 12, C.text, bold = true)
+                                }
+                            }
+                        }
+                    }
                     Column(
                         Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = if (compact) 18.dp else 36.dp, vertical = if (compact) 10.dp else 22.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -1607,4 +1626,32 @@ private fun LiveShiftRow(exo: ExoPlayer, onBackToLive: () -> Unit) {
             BodyText(t("at_live"), 14, C.danger, bold = true)
         }
     }
+}
+
+private fun techChips(exo: ExoPlayer): List<String> {
+    val out = ArrayList<String>()
+    exo.videoFormat?.let { v ->
+        if (v.height > 0) out += "${v.height}p"
+        if (v.frameRate > 0f) out += "${Math.round(v.frameRate)} fps"
+        val br = if (v.bitrate > 0) v.bitrate else v.averageBitrate
+        if (br > 0) out += String.format(Locale.US, "%.1f Mbps", br / 1_000_000f)
+        out += when {
+            v.sampleMimeType?.contains("hevc") == true -> "HEVC"
+            v.sampleMimeType?.contains("avc") == true -> "H.264"
+            v.sampleMimeType?.contains("av01") == true -> "AV1"
+            v.sampleMimeType?.contains("mpeg2") == true -> "MPEG-2"
+            else -> ""
+        }
+    }
+    exo.audioFormat?.let { a ->
+        out += when {
+            a.sampleMimeType?.contains("mp4a") == true -> "AAC"
+            a.sampleMimeType?.contains("eac3") == true -> "E-AC3"
+            a.sampleMimeType?.contains("ac3") == true -> "AC3"
+            a.sampleMimeType?.contains("mpeg") == true -> "MP3"
+            else -> ""
+        }
+        out += when (a.channelCount) { 1 -> "Mono"; 2 -> "Stereo"; 6 -> "5.1"; 8 -> "7.1"; else -> if (a.channelCount > 0) "${a.channelCount}ch" else "" }
+    }
+    return out.filter { it.isNotBlank() }
 }
