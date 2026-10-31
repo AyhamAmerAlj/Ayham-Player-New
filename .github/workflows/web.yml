@@ -24,3 +24,15 @@ jobs:
         run: node test/test.mjs
       - name: Deploy
         run: npx --yes wrangler@4 deploy
+      - name: Set secrets
+        env:
+          WEB_XTREAM_URL: ${{ secrets.WEB_XTREAM_URL }}
+          WEB_XTREAM_USER: ${{ secrets.WEB_XTREAM_USER }}
+          WEB_XTREAM_PASS: ${{ secrets.WEB_XTREAM_PASS }}
+          WEB_ACCESS_PASSWORD: ${{ secrets.WEB_ACCESS_PASSWORD }}
+        run: |
+          set_secret() { if [ -n "$2" ]; then printf %s "$2" | npx --yes wrangler@4 secret put "$1" >/dev/null && echo "set $1"; else echo "skip $1 (empty)"; fi; }
+          set_secret XTREAM_URL "$WEB_XTREAM_URL"
+          set_secret XTREAM_USER "$WEB_XTREAM_USER"
+          set_secret XTREAM_PASS "$WEB_XTREAM_PASS"
+          set_secret ACCESS_PASSWORD "$WEB_ACCESS_PASSWORD"

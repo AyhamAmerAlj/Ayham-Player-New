@@ -102,13 +102,10 @@ nav button.on{color:#fff;background:rgba(139,92,246,.35)}
   <h1>Ayham Player</h1>
   <div class="tg">كل ما تحب مشاهدته في مكان واحد</div>
   <form class="card" id="lf" autocomplete="on">
-    <div class="f"><svg viewBox="0 0 24 24"><path d="M4 8h16v10H4z"/><path d="M8 8V6h8v2"/></svg><input id="in-code" placeholder="كود التفعيل" autocapitalize="characters" autocomplete="off" dir="ltr"></div>
-    <div class="f"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg><input id="in-srv" placeholder="رابط السيرفر  http://example.com:8080" inputmode="url" autocapitalize="none" autocomplete="off" dir="ltr"></div>
-    <div class="f"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 15-5 16 0"/></svg><input id="in-usr" placeholder="اسم المستخدم" autocapitalize="none" autocomplete="username" dir="ltr"></div>
-    <div class="f"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><input id="in-pwd" type="password" placeholder="كلمة المرور" autocomplete="current-password" dir="ltr"></div>
+    <div class="f"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><input id="in-pwd" type="password" placeholder="كلمة السر" autocomplete="current-password" dir="ltr"></div>
     <div class="msg" id="lmsg"></div>
     <button class="btn" id="lbtn" type="submit">دخول</button>
-    <div class="hint">بياناتك تُحفظ على هذا الجهاز فقط، ولا تُخزَّن على أي سيرفر.</div>
+    <div class="hint">تدخل مرة وحدة فقط، ويبقى جهازك مسجّلًا. بيانات اشتراكك محفوظة على الخادم ولا تصل للمتصفح.</div>
   </form>
 </div>
 
@@ -145,9 +142,7 @@ const store={
   set(k,v){try{localStorage.setItem('ap_'+k,JSON.stringify(v))}catch(e){}},
   del(k){try{localStorage.removeItem('ap_'+k)}catch(e){}},
 };
-let dev=store.get('dev',null);
-if(!dev){dev='w'+((window.crypto&&crypto.randomUUID)?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36));store.set('dev',dev)}
-let acc=store.get('acc',null);
+let authed=false;
 
 const ICON={
   live:'<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 3l4 3 4-3"/></svg>',
@@ -166,61 +161,51 @@ const ST={tab:'live',cats:{},catSel:{},lists:{},full:{},shown:60,q:''};
 const PAGE=60;
 
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2600)}
-function normServer(s){s=String(s||'').trim();if(!s)return'';if(!/^https?:\/\//i.test(s))s='http://'+s;return s.replace(/\/+$/,'').replace(/\/(player_api|get|panel_api)\.php.*$/i,'').replace(/\/c$/,'')}
-const pu=u=>'/p?u='+encodeURIComponent(u)+'&c='+encodeURIComponent(acc.code)+'&d='+encodeURIComponent(dev);
-const imgUrl=u=>{if(!u)return'';return /^https:/i.test(u)?u:(/^http:/i.test(u)?pu(u):'')};
+const imgUrl=u=>{if(!u)return'';return /^https:/i.test(u)?u:(/^http:/i.test(u)?'/i?u='+encodeURIComponent(u):'')};
 async function api(action,extra){
-  const u=acc.server+'/player_api.php?username='+encodeURIComponent(acc.user)+'&password='+encodeURIComponent(acc.pass)+(action?'&action='+action:'')+(extra||'');
   let r;
-  try{r=await fetch(pu(u))}catch(e){const x=new Error('net');x.code='net';throw x}
-  if(r.status===403){const x=new Error('license');x.code='license';throw x}
+  try{r=await fetch('/x'+(action?'?action='+action+(extra||''):''))}catch(e){const x=new Error('net');x.code='net';throw x}
+  if(r.status===401){const x=new Error('auth');x.code='auth';throw x}
+  if(r.status===503){const x=new Error('cfg');x.code='cfg';throw x}
   if(r.status===502){const x=new Error('upstream');x.code='upstream';throw x}
   if(!r.ok){const x=new Error('http'+r.status);x.code='http';throw x}
   try{return await r.json()}catch(e){const x=new Error('json');x.code='json';throw x}
 }
 function errText(e){
   switch(e&&e.code){
-    case'license':return'انتهت صلاحية الكود أو الجهاز غير مسموح. ادخل من جديد.';
+    case'auth':return'انتهت الجلسة. ادخل كلمة السر من جديد.';
+    case'cfg':return'الموقع غير مهيّأ بعد (أسرار الخادم ناقصة).';
     case'upstream':return'تعذّر الوصول للسيرفر عبر الوسيط. قد يمنع مزوّدك عناوين Cloudflare، أو السيرفر مطفأ.';
     case'net':return'لا يوجد اتصال بالإنترنت.';
-    case'json':return'ردّ السيرفر غير مفهوم. تأكد من الرابط (مثل http://example.com:8080).';
+    case'json':return'ردّ السيرفر غير مفهوم.';
     default:return'تعذّر الاتصال بالسيرفر ('+esc(e&&e.message)+')';
   }
 }
-async function licCheck(){
-  try{const r=await fetch('/lic',{method:'POST',body:JSON.stringify({code:acc.code,device:dev})});return await r.json()}catch(e){return{ok:false,err:'net'}}
-}
-const LERR={invalid:'كود التفعيل غير صحيح.',revoked:'هذا الكود ملغي.',devices_full:'وصلت للحد الأقصى من الأجهزة لهذا الكود.',busy:'الكود مستخدم على جهاز آخر الآن. جرّب بعد قليل.',net:'تعذّر الاتصال بخادم التراخيص.'};
 
 /* ---------- الدخول ---------- */
 function showLogin(msg){
   $('#app').classList.add('hide');$('#nav').classList.add('hide');$('#login').classList.remove('hide');
-  if(acc){$('#in-code').value=acc.code||'';$('#in-srv').value=acc.server||'';$('#in-usr').value=acc.user||'';$('#in-pwd').value=acc.pass||''}
-  $('#lmsg').textContent=msg||'';
+  $('#lmsg').textContent=msg||'';authed=false;
 }
 $('#lf').addEventListener('submit',async ev=>{
   ev.preventDefault();
-  const code=$('#in-code').value.toUpperCase().replace(/[^A-Z0-9]/g,'');
-  const server=normServer($('#in-srv').value),user=$('#in-usr').value.trim(),pass=$('#in-pwd').value.trim();
-  const m=$('#lmsg'),b=$('#lbtn');
-  if(code.length!==12||!server||!user||!pass){m.textContent='عبّي كل الخانات (الكود 12 حرفًا).';return}
-  acc={code,server,user,pass};b.disabled=true;b.textContent='…';m.textContent='';
-  const l=await licCheck();
-  if(!l.ok){m.textContent=LERR[l.err]||'تعذّر التحقق من الكود.';b.disabled=false;b.textContent='دخول';return}
-  try{
-    const j=await api('');
-    if(!j||!j.user_info||String(j.user_info.auth)!=='1'){m.textContent='بيانات السيرفر غير صحيحة (اسم المستخدم أو كلمة المرور).';b.disabled=false;b.textContent='دخول';return}
-  }catch(e){m.textContent=errText(e);b.disabled=false;b.textContent='دخول';return}
-  store.set('acc',acc);b.disabled=false;b.textContent='دخول';startApp();
+  const pw=$('#in-pwd').value;const m=$('#lmsg'),b=$('#lbtn');
+  if(!pw){m.textContent='اكتب كلمة السر.';return}
+  b.disabled=true;b.textContent='…';m.textContent='';
+  let r;try{r=await fetch('/login',{method:'POST',body:JSON.stringify({password:pw})})}catch(e){m.textContent='لا يوجد اتصال.';b.disabled=false;b.textContent='دخول';return}
+  b.disabled=false;b.textContent='دخول';
+  if(r.status===503){m.textContent='الموقع غير مهيّأ بعد (أسرار الخادم ناقصة).';return}
+  if(!r.ok){m.textContent='كلمة السر غير صحيحة.';return}
+  try{const j=await api('');if(!j.ok){m.textContent='السيرفر رفض بيانات الاشتراك المخزّنة (تحقق من الأسرار).';return}}
+  catch(e){m.textContent=errText(e);return}
+  startApp();
 });
-$('#btn-out').onclick=()=>{if(confirm('تسجيل الخروج من هذا الجهاز؟')){store.del('acc');acc=null;ST.cats={};ST.lists={};ST.full={};showLogin('')}};
+$('#btn-out').onclick=async()=>{if(confirm('تسجيل الخروج من هذا الجهاز؟')){try{await fetch('/logout',{method:'POST'})}catch(e){}ST.cats={};ST.lists={};ST.full={};showLogin('')}};
 
 /* ---------- التطبيق ---------- */
-function startApp(){
+function startApp(){authed=true;
   $('#login').classList.add('hide');$('#app').classList.remove('hide');$('#nav').classList.remove('hide');
   renderNav();go(ST.tab||'live');
-  clearInterval(startApp.hb);
-  startApp.hb=setInterval(async()=>{const l=await licCheck();if(!l.ok&&(l.err==='revoked'||l.err==='invalid')){store.del('acc');acc=null;showLogin('انتهت صلاحية الكود.')}},4*60*1000);
 }
 function renderNav(){
   $('#nav').innerHTML=TABS.map(([k,l])=>'<button data-t="'+k+'" class="'+(ST.tab===k?'on':'')+'">'+ICON[k]+'<span>'+l+'</span></button>').join('');
@@ -260,7 +245,7 @@ async function viewKind(k){
     const items=await list(k,sel);
     drawGrid(k,items);
   }catch(e){
-    if(e.code==='license'){store.del('acc');acc=null;return showLogin(errText(e))}
+    if(e.code==='auth')return showLogin(errText(e));
     v.innerHTML='<div class="empty">'+errText(e)+'<br><br><button class="sbtn" id="rt">إعادة المحاولة</button></div>';
     $('#rt').onclick=()=>viewKind(k);
   }
@@ -349,7 +334,7 @@ async function sheetMovie(it){
   const key='movie:'+id;
   const setFav=()=>{$('#fv').textContent=isFav('movie',id)?'♥ في قائمتي':'♡ أضف لقائمتي'};setFav();
   $('#fv').onclick=()=>{toggleFav('movie',id,it.name,it.stream_icon,ext);setFav()};
-  $('#go').onclick=()=>{closeSheet();playUrl(acc.server+'/movie/'+encodeURIComponent(acc.user)+'/'+encodeURIComponent(acc.pass)+'/'+id+'.'+ext,it.name,key,it.stream_icon,{k:'movie',id,name:it.name,img:it.stream_icon,ext})};
+  $('#go').onclick=()=>{closeSheet();playUrl('/s/movie/'+id+'.'+ext,it.name,key,it.stream_icon,{k:'movie',id,name:it.name,img:it.stream_icon,ext})};
   try{
     const j=await api('get_vod_info','&vod_id='+id);const i=j.info||{};
     if(j.movie_data&&j.movie_data.container_extension)ext=j.movie_data.container_extension;
@@ -386,7 +371,7 @@ async function sheetSeries(it){
       $('#eps').querySelectorAll('.ep').forEach(b=>b.onclick=()=>{
         const e=list[+b.dataset.i];const ext=e.container_extension||'mp4';
         closeSheet();
-        playUrl(acc.server+'/series/'+encodeURIComponent(acc.user)+'/'+encodeURIComponent(acc.pass)+'/'+e.id+'.'+ext,it.name+' - '+(e.title||''),'ep:'+e.id,it.cover,{k:'series',id,name:it.name,img:it.cover});
+        playUrl('/s/series/'+e.id+'.'+ext,it.name+' - '+(e.title||''),'ep:'+e.id,it.cover,{k:'series',id,name:it.name,img:it.cover});
       });
     };
     draw();
@@ -402,7 +387,7 @@ async function attach(srcUrl,isHls){
   pClear();$('#p-spin').classList.remove('hide');
   if(hls){try{hls.destroy()}catch(e){}hls=null}
   V.removeAttribute('src');V.load();
-  const px=pu(srcUrl);
+  const px=srcUrl;
   if(isHls&&!V.canPlayType('application/vnd.apple.mpegurl')){
     try{await loadHlsLib()}catch(e){return pErr('تعذّر تحميل مكوّن التشغيل.')}
     if(!window.Hls||!Hls.isSupported())return pErr('المتصفح لا يدعم هذا البث.');
@@ -428,7 +413,7 @@ function loadLive(){
   cur.fav={k:'live',id:it.stream_id,name:it.name,img:it.stream_icon};
   showPlayer(it.name);favBtn();
   $('#p-prev').classList.toggle('hide',cur.list.length<2);$('#p-next').classList.toggle('hide',cur.list.length<2);
-  attach(acc.server+'/live/'+encodeURIComponent(acc.user)+'/'+encodeURIComponent(acc.pass)+'/'+it.stream_id+'.m3u8',true);
+  attach('/s/live/'+it.stream_id+'.m3u8',true);
 }
 $('#p-prev').onclick=()=>{if(!cur.live)return;cur.i=(cur.i-1+cur.list.length)%cur.list.length;loadLive()};
 $('#p-next').onclick=()=>{if(!cur.live)return;cur.i=(cur.i+1)%cur.list.length;loadLive()};
@@ -467,13 +452,13 @@ $('#p-back').onclick=closePlayer;
 document.addEventListener('visibilitychange',()=>{if(document.hidden)savePr()});
 
 /* ---------- بدء ---------- */
-if('serviceWorker' in navigator){/* لا نستعمل service worker حتى لا نخزّن بيانات السيرفر */}
-if(acc&&acc.code&&acc.server){
-  (async()=>{
-    const l=await licCheck();
-    if(l.ok||l.err==='net')startApp();else showLogin(LERR[l.err]||'');
-  })();
-}else showLogin('');
+(async()=>{
+  try{const r=await fetch('/me');
+    if(r.ok)return startApp();
+    if(r.status===503)return showLogin('الموقع غير مهيّأ بعد (أسرار الخادم ناقصة).');
+  }catch(e){}
+  showLogin('');
+})();
 })();
 </script>
 </body>

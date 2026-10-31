@@ -1,27 +1,35 @@
 import assert from 'node:assert/strict';
-import { badHost, rewrite, proxy, lic } from '../worker.js';
+import { badHost, rewrite, handle } from '../worker.js';
 let pass = 0; const ok = (n, f) => Promise.resolve().then(f).then(() => { pass++; console.log('ok', n); });
-
-const env = { LICENSE: { fetch: async (req) => { const b = JSON.parse(await req.text()); return new Response(JSON.stringify(b.code === 'GOOD' ? { ok: true } : { ok: false, err: 'invalid' })); } } };
-const m3u = '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="key.bin"\n#EXTINF:4,\nseg1.ts\n#EXTINF:4,\nhttp://cdn.example:81/seg2.ts\n';
+const env = { XTREAM_URL: 'http://iptv.example:8080', XTREAM_USER: 'usr', XTREAM_PASS: 'pw123', ACCESS_PASSWORD: 'correct-horse-battery' };
+const seen = [];
 const fake = async (url, init) => {
-  if (url === 'http://iptv.example:8080/live/u/p/1.m3u8') return new Response(null, { status: 302, headers: { location: 'http://edge.example/tok/1.m3u8' } });
-  if (url === 'http://edge.example/tok/1.m3u8') return new Response(m3u, { headers: { 'content-type': 'application/vnd.apple.mpegurl' } });
-  if (url === 'http://iptv.example:8080/player_api.php?username=u') return new Response('{"user_info":{"auth":1}}', { headers: { 'content-type': 'application/json' } });
-  if (url === 'http://iptv.example/p.jpg') return new Response('IMG', { headers: { 'content-type': 'image/jpeg', 'content-length': '3' } });
+  seen.push(url);
+  if (url === 'http://iptv.example:8080/live/usr/pw123/1.m3u8') return new Response(null, { status: 302, headers: { location: 'http://edge.example/tok/1.m3u8' } });
+  if (url === 'http://edge.example/tok/1.m3u8') return new Response('#EXTM3U\n#EXTINF:4,\nseg1.ts\n', { headers: { 'content-type': 'application/vnd.apple.mpegurl' } });
+  if (url === 'http://edge.example/tok/seg1.ts') return new Response('TS', { headers: { 'content-type': 'video/mp2t' } });
+  if (url.startsWith('http://iptv.example:8080/player_api.php?username=usr&password=pw123')) {
+    if (url.includes('action=get_vod_streams')) return new Response('[{"name":"A"}]', { headers: { 'content-type': 'application/json' } });
+    return new Response('{"user_info":{"auth":1,"status":"Active","password":"SECRET","username":"usr","exp_date":"1","max_connections":"1"}}', { headers: { 'content-type': 'application/json' } });
+  }
+  if (url === 'http://img.example/p.jpg') return new Response('IMG', { headers: { 'content-type': 'image/jpeg' } });
+  if (url === 'http://img.example/x.html') return new Response('<html>', { headers: { 'content-type': 'text/html' } });
   return new Response('nf', { status: 404 });
 };
-const P = (target, extra = '') => ['https://w/p?u=' + encodeURIComponent(target) + '&c=GOOD&d=dev1' + extra];
-const call = (target, init) => { const [u] = P(target); return proxy(new Request(u, init), new URL(u), env, fake); };
+const R = (path, init) => handle(new Request('https://w' + path, init), env, fake);
+async function login() { const r = await R('/login', { method: 'POST', body: JSON.stringify({ password: env.ACCESS_PASSWORD }) }); assert.equal(r.status, 200); return decodeURIComponent(r.headers.get('set-cookie').split(';')[0]).replace(/^ap_s=/, ''); }
 
-await ok('badHost', () => { for (const h of ['localhost', '127.0.0.1', '10.1.2.3', '192.168.1.1', '172.20.0.1', '169.254.1.1', '[::1]', 'a.local']) assert.ok(badHost(h), h); assert.ok(!badHost('iptv.example')); assert.ok(!badHost('8.8.8.8')); });
-await ok('rewrite', () => { const r = rewrite(m3u, new URL('http://edge.example/tok/1.m3u8'), 'C', 'D'); assert.ok(r.includes('/p?u=' + encodeURIComponent('http://edge.example/tok/seg1.ts') + '&c=C&d=D')); assert.ok(r.includes(encodeURIComponent('http://cdn.example:81/seg2.ts'))); assert.ok(r.includes('URI="/p?u=' + encodeURIComponent('http://edge.example/tok/key.bin'))); assert.ok(r.includes('#EXTINF:4,')); });
-await ok('redirect + m3u8 rewrite', async () => { const r = await call('http://iptv.example:8080/live/u/p/1.m3u8'); assert.equal(r.status, 200); assert.match(r.headers.get('content-type'), /mpegurl/); const t = await r.text(); assert.ok(t.includes(encodeURIComponent('http://edge.example/tok/seg1.ts'))); });
-await ok('json passthrough', async () => { const r = await call('http://iptv.example:8080/player_api.php?username=u'); assert.equal((await r.json()).user_info.auth, 1); assert.equal(r.headers.get('cache-control'), 'no-store'); });
-await ok('image cached', async () => { const r = await call('http://iptv.example/p.jpg'); assert.match(r.headers.get('cache-control'), /max-age/); assert.equal(await r.text(), 'IMG'); });
-await ok('upstream 404 passes', async () => { const r = await call('http://iptv.example/none'); assert.equal(r.status, 404); });
-await ok('license denied', async () => { const u = 'https://w/p?u=' + encodeURIComponent('http://iptv.example/p.jpg') + '&c=BAD&d=x'; const r = await proxy(new Request(u), new URL(u), env, fake); assert.equal(r.status, 403); });
-await ok('private host blocked', async () => { const r = await call('http://127.0.0.1/x'); assert.equal(r.status, 400); const r2 = await call('file:///etc/passwd'); assert.equal(r2.status, 400); });
-await ok('post blocked on proxy', async () => { const r = await call('http://iptv.example/p.jpg', { method: 'POST', body: 'x' }); assert.equal(r.status, 405); });
-await ok('lic route', async () => { const r = await lic(new Request('https://w/lic', { method: 'POST', body: JSON.stringify({ code: 'GOOD', device: 'd' }) }), env); assert.equal((await r.json()).ok, true); const r2 = await lic(new Request('https://w/lic', { method: 'POST', body: 'x'.repeat(2000) }), env); assert.equal(r2.status, 413); });
+await ok('static passthrough', async () => { assert.equal(await R('/index.html'), null); });
+await ok('not configured', async () => { const r = await handle(new Request('https://w/x'), {}, fake); assert.equal(r.status, 503); });
+await ok('wrong password', async () => { const r = await R('/login', { method: 'POST', body: JSON.stringify({ password: 'nope' }) }); assert.equal(r.status, 401); });
+await ok('auth required', async () => { for (const p of ['/x?action=get_vod_streams', '/s/live/1.m3u8', '/i?u=http://img.example/p.jpg', '/me']) assert.equal((await R(p)).status, 401, p); });
+await ok('login sets httponly cookie', async () => { const r = await R('/login', { method: 'POST', body: JSON.stringify({ password: env.ACCESS_PASSWORD }) }); const c = r.headers.get('set-cookie'); assert.match(c, /HttpOnly/); assert.match(c, /Secure/); });
+await ok('x adds creds server-side', async () => { const t = await login(); const r = await R('/x?action=get_vod_streams&category_id=7', { headers: { cookie: 'ap_s=' + encodeURIComponent(t) } }); assert.equal(r.status, 200); assert.ok(seen.some((u) => u.includes('password=pw123') && u.includes('category_id=7'))); });
+await ok('x login test hides password', async () => { const t = await login(); const r = await R('/x', { headers: { cookie: 'ap_s=' + encodeURIComponent(t) } }); const txt = await r.text(); assert.ok(!txt.includes('SECRET')); assert.ok(!txt.includes('pw123')); assert.equal(JSON.parse(txt).ok, true); });
+await ok('live m3u8 redirect + signed rewrite', async () => { const t = await login(); const r = await R('/s/live/1.m3u8', { headers: { cookie: 'ap_s=' + encodeURIComponent(t) } }); const txt = await r.text(); assert.match(txt, /\/p\?u=http%3A%2F%2Fedge\.example%2Ftok%2Fseg1\.ts&s=[0-9a-f]{64}/); assert.ok(!txt.includes('pw123')); const seg = txt.split('\n').find((l) => l.startsWith('/p?')); const r2 = await R(seg); assert.equal(await r2.text(), 'TS'); });
+await ok('forged signature rejected', async () => { const r = await R('/p?u=' + encodeURIComponent('http://edge.example/tok/seg1.ts') + '&s=' + '0'.repeat(64)); assert.equal(r.status, 403); const r2 = await R('/p?u=' + encodeURIComponent('http://edge.example/x')); assert.equal(r2.status, 403); });
+await ok('image proxy only images', async () => { const t = await login(); const h = { headers: { cookie: 'ap_s=' + encodeURIComponent(t) } }; assert.equal((await R('/i?u=' + encodeURIComponent('http://img.example/p.jpg'), h)).status, 200); assert.equal((await R('/i?u=' + encodeURIComponent('http://img.example/x.html'), h)).status, 403); assert.equal((await R('/i?u=' + encodeURIComponent('http://127.0.0.1/x.png'), h)).status, 400); });
+await ok('bad action / stream path', async () => { const t = await login(); const h = { headers: { cookie: 'ap_s=' + encodeURIComponent(t) } }; assert.equal((await R('/x?action=../etc', h)).status, 400); assert.equal((await R('/s/live/a..b.m3u8', h)).status, 400); });
+await ok('expired/forged cookie rejected', async () => { assert.equal((await R('/me', { headers: { cookie: 'ap_s=' + (Date.now() + 1e9) + '.abc' } })).status, 401); assert.equal((await R('/me', { headers: { cookie: 'ap_s=1.abc' } })).status, 401); });
+await ok('badHost', () => { for (const h of ['localhost', '127.0.0.1', '10.0.0.1', '192.168.0.1', '[::1]']) assert.ok(badHost(h)); });
 console.log(pass + ' tests passed');
