@@ -17,7 +17,7 @@ import com.ayham.player.audio.TapAudioSink
 
 /** مصنع واحد للمشغّل: نفس الإعدادات الخفيفة للمشغّل الكبير والمصغّر. */
 object PlayerFactory {
-    fun create(ctx: Context, maxRes: Int, tap: EnvelopeTap? = null, pcmOnly: Boolean = false): ExoPlayer {
+    fun create(ctx: Context, maxRes: Int, tap: EnvelopeTap? = null, pcmOnly: Boolean = false, delayProcessor: com.ayham.player.audio.DelayAudioProcessor? = null): ExoPlayer {
         val http = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
             .setUserAgent("AyhamPlayer/1.0")
@@ -31,13 +31,26 @@ object PlayerFactory {
             .build()
         val renderers = object : DefaultRenderersFactory(ctx) {
             override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink? {
-                if (tap == null) return super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams)
+                val processors = mutableListOf<androidx.media3.common.audio.AudioProcessor>()
+                if (delayProcessor != null) {
+                    processors.add(delayProcessor)
+                }
+                
+                if (tap == null && delayProcessor == null) return super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams)
+                
                 val b = DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(false)
                     .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                    
+                if (processors.isNotEmpty()) {
+                    b.setAudioProcessors(processors.toTypedArray())
+                }
+                
                 // قناة التعليق: نفك الترميز دائمًا (بدون تمرير مباشر) حتى نقدر نحلّل الصوت
                 if (pcmOnly) b.setAudioCapabilities(AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES)
-                return TapAudioSink(b.build(), tap)
+                
+                val builtSink = b.build()
+                return if (tap != null) TapAudioSink(builtSink, tap) else builtSink
             }
         }.setEnableDecoderFallback(true)
         val p = ExoPlayer.Builder(ctx, renderers)

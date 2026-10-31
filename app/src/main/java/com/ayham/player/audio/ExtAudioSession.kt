@@ -156,7 +156,7 @@ class ExtAudioSession(
         mainTap.clear()
         extTap.enabled = autoSync
         mainTap.enabled = autoSync
-        val p = PlayerFactory.create(ctx, maxRes, extTap, pcmOnly = true)
+        val p = PlayerFactory.create(ctx, maxRes, extTap, pcmOnly = true, delayProcessor = delayProcessor)
         p.trackSelectionParameters = pipParams(p)
         p.volume = volume
         p.addListener(extListener)
@@ -312,6 +312,7 @@ class ExtAudioSession(
 
     /** إيقاف المسار الخارجي نهائيًا (وننسى القناة). */
     fun stop() {
+        delayProcessor.resetDelay()
         if (picDelayMs > 0L) runCatching { main.seekToDefaultPosition() }
         picDelayMs = 0L
         pendingAdjust = 0L
@@ -409,16 +410,24 @@ class ExtAudioSession(
         if (phase == Phase.CORRECTING) phase = Phase.MEASURING
     }
 
-    /** إزاحة يدوية (لأدوات التشخيص): موجب = تأخير الصوت الخارجي. */
+        /** إزاحة يدوية (Ayham Smart Audio Control): موجب = تأخير الصوت الخارجي */
     fun nudge(ms: Long): Boolean {
-        val p = player ?: return false
-        if (!p.isCurrentMediaItemSeekable) return false
-        p.seekTo((p.currentPosition - ms).coerceAtLeast(0L))
         manualMs += ms
         delayMs = manualMs
-        // الضبط اليدوي يوقف التصحيح التلقائي حتى ما يتعارضان
+        if (manualMs >= 0) {
+            delayProcessor.delayMs = manualMs
+        } else {
+            delayProcessor.delayMs = 0L
+            player?.let { p ->
+                if (p.isCurrentMediaItemSeekable) {
+                    p.seekTo((p.currentPosition - ms).coerceAtLeast(0L))
+                }
+            }
+        }
         if (autoSync) setAuto(false)
-        status = s("ضبط يدوي: ${if (manualMs >= 0) "+" else ""}${"%.1f".format(manualMs / 1000.0)} ث", "Manual: ${if (manualMs >= 0) "+" else ""}${"%.1f".format(manualMs / 1000.0)}s")
+        val sec = String.format(java.util.Locale.US, "%.1f", manualMs / 1000.0)
+        val sign = if (manualMs >= 0) "+" else ""
+        status = s("مزامنة ذكية: $sign$sec ث", "Smart Sync: $sign${sec}s")
         return true
     }
 

@@ -1204,9 +1204,21 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                     ) {
                                         RText(txt, 20, if (commentary != 0L) C.accent else C.text, bold = true)
-                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            GlowButton("−1", primary = true, modifier = Modifier.weight(1f).autoFocus()) { adj(-1000L) }
-                                            GlowButton("+1", primary = true, modifier = Modifier.weight(1f)) { adj(1000L) }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            GlowButton("−0.5 ث", primary = false, modifier = Modifier.weight(1f)) { adj(-500L) }
+                                            GlowButton("−1 ث", primary = true, modifier = Modifier.weight(1f).autoFocus()) { adj(-1000L) }
+                                            GlowButton("+1 ث", primary = true, modifier = Modifier.weight(1f)) { adj(1000L) }
+                                            GlowButton("+0.5 ث", primary = false, modifier = Modifier.weight(1f)) { adj(500L) }
+                                        }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            GlowButton("−0.1 ث", primary = false, modifier = Modifier.weight(1f)) { adj(-100L) }
+                                            GlowButton("إعادة ضبط (0 ث)", primary = false, modifier = Modifier.weight(2f)) { 
+                                                runCatching { 
+                                                    if (extSession.sameStream) extSession.requestAdjust(extSession.picDelayMs) 
+                                                    else extSession.nudge(-extSession.manualMs) 
+                                                }
+                                            }
+                                            GlowButton("+0.1 ث", primary = false, modifier = Modifier.weight(1f)) { adj(100L) }
                                         }
                                         BodyText(if (ar) "−  تأخير الصورة (الفيديو)" else "−  delay picture (video)", 12, C.textDim)
                                         BodyText(if (ar) "+  تأخير التعليق (الصوت)" else "+  delay commentary (audio)", 12, C.textDim)
