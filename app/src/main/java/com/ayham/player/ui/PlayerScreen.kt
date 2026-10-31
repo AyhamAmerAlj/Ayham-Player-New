@@ -984,7 +984,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         val cur = panel
         if (cur != null && cur != Panel.TRYSUB) {
             Column(
-                Modifier.align(Alignment.CenterEnd).fillMaxHeight().widthIn(max = if (cur == Panel.AUDIO) 330.dp else 430.dp)
+                Modifier.align(Alignment.CenterEnd).fillMaxHeight().widthIn(max = if (cur == Panel.AUDIO || cur == Panel.SYNC) 440.dp else 430.dp)
                     .fillMaxWidth(if (compact) 0.88f else 1f)
                     .pointerInput(Unit) { detectTapGestures { } }
                     .background(if (cur == Panel.AUDIO) androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color(0xB30A0418), Color(0xE60F0720)))
@@ -1184,8 +1184,24 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Icon(Icons.Filled.Audiotrack, null, tint = C.accent, modifier = Modifier.size(28.dp))
                             Column {
-                                RText(if (ar) "الصوتيات" else "Audio", 24, C.text, bold = true)
-                                BodyText(if (ar) "اختر التعليق وزامنه مع الصورة" else "Pick commentary and sync it", 13, C.primaryLight)
+                                RText(if (ar) "Ayham Smart Audio" else "Ayham Smart Audio", 23, C.text, bold = true)
+                                BodyText(if (ar) "المسارات والمزامنة للبث المباشر" else "Tracks and sync for Live TV", 13, C.primaryLight)
+                            }
+                        }
+                        if (live && extActive) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                GlowButton(
+                                    (if (ar) "المزامنة التلقائية: " else "Auto sync: ") +
+                                        (if (extSession.autoSync) (if (ar) "مفعّلة" else "On") else (if (ar) "متوقفة" else "Off")),
+                                    primary = extSession.autoSync, height = 54.dp,
+                                    modifier = Modifier.weight(1f).autoFocus(),
+                                ) {
+                                    extSession.setAuto(!extSession.autoSync)
+                                    vm.extAuto = extSession.autoSync
+                                }
+                                GlowButton(if (ar) "زامن الآن" else "Sync now", height = 54.dp, modifier = Modifier.weight(1f)) {
+                                    extSession.resyncNow()
+                                }
                             }
                         }
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
@@ -1204,24 +1220,28 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                     ) {
                                         RText(txt, 20, if (commentary != 0L) C.accent else C.text, bold = true)
-                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            GlowButton("−0.5 ث", primary = false, modifier = Modifier.weight(1f)) { adj(-500L) }
-                                            GlowButton("−1 ث", primary = true, modifier = Modifier.weight(1f).autoFocus()) { adj(-1000L) }
-                                            GlowButton("+1 ث", primary = true, modifier = Modifier.weight(1f)) { adj(1000L) }
-                                            GlowButton("+0.5 ث", primary = false, modifier = Modifier.weight(1f)) { adj(500L) }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                            GlowButton("− 1.0 ث", primary = false, height = 54.dp, modifier = Modifier.weight(1f).autoFocus()) { adj(-1000L) }
+                                            GlowButton("+ 1.0 ث", primary = true, height = 54.dp, modifier = Modifier.weight(1f)) { adj(1000L) }
                                         }
-                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            GlowButton("−0.1 ث", primary = false, modifier = Modifier.weight(1f)) { adj(-100L) }
-                                            GlowButton("إعادة ضبط (0 ث)", primary = false, modifier = Modifier.weight(2f)) { 
-                                                runCatching { 
-                                                    if (extSession.sameStream) extSession.requestAdjust(extSession.picDelayMs) 
-                                                    else extSession.nudge(-extSession.manualMs) 
-                                                }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                            GlowButton("− 0.5 ث", primary = false, height = 54.dp, modifier = Modifier.weight(1f)) { adj(-500L) }
+                                            GlowButton("+ 0.5 ث", primary = false, height = 54.dp, modifier = Modifier.weight(1f)) { adj(500L) }
+                                        }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                            GlowButton("− 100 ms", primary = false, height = 54.dp, modifier = Modifier.weight(1f)) { adj(-100L) }
+                                            GlowButton("+ 100 ms", primary = false, height = 54.dp, modifier = Modifier.weight(1f)) { adj(100L) }
+                                        }
+                                        GlowButton(
+                                            if (ar) "إعادة ضبط المزامنة · 0 ms" else "Reset sync · 0 ms",
+                                            primary = false, height = 54.dp, modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            runCatching {
+                                                if (extSession.sameStream) extSession.requestAdjust(extSession.picDelayMs)
+                                                else extSession.nudge(-extSession.manualMs)
                                             }
-                                            GlowButton("+0.1 ث", primary = false, modifier = Modifier.weight(1f)) { adj(100L) }
                                         }
-                                        BodyText(if (ar) "−  تأخير الصورة (الفيديو)" else "−  delay picture (video)", 12, C.textDim)
-                                        BodyText(if (ar) "+  تأخير التعليق (الصوت)" else "+  delay commentary (audio)", 12, C.textDim)
+                                        BodyText(if (ar) "− يؤخر الصوت الخارجي | + يؤخر الصورة" else "− delays external audio | + delays video", 13, C.textDim)
                                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                             GlowButton(if (ar) "الصوت الأصلي" else "Original", modifier = Modifier.weight(1f)) { runCatching { stopExt() } }
                                             GlowButton(if (ar) "إغلاق" else "Close", modifier = Modifier.weight(1f)) { closePanel() }
