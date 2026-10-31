@@ -93,6 +93,7 @@ class ExtAudioSession(
     private var healthySince = 0L
     private var unhealthySince = 0L
     private var mutedMain = false
+    private var degradedFallback = false
     private var loops: Job? = null
     private var slowed: ExoPlayer? = null
 
@@ -333,6 +334,7 @@ class ExtAudioSession(
         status = ""
         delayMs = 0
         suspended = false
+        degradedFallback = false
     }
 
     fun release() {
@@ -547,19 +549,29 @@ class ExtAudioSession(
         // الصوت الأصلي: مكتوم فقط وقت ما الخارجي سليم، ويرجع لو تعطّل أكثر من 3 ثوان
         if (ok) {
             unhealthySince = 0L
+            if (degradedFallback) {
+                degradedFallback = false
+                status = s("عاد الصوت الخارجي", "External audio recovered")
+            }
             if (healthySince == 0L) healthySince = t
             if (t - healthySince >= 1000 && !offMoment) applyMainMute(true)
             if (t - healthySince > 60_000) attempts = 0
         } else {
             healthySince = 0L
             if (unhealthySince == 0L) unhealthySince = t
-            if (playing && t - unhealthySince >= 3000) applyMainMute(false)
+            if (playing && t - unhealthySince >= 3000) {
+                applyMainMute(false)
+                if (!degradedFallback) {
+                    degradedFallback = true
+                    status = s("تعذّر الصوت الخارجي مؤقتًا؛ يعمل الصوت الأصلي", "External audio stalled; using original audio")
+                }
+            }
         }
         when {
             st == Player.STATE_ENDED || (st == Player.STATE_IDLE && p.playerError == null) -> scheduleReconnect("idle/ended")
             st == Player.STATE_BUFFERING -> {
                 if (bufferingSince == 0L) bufferingSince = t
-                if (t - bufferingSince > 15_000) { bufferingSince = 0L; scheduleReconnect("buffering too long") }
+                if (t - bufferingSince > 4_000) { bufferingSince = 0L; scheduleReconnect("buffering too long") }
             }
             else -> {
                 bufferingSince = 0L
