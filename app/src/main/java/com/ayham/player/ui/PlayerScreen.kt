@@ -365,16 +365,54 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     fun startExt(item: Item) {
         extSession.start(item)
         vm.noteExt(item)
+        // Save channel choice immediately; later manual adjustments keep updating this profile.
+        vm.store.setAudioPref(queue[index].key, "e\t\t0\t${item.id ?: item.key.substringAfter(':')}\t${item.name}")
     }
 
     fun stopExt() {
         extSession.stop()
     }
 
+    /** حفظ اختيار المسار/قناة التعليق مع فارق المزامنة الحالي لهذا البث المباشر. */
+    fun persistAudioProfile() {
+        if (!queue[index].isLive) return
+        val channel = extSession.channel()
+        val offset = if (extSession.sameStream) -extSession.picDelayMs else extSession.manualMs
+        val value = if (extSession.sameStream) {
+            "s\t" + (extSession.wantTrack ?: "") + "\t" + offset + "\t\t"
+        } else if (extSession.player != null && channel != null) {
+            "e\t\t" + offset + "\t" + (channel.id ?: "") + "\t" + channel.name
+        } else null
+        if (value != null) vm.store.setAudioPref(queue[index].key, value)
+    }
+
+    /** الاختصارات اللونية: الأصفر يقدم الصوت 200ms، والأزرق يؤخره 200ms. */
+    fun syncShortcut(deltaMs: Long): Boolean {
+        if (!queue[index].isLive || extSession.player == null) return false
+        val oldOffset = if (extSession.sameStream) -extSession.picDelayMs else extSession.manualMs
+        val nextOffset = (oldOffset + deltaMs).coerceIn(-30_000L, 30_000L)
+        val applied = nextOffset - oldOffset
+        if (applied == 0L) {
+            showToast(if (vm.lang == "ar") "وصلت للحد الأقصى 30 ثانية" else "Max 30 seconds")
+            return true
+        }
+        val ok = runCatching {
+            if (extSession.sameStream) extSession.requestAdjust(-applied) else extSession.nudge(applied)
+        }.getOrDefault(false)
+        if (ok) {
+            persistAudioProfile()
+            val value = if (extSession.sameStream) -extSession.picDelayMs else extSession.manualMs
+            val signed = if (value >= 0) "+" else ""
+            showToast((if (vm.lang == "ar") "مزامنة الصوت: " else "Audio sync: ") + signed + value + " ms")
+        } else showToast(notSeekable)
+        return true
+    }
+
     /** ضبط يدوي (تشخيص): delayMs موجب = تأخير الصوت الخارجي، سالب = تقديمه. */
     fun shift(delayMs: Long) {
         if (extSession.player == null) return
         if (!extSession.nudge(if (syncAudio) delayMs else -delayMs)) showToast(notSeekable)
+        else persistAudioProfile()
     }
 
     fun closePanel() {
@@ -429,6 +467,12 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             AKeyEvent.KEYCODE_MEDIA_NEXT, AKeyEvent.KEYCODE_CHANNEL_UP -> { go(1); return true }
             AKeyEvent.KEYCODE_MEDIA_PREVIOUS, AKeyEvent.KEYCODE_CHANNEL_DOWN -> { go(-1); return true }
             AKeyEvent.KEYCODE_MENU -> { panel = Panel.MENU; controls = false; return true }
+            AKeyEvent.KEYCODE_PROG_YELLOW -> {
+                if (panel == null && queue[index].isLive && extSession.player != null) return syncShortcut(-200L)
+            }
+            AKeyEvent.KEYCODE_PROG_BLUE -> {
+                if (panel == null && queue[index].isLive && extSession.player != null) return syncShortcut(200L)
+            }
         }
         if (errorMsg != null && (code == AKeyEvent.KEYCODE_DPAD_CENTER || code == AKeyEvent.KEYCODE_ENTER)) {
             retry()
@@ -1179,7 +1223,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                 ensureSame()
                                 if (extSession.sameStream) extSession.requestAdjust(-ms) else extSession.nudge(ms)
                             }.getOrDefault(false)
-                            if (!ok) showToast(notSeekable)
+                            if (!ok) showToast(notSeekable) else persistAudioProfile()
                         }
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Icon(Icons.Filled.Audiotrack, null, tint = C.accent, modifier = Modifier.size(28.dp))
@@ -1240,6 +1284,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                                 if (extSession.sameStream) extSession.requestAdjust(extSession.picDelayMs)
                                                 else extSession.nudge(-extSession.manualMs)
                                             }
+                                            persistAudioProfile()
                                         }
                                         BodyText(if (ar) "− يؤخر الصوت الخارجي | + يؤخر الصورة" else "− delays external audio | + delays video", 13, C.textDim)
                                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1289,6 +1334,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                             .setTrackTypeDisabled(MC.TRACK_TYPE_AUDIO, false)
                                             .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, i))
                                             .build()
+                                        vm.store.setAudioPref(queue[index].key, "s\t$key\t0\t\t")
                                     }
                                 }
                             } else {
