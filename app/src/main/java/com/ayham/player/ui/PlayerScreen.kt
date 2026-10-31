@@ -1104,8 +1104,31 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     }
 
                     Panel.AUDIO -> {
-                        RText(t("audio_tracks"), 26, C.text, bold = true)
+                        RText(if (vm.lang == "ar") "الصوتيات - التعليق + تأخير الصورة" else "Audio - commentary + picture delay", 24, C.text, bold = true)
                         val audio = tracks.groups.filter { it.type == MC.TRACK_TYPE_AUDIO }
+                        val inStream = extSession.sameStream
+                        if (queue[index].isLive) {
+                            RText((if (vm.lang == "ar") "تأخير الصورة: " else "Picture delay: ") + String.format(Locale.US, "%.1f", extSession.picDelayMs / 1000f) + (if (vm.lang == "ar") " ث" else " s"), 18, C.primaryLight, bold = true)
+                            if (extSession.status.isNotBlank() && inStream) BodyText(extSession.status, 13, C.textDim)
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                GlowButton("-1") {
+                                    if (!extSession.sameStream) {
+                                        val sel = audio.flatMap { g -> (0 until g.length).filter { g.isTrackSelected(it) }.map { g.getTrackFormat(it) } }.firstOrNull()
+                                        extSession.start(queue[index], true, sel?.let { it.id ?: it.label })
+                                    }
+                                    if (!extSession.requestAdjust(-1000L)) showToast(notSeekable)
+                                }
+                                GlowButton("+1") {
+                                    if (!extSession.sameStream) {
+                                        val sel = audio.flatMap { g -> (0 until g.length).filter { g.isTrackSelected(it) }.map { g.getTrackFormat(it) } }.firstOrNull()
+                                        extSession.start(queue[index], true, sel?.let { it.id ?: it.label })
+                                    }
+                                    if (!extSession.requestAdjust(1000L)) showToast(notSeekable)
+                                }
+                                GlowButton(if (vm.lang == "ar") "إعادة الصوت" else "Reset audio") { if (extSession.sameStream) stopExt() }
+                                GlowButton(if (vm.lang == "ar") "إغلاق" else "Close") { closePanel() }
+                            }
+                        }
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
                             val flatAudio = audio.flatMap { g -> (0 until g.length).map { g to it } }
                             items(flatAudio.size) { n ->
@@ -1113,11 +1136,12 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                 val supported = g.isTrackSupported(i)
                                 PanelItem(
                                     trackLabel(g.getTrackFormat(i), i, vm.lang),
-                                    selected = g.isTrackSelected(i),
+                                    selected = if (extSession.sameStream) ((g.getTrackFormat(i).let { it.id ?: it.label ?: "" }) == extSession.wantTrack) else g.isTrackSelected(i),
                                     sub = if (supported) null else audioUnsupported,
                                     modifier = if (n == 0) Modifier.autoFocus() else Modifier,
                                 ) {
                                     if (!supported) return@PanelItem
+                                    if (extSession.sameStream) { extSession.selectTrack(g.getTrackFormat(i).let { it.id ?: it.label ?: "" }); return@PanelItem }
                                     audioOverridden = true
                                     exo.trackSelectionParameters = exo.trackSelectionParameters.buildUpon()
                                         .setTrackTypeDisabled(MC.TRACK_TYPE_AUDIO, false)

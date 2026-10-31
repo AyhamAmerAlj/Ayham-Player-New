@@ -65,6 +65,14 @@ class ExtAudioSession(
     /** مستوى الصوت الأصلي أثناء عمل الصوت الخارجي (الافتراضي 0 = مكتوم). */
     var mainVolume by mutableFloatStateOf(0f); private set
     var manualMs by mutableLongStateOf(0L); private set
+    /** وضع مسار داخل نفس البث: الصوت من مسار اختاره المستخدم بنفس القناة، مع تأخير الصورة. */
+    var sameStream by mutableStateOf(false); private set
+    /** تأخير الصورة بالمللي ثانية: موجب = الصورة متأخرة عن الصوت، سالب = الصوت متأخر. */
+    var picDelayMs by mutableLongStateOf(0L); private set
+    /** مفتاح المسار الصوتي المختار داخل البث (في وضع sameStream). */
+    var wantTrack by mutableStateOf<String?>(null); private set
+    private var pendingAdjust = 0L
+    private var trackListener: Player.Listener? = null
     var volume by mutableFloatStateOf(1f)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -100,6 +108,14 @@ class ExtAudioSession(
     }
 
     private val extListener = object : Player.Listener {
+        override fun onPlaybackStateChanged(state: Int) {
+            if (state == Player.STATE_READY && pendingAdjust != 0L) {
+                val d = pendingAdjust
+                pendingAdjust = 0L
+                adjustPicture(d)
+            }
+        }
+
         override fun onPlayerError(error: PlaybackException) {
             Log.w(TAG, "ext error: " + error.errorCodeName)
             scheduleReconnect(error.errorCodeName)
@@ -107,9 +123,13 @@ class ExtAudioSession(
     }
 
     // ------------------------------------------------------------------ تشغيل/إيقاف
-    fun start(item: Item) {
+    fun start(item: Item, same: Boolean = false, trackKey: String? = null) {
         if (released) return
         suspended = false
+        sameStream = same
+        wantTrack = if (same) trackKey else null
+        picDelayMs = 0L
+        pendingAdjust = 0L
         current = item
         name = item.name
         attempts = 0
@@ -140,6 +160,13 @@ class ExtAudioSession(
         p.trackSelectionParameters = pipParams(p)
         p.volume = volume
         p.addListener(extListener)
+        if (sameStream) {
+            val tl = object : Player.Listener {
+                override fun onTracksChanged(tracks: androidx.media3.common.Tracks) { applyWanted(p) }
+            }
+            trackListener = tl
+            p.addListener(tl)
+        }
         p.setMediaItem(MediaItem.fromUri(url))
         p.prepare()
         p.playWhenReady = playing
@@ -170,8 +197,83 @@ class ExtAudioSession(
         if (mutedMain) main.volume = mainVolume
     }
 
+    private fun trackKeyOf(f: androidx.media3.common.Format): String = f.id ?: f.label ?: ""
+
+    private fun applyWanted(p: ExoPlayer) {
+        val want = wantTrack ?: return
+        for (g in p.currentTracks.groups) {
+            if (g.type != C.TRACK_TYPE_AUDIO) continue
+            for (i in 0 until g.length) {
+                if (g.isTrackSupported(i) && trackKeyOf(g.getTrackFormat(i)) == want) {
+                    if (!g.isTrackSelected(i)) {
+                        p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
+                            .setOverrideForType(androidx.media3.common.TrackSelectionOverride(g.mediaTrackGroup, i))
+                            .build()
+                    }
+                    return
+                }
+            }
+        }
+    }
+
+    /** تغيير المسار الصوتي بنفس البث بدون إعادة تشغيل. */
+    fun selectTrack(key: String) {
+        wantTrack = key
+        player?.let { applyWanted(it) }
+    }
+
+    private fun moveMain(delta: Long): Boolean {
+        val tl = main.currentTimeline
+        if (!main.isCurrentMediaItemSeekable || tl.isEmpty) return false
+        val w = tl.getWindow(main.currentMediaItemIndex, androidx.media3.common.Timeline.Window())
+        val maxPos = if (w.durationMs == C.TIME_UNSET) Long.MAX_VALUE else (w.durationMs - 1500L).coerceAtLeast(0L)
+        main.seekTo((main.currentPosition + delta).coerceIn(0L, maxPos))
+        return true
+    }
+
+    /** يطلب تعديل تأخير الصورة؛ لو القناة الصوتية لم تجهز بعد يُنفَّذ بعد جاهزيتها. */
+    fun requestAdjust(delta: Long): Boolean {
+        val p = player ?: return false
+        return if (p.playbackState == Player.STATE_READY) adjustPicture(delta) else {
+            pendingAdjust += delta
+            status = s("جارٍ تجهيز مسار الصوت…", "Preparing the audio track…")
+            true
+        }
+    }
+
+    /**
+     * تأخير الصورة (delta موجب) = نرجّع الفيديو داخل نافذة البث والصوت يبقى أمامه.
+     * وبالعكس (delta سالب) = نأخّر الصوت. يحتاج بثًا يدعم الرجوع الزمني.
+     */
+    fun adjustPicture(delta: Long): Boolean {
+        val p = player ?: return false
+        if (autoSync) setAuto(false)
+        var d = delta
+        if (picDelayMs < 0 && d > 0) {
+            if (!p.isCurrentMediaItemSeekable) return false
+            val u = minOf(d, -picDelayMs)
+            p.seekTo(p.currentPosition + u); picDelayMs += u; d -= u
+        }
+        if (picDelayMs > 0 && d < 0) {
+            val u = minOf(-d, picDelayMs)
+            if (!moveMain(u)) return false
+            picDelayMs -= u; d += u
+        }
+        if (d > 0) {
+            if (!moveMain(-d)) return false
+            picDelayMs += d
+        } else if (d < 0) {
+            if (!p.isCurrentMediaItemSeekable) return false
+            p.seekTo((p.currentPosition + d).coerceAtLeast(0L))
+            picDelayMs += d
+        }
+        status = s("تأخير الصورة: ${"%.1f".format(picDelayMs / 1000.0)} ث", "Picture delay: ${"%.1f".format(picDelayMs / 1000.0)}s")
+        return true
+    }
+
     private fun releasePlayer() {
         player?.let {
+            trackListener?.let { l -> runCatching { it.removeListener(l) } }
             runCatching { it.removeListener(extListener) }
             runCatching { it.release() }
         }
@@ -205,11 +307,16 @@ class ExtAudioSession(
 
     fun resume() {
         val c = current ?: return
-        if (suspended) start(c)
+        if (suspended) start(c, sameStream, wantTrack)
     }
 
     /** إيقاف المسار الخارجي نهائيًا (وننسى القناة). */
     fun stop() {
+        if (picDelayMs > 0L) runCatching { main.seekToDefaultPosition() }
+        picDelayMs = 0L
+        pendingAdjust = 0L
+        sameStream = false
+        wantTrack = null
         stopLoops()
         resetSpeeds()
         releasePlayer()
