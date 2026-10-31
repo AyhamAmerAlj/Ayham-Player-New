@@ -1,6 +1,7 @@
 package com.ayham.player.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -90,27 +91,62 @@ fun PosterCard(
     h: Dp = Dp.Unspecified,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(14.dp)
     val compact = isCompact()
-    val ww = if (w != Dp.Unspecified) w else if (compact) 118.dp else 128.dp
-    val hh = if (h != Dp.Unspecified) h else if (compact) 177.dp else 192.dp
-    Focusable(modifier = modifier.width(ww).height(hh), shape = shape, onClick = onClick) { _ ->
-        Box(Modifier.fillMaxSize().clip(shape).background(C.surface)) {
+    val ww = if (w != Dp.Unspecified) w else if (compact) 118.dp else 132.dp
+    val hh = if (h != Dp.Unspecified) h else if (compact) 177.dp else 198.dp
+    val rating = item.rating.trim().takeIf { it.isNotBlank() && it != "0" && it != "0.0" }
+
+    Focusable(modifier = modifier.width(ww).height(hh), shape = shape, focusScale = 1.06f, onClick = onClick) { f ->
+        Box(
+            Modifier.fillMaxSize().clip(shape).background(C.surface)
+                .then(if (f) Modifier.border(2.5.dp, Brush.horizontalGradient(listOf(Color(0xFF8B5CF6), Color(0xFFD946EF))), shape) else Modifier)
+        ) {
             if (item.image.isBlank()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     RText(item.name.take(1), 44, C.surfaceHi, bold = true)
                 }
             }
             Img(item.image, Modifier.fillMaxSize())
-            // طبقة واحدة صغيرة تحت الاسم بدل طبقة كاملة فوق البوستر (أخف على التلفاز)
+
+            // شارة التقييم الذكية أعلى البوستر
+            if (rating != null) {
+                Box(
+                    Modifier.align(Alignment.TopEnd).padding(6.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0xDD0B0616))
+                        .border(0.8.dp, Color(0x55F5C518), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        RText("★", 11, Color(0xFFF5C518), bold = true)
+                        RText(rating, 11, Color.White, bold = true)
+                    }
+                }
+            }
+
+            // طبقة تدرج سينمائي وعنوان العمل أسفل البوستر
             Box(
                 Modifier.align(Alignment.BottomStart).fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xEE0B0614))))
-                    .padding(start = 8.dp, end = 8.dp, top = 18.dp, bottom = 7.dp),
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xAA05020B), Color(0xF505020B))))
+                    .padding(start = 8.dp, end = 8.dp, top = 22.dp, bottom = 8.dp),
             ) {
-                BodyText(item.name, 12, C.text, bold = true, maxLines = 2)
+                BodyText(item.name, 12, if (f) Color.White else C.text, bold = true, maxLines = 2)
             }
         }
+    }
+}
+
+/** شارة جودة وعلامات مميزة (4K, Top 10, إلخ). */
+@Composable
+fun QualityPill(label: String, color: Color = C.primary, textColor: Color = Color.White) {
+    Box(
+        Modifier.clip(RoundedCornerShape(6.dp))
+            .background(color.copy(alpha = 0.22f))
+            .border(1.dp, color.copy(alpha = 0.8f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+    ) {
+        RText(label, 12, textColor, bold = true)
     }
 }
 
