@@ -53,6 +53,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -722,11 +723,29 @@ fun LibraryTab(vm: AppViewModel) {
 @OptIn(ExperimentalLayoutApi::class)
 fun SettingsTab(vm: AppViewModel) {
     val t_hist = t("history_cleared")
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(if (isCompact()) 16.dp else 36.dp),
+    var cat by remember { mutableIntStateOf(0) }
+    val ar = vm.lang == "ar"
+    val cats = listOf(
+        if (ar) "الملف الشخصي" else "Profile",
+        if (ar) "المظهر والعرض" else "Look & layout",
+        if (ar) "التشغيل والجودة" else "Playback & quality",
+        if (ar) "المحتوى" else "Content",
+        if (ar) "الحساب والتطبيق" else "Account & app",
+    )
+    Row(Modifier.fillMaxSize().padding(if (isCompact()) 12.dp else 32.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+      Column(Modifier.width(if (isCompact()) 150.dp else 270.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        RText(t("settings"), if (isCompact()) 24 else 34, C.text, bold = true)
+        BodyText(if (ar) "اختر قسمًا لعرض إعداداته" else "Pick a section", 13, C.textDim)
+        Spacer(Modifier.height(6.dp))
+        cats.forEachIndexed { n, label ->
+            PanelItem(label, selected = cat == n, modifier = if (n == cat) Modifier.autoFocus() else Modifier) { cat = n }
+        }
+      }
+      Column(
+        Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState())
+            .clip(RoundedCornerShape(20.dp)).background(Color(0x661C1033)).padding(if (isCompact()) 14.dp else 28.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
-    ) {
-        RText(t("settings"), if (isCompact()) 26 else 36, C.text, bold = true)
+      ) {
 
         // ---- الملف الشخصي ----
         val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -740,6 +759,7 @@ fun SettingsTab(vm: AppViewModel) {
                 if (bytes != null) vm.setPhoto(bytes)
             }
         }
+        if (cat == 0) {
         RText(t("profile"), 22, C.primaryLight, bold = true)
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
             ProfileAvatar(vm, 72.dp)
@@ -761,6 +781,8 @@ fun SettingsTab(vm: AppViewModel) {
         }
         if (showQr) PhotoQrCard(vm) { showQr = false }
 
+        }
+        if (cat == 1) {
         RText(t("language"), 22, C.primaryLight, bold = true)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Chip("العربية", vm.lang == "ar") { vm.changeLang("ar") }
@@ -779,6 +801,8 @@ fun SettingsTab(vm: AppViewModel) {
             Chip(t("layout_list"), vm.vodLayout == "list") { vm.changeVodLayout("list") }
         }
 
+        }
+        if (cat == 2) {
         RText(t("live_format"), 22, C.primaryLight, bold = true)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Chip("m3u8 (HLS)", vm.liveFormat == "m3u8") { vm.changeLiveFormat("m3u8") }
@@ -791,6 +815,8 @@ fun SettingsTab(vm: AppViewModel) {
             Chip(t("q_1080"), vm.maxRes == 1080) { vm.changeMaxRes(1080) }
         }
 
+        }
+        if (cat == 3) {
         RText(t("sections"), 22, C.primaryLight, bold = true)
         listOf(Kind.LIVE, Kind.MOVIE, Kind.SERIES).forEach { k ->
             val st = vm.stateOf(k)
@@ -810,6 +836,8 @@ fun SettingsTab(vm: AppViewModel) {
             }
         }
 
+        }
+        if (cat == 4) {
         RText(t("account"), 22, C.primaryLight, bold = true)
         val info = vm.accountInfo
         BodyText("${t("server")}: ${vm.savedAccount?.server.orEmpty()}", 15, C.textDim)
@@ -863,5 +891,7 @@ fun SettingsTab(vm: AppViewModel) {
         Spacer(Modifier.height(10.dp))
         if (com.ayham.player.data.Tmdb.enabled) BodyText(t("tmdb_credit"), 13, C.textDim)
         RText("${t("app")}  ${t("version")} ${com.ayham.player.data.Updater.currentBuild(ctx)}", 18, C.textDim)
+        }
+      }
     }
 }
