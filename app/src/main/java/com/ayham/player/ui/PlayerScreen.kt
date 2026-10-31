@@ -1114,14 +1114,14 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                 GlowButton("-1") {
                                     if (!extSession.sameStream) {
                                         val sel = audio.flatMap { g -> (0 until g.length).filter { g.isTrackSelected(it) }.map { g.getTrackFormat(it) } }.firstOrNull()
-                                        extSession.start(queue[index], true, sel?.let { it.id ?: it.label })
+                                        extSession.start(com.ayham.player.data.Item(com.ayham.player.data.Kind.LIVE, queue[index].key.substringAfter(':'), queue[index].title), true, sel?.let { it.id ?: it.label })
                                     }
                                     if (!extSession.requestAdjust(-1000L)) showToast(notSeekable)
                                 }
                                 GlowButton("+1") {
                                     if (!extSession.sameStream) {
                                         val sel = audio.flatMap { g -> (0 until g.length).filter { g.isTrackSelected(it) }.map { g.getTrackFormat(it) } }.firstOrNull()
-                                        extSession.start(queue[index], true, sel?.let { it.id ?: it.label })
+                                        extSession.start(com.ayham.player.data.Item(com.ayham.player.data.Kind.LIVE, queue[index].key.substringAfter(':'), queue[index].title), true, sel?.let { it.id ?: it.label })
                                     }
                                     if (!extSession.requestAdjust(1000L)) showToast(notSeekable)
                                 }
