@@ -77,6 +77,7 @@ class ExtAudioSession(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val extTap = EnvelopeTap()
+    val delayProcessor = DelayAudioProcessor()
     private var current: Item? = null
     private var attempts = 0
     private var playing = true
