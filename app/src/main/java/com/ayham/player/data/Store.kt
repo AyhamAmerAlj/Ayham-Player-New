@@ -136,6 +136,11 @@ class Store(ctx: Context) {
         val p = v.split("/")
         return (p.getOrNull(0)?.toLongOrNull() ?: return null) to (p.getOrNull(1)?.toLongOrNull() ?: return null)
     }
+    /** إعداد الصوتيات المحفوظ لكل قناة: mode(s/e) ⇥ مسار ⇥ تأخير التعليق ms ⇥ معرف القناة الصوتية ⇥ اسمها */
+    fun audioPref(key: String): List<String>? = sp.getString("apref_$key", null)?.split("\t")?.takeIf { it.size >= 5 }
+    fun setAudioPref(key: String, v: String?) {
+        if (v == null) sp.edit().remove("apref_$key").apply() else sp.edit().putString("apref_$key", v).apply()
+    }
     fun setIntro(key: String, start: Long, end: Long) {
         if (start <= 0L && end <= 0L) sp.edit().remove("intro_$key").apply()
         else sp.edit().putString("intro_$key", "$start/$end").apply()

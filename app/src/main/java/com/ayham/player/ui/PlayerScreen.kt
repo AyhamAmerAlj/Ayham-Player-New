@@ -383,6 +383,26 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         touch()
     }
 
+    // تطبيق الصوتيات المحفوظة للقناة تلقائيًا (بدون ما تفتح اللوحة كل مرة)
+    LaunchedEffect(index) {
+        if (!queue[index].isLive) return@LaunchedEffect
+        val pref = vm.store.audioPref(queue[index].key) ?: return@LaunchedEffect
+        delay(3500)
+        runCatching {
+            if (extSession.player != null) return@runCatching
+            val d = pref[2].toLongOrNull() ?: 0L
+            if (pref[0] == "s") {
+                extSession.start(com.ayham.player.data.Item(com.ayham.player.data.Kind.LIVE, queue[index].key.substringAfter(':'), queue[index].title), true, pref[1].ifBlank { null })
+                if (d != 0L) extSession.requestAdjust(-d)
+            } else if (pref[3].isNotBlank()) {
+                extSession.start(com.ayham.player.data.Item(com.ayham.player.data.Kind.LIVE, pref[3], pref[4]))
+                var w = 0
+                while (w < 60 && extSession.player?.playbackState != androidx.media3.common.Player.STATE_READY) { delay(250); w++ }
+                if (d != 0L) extSession.nudge(d)
+            }
+        }
+    }
+
     fun addSub(label: String, uri: String) {
         vm.addSub(queue[index].key, label, uri)
         loadMedia(exo.currentPosition)
@@ -945,7 +965,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         val cur = panel
         if (cur != null && cur != Panel.TRYSUB) {
             Column(
-                Modifier.align(Alignment.CenterEnd).fillMaxHeight().widthIn(max = if (cur == Panel.AUDIO) 380.dp else 430.dp)
+                Modifier.align(Alignment.CenterEnd).fillMaxHeight().widthIn(max = if (cur == Panel.AUDIO) 330.dp else 430.dp)
                     .fillMaxWidth(if (compact) 0.88f else 1f)
                     .pointerInput(Unit) { detectTapGestures { } }
                     .background(if (cur == Panel.AUDIO) androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color(0xB30A0418), Color(0xE60F0720)))
@@ -1124,6 +1144,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                         // التأخير: موجب = التعليق متأخر عن الصورة، سالب = الصورة متأخرة عن التعليق
                         val commentary = if (extSession.sameStream) -extSession.picDelayMs else extSession.manualMs
                         val extActive = extSession.player != null
+                        val lastAdj = remember { longArrayOf(0L) }
                         fun ensureSame() {
                             if (!extSession.sameStream && extSession.player == null) {
                                 val sel = audio.flatMap { g -> (0 until g.length).filter { g.isTrackSelected(it) }.map { g.getTrackFormat(it) } }.firstOrNull()
@@ -1131,6 +1152,9 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             }
                         }
                         fun adj(ms: Long) {
+                            val nw = System.currentTimeMillis()
+                            if (nw - lastAdj[0] < 220L) return
+                            lastAdj[0] = nw
                             if (kotlin.math.abs(commentary + ms) > 30_000L) { showToast(if (ar) "وصلت للحد الأقصى 30 ثانية" else "Max 30 seconds"); return }
                             val ok = runCatching {
                                 ensureSame()
@@ -1149,24 +1173,42 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             if (live) {
                                 item {
                                     val txt = when {
-                                        commentary > 0 -> (if (ar) "التعليق متأخر " else "Commentary delayed ") + String.format(Locale.US, "%.1f", commentary / 1000f) + (if (ar) " ث" else " s")
-                                        commentary < 0 -> (if (ar) "الصورة متأخرة " else "Picture delayed ") + String.format(Locale.US, "%.1f", -commentary / 1000f) + (if (ar) " ث" else " s")
-                                        else -> if (ar) "بدون تأخير" else "No delay"
+                                        commentary > 0 -> (if (ar) "التعليق متأخر " else "Commentary late ") + String.format(Locale.US, "%.0f", commentary / 1000f) + (if (ar) " ث" else " s")
+                                        commentary < 0 -> (if (ar) "الصورة متأخرة " else "Picture late ") + String.format(Locale.US, "%.0f", -commentary / 1000f) + (if (ar) " ث" else " s")
+                                        else -> if (ar) "التأخير: 0 ث" else "Delay: 0 s"
                                     }
+                                    val saved = vm.store.audioPref(queue[index].key)
                                     Column(
-                                        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(C.surface.copy(alpha = 0.9f))
-                                            .border(1.dp, if (commentary != 0L) C.accent else C.surfaceHi, RoundedCornerShape(18.dp)).padding(12.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.surface.copy(alpha = 0.9f))
+                                            .border(1.dp, if (commentary != 0L) C.accent else C.surfaceHi, RoundedCornerShape(14.dp)).padding(10.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp),
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                     ) {
-                                        RText(txt, 22, if (commentary != 0L) C.accent else C.text, bold = true)
-                                        GlowButton(if (ar) "+ تأخير التعليق ثانية" else "+ Delay commentary 1s", primary = true, modifier = Modifier.fillMaxWidth().autoFocus()) { adj(1000L) }
-                                        GlowButton(if (ar) "− تأخير الصورة ثانية" else "− Delay picture 1s", primary = true, modifier = Modifier.fillMaxWidth()) { adj(-1000L) }
-                                        if (extActive && extSession.status.isNotBlank()) BodyText(extSession.status, 12, C.textDim)
-                                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                            GlowButton(if (ar) "إعادة الصوت" else "Reset audio", modifier = Modifier.weight(1f)) { stopExt() }
+                                        RText(txt, 20, if (commentary != 0L) C.accent else C.text, bold = true)
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            GlowButton("−1", primary = true, modifier = Modifier.weight(1f).autoFocus()) { adj(-1000L) }
+                                            GlowButton("+1", primary = true, modifier = Modifier.weight(1f)) { adj(1000L) }
+                                        }
+                                        BodyText(if (ar) "−  تأخير الصورة (الفيديو)" else "−  delay picture (video)", 12, C.textDim)
+                                        BodyText(if (ar) "+  تأخير التعليق (الصوت)" else "+  delay commentary (audio)", 12, C.textDim)
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            GlowButton(if (ar) "الصوت الأصلي" else "Original", modifier = Modifier.weight(1f)) { runCatching { stopExt() } }
                                             GlowButton(if (ar) "إغلاق" else "Close", modifier = Modifier.weight(1f)) { closePanel() }
                                         }
+                                        GlowButton(
+                                            if (saved != null) (if (ar) "محفوظ ✓ (حدّث)" else "Saved ✓ (update)") else (if (ar) "حفظ التأخير لهذه القناة" else "Save for this channel"),
+                                            primary = saved == null, modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            val v = if (extSession.sameStream) "s\t" + (extSession.wantTrack ?: "") + "\t" + commentary + "\t\t"
+                                            else if (extActive) "e\t\t" + commentary + "\t" + (extSession.channel()?.id ?: "") + "\t" + (extSession.channel()?.name ?: "")
+                                            else null
+                                            if (v == null) showToast(if (ar) "اضبط التأخير أو اختر تعليقًا أولًا" else "Set a delay or pick commentary first")
+                                            else { vm.store.setAudioPref(queue[index].key, v); showToast(if (ar) "تم حفظ التأخير لهذه القناة" else "Saved for this channel") }
+                                        }
+                                        if (saved != null) GlowButton(if (ar) "مسح المحفوظ" else "Clear saved", modifier = Modifier.fillMaxWidth()) {
+                                            vm.store.setAudioPref(queue[index].key, null); showToast(if (ar) "تم المسح" else "Cleared")
+                                        }
+                                        if (extActive && extSession.status.isNotBlank()) BodyText(extSession.status, 11, C.textDim)
                                     }
                                 }
                             }
