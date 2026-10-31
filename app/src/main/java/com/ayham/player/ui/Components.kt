@@ -320,8 +320,8 @@ fun AyhamField(
     modifier: Modifier = Modifier,
     password: Boolean = false,
     imeAction: ImeAction = ImeAction.Next,
-    onDone: () -> Unit = {},
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    onDone: () -> Unit = {},
 ) {
     OutlinedTextField(
         value = value,
