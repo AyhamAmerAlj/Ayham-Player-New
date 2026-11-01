@@ -40,6 +40,25 @@ import com.ayham.player.data.Details
 import com.ayham.player.data.Item
 import com.ayham.player.data.Kind
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import androidx.compose.runtime.compositionLocalOf
+import com.ayham.player.data.ArTitles
+
+/** يستقبل العنصر المحدد في أي صف، فتتبدل خلفية البانر الرئيسي معه (التلفاز). */
+val LocalFocusSink = compositionLocalOf<(Item) -> Unit> { { _ -> } }
+
+/** الاسم العربي للعنوان من TMDB، يُجلب مرة واحدة لكل عنوان. يرجع null إذا لم يتوفر. */
+@Composable
+fun rememberArabicName(item: Item?): String? {
+    var ar by remember(item?.key) { mutableStateOf<String?>(null) }
+    LaunchedEffect(item?.key) {
+        ar = null
+        if (item == null) return@LaunchedEffect
+        ar = withContext(Dispatchers.IO) { ArTitles.lookup(item.kind, item.name) }
+    }
+    return ar
+}
 
 /**
  * صف بأسلوب الشاشة الرئيسية: بوسترات طولية، والعنصر المحدد يتمدد لبطاقة عريضة،
@@ -57,6 +76,8 @@ fun FocusRow(title: String, items: List<Item>, vm: AppViewModel, onItem: (Item) 
     val listState = rememberLazyListState()
     var focusIdx by remember { mutableIntStateOf(-1) }
     val focusItem = items.getOrNull(focusIdx)
+    val setFocus = LocalFocusSink.current
+    val arName = rememberArabicName(focusItem)
 
     var details by remember { mutableStateOf<Details?>(null) }
     var imdb by remember { mutableStateOf<String?>(null) }
@@ -91,7 +112,7 @@ fun FocusRow(title: String, items: List<Item>, vm: AppViewModel, onItem: (Item) 
                     Modifier.width(w).height(rowH).clip(shape).background(C.surface)
                         .then(if (expanded) Modifier.border(2.5.dp, Brush.horizontalGradient(listOf(Color(0xFF8B5CF6), Color(0xFFD946EF))), shape) else Modifier)
                         .onFocusChanged { f ->
-                            if (f.isFocused) focusIdx = i else if (focusIdx == i) focusIdx = -1
+                            if (f.isFocused) { focusIdx = i; setFocus(item) } else if (focusIdx == i) focusIdx = -1
                         }
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onItem(item) },
                 ) {
@@ -142,7 +163,7 @@ fun FocusRow(title: String, items: List<Item>, vm: AppViewModel, onItem: (Item) 
                             ),
                         )
                         RText(
-                            item.name, 30, Color.White, bold = true, maxLines = 2, lineHeight = 36,
+                            (arName ?: item.name), 30, Color.White, bold = true, maxLines = 2, lineHeight = 36,
                             modifier = Modifier.align(Alignment.BottomStart).padding(18.dp),
                         )
                     }
@@ -151,11 +172,15 @@ fun FocusRow(title: String, items: List<Item>, vm: AppViewModel, onItem: (Item) 
         }
         if (!compact) {
             Column(
-                Modifier.fillMaxWidth().height(96.dp).padding(horizontal = pad, vertical = 8.dp),
+                Modifier.fillMaxWidth().height(124.dp).padding(horizontal = pad, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 val it = focusItem
                 if (it != null) {
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        RText(arName ?: it.name, 24, Color.White, bold = true, maxLines = 1)
+                        if (arName != null && arName != it.name) RText(it.name, 14, C.textDim, maxLines = 1)
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         Box(Modifier.clip(RoundedCornerShape(6.dp)).background(C.primary).padding(horizontal = 12.dp, vertical = 3.dp)) {
                             RText(t(if (it.kind == Kind.SERIES) "badge_series" else "badge_movie"), 15, Color.White, bold = true)

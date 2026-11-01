@@ -1,5 +1,7 @@
 package com.ayham.player.ui
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -502,9 +504,12 @@ fun HomeTab(vm: AppViewModel) {
     val playLive: (Item, List<Item>) -> Unit = { it, src -> vm.playLive(it, LiveSource(favs = src)) }
 
     val tvUi = !isCompact()
+    var heroFocus by remember { mutableStateOf<Item?>(null) }
+    val setFocus: (Item) -> Unit = { heroFocus = it }
+    CompositionLocalProvider(LocalFocusSink provides setFocus) {
     LazyColumn(contentPadding = PaddingValues(top = if (tvUi) 0.dp else 2.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (tvUi) {
-            if (featured.isNotEmpty()) item { TvHero(vm, featured) } else item { Spacer(Modifier.height(96.dp)) }
+            if (featured.isNotEmpty() || heroFocus != null) item { TvHero(vm, featured, heroFocus) } else item { Spacer(Modifier.height(96.dp)) }
             if (vm.recent.isNotEmpty()) item { FocusRow(t("continue_watching"), vm.recent, vm, open) }
             if (Season.halloween) item { HalloweenBanner() }
             item { SetupCard(vm) }
@@ -534,6 +539,7 @@ fun HomeTab(vm: AppViewModel) {
         item { FocusRow(t("recent_series"), recentSeries, vm, open) }
         item { FocusRow(t("suggested_movies"), sugMovies, vm, open) }
         item { FocusRow(t("suggested_series"), sugSeries, vm, open) }
+    }
     }
 }
 
@@ -661,32 +667,40 @@ fun TvTopNav(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusReq
 }
 
 @Composable
-fun TvHero(vm: AppViewModel, items: List<Item>) {
-    if (items.isEmpty()) return
+fun TvHero(vm: AppViewModel, items: List<Item>, focusItem: Item? = null) {
+    if (items.isEmpty() && focusItem == null) return
     val screenH = LocalConfiguration.current.screenHeightDp
     val h = (screenH * 0.74f).dp
     var idx by remember { mutableIntStateOf(0) }
     var held by remember { mutableStateOf(false) }
-    LaunchedEffect(idx, held, items.size) {
-        if (!held && items.size > 1) { delay(8000); idx = (idx + 1) % items.size }
+    // عندما يختار المستخدم عنوانًا من صف، يتوقف التبديل التلقائي ويتبع البانر التركيز
+    val manual = focusItem != null
+    LaunchedEffect(idx, held, items.size, manual) {
+        if (!held && !manual && items.size > 1) { delay(8000); idx = (idx + 1) % items.size }
     }
-    val item = items[idx.coerceIn(0, items.lastIndex)]
+    val item = focusItem ?: items[idx.coerceIn(0, items.lastIndex)]
     var details by remember(item.key) { mutableStateOf<Details?>(null) }
     var imdb by remember(item.key) { mutableStateOf<String?>(null) }
     LaunchedEffect(item.key) {
         details = runCatching { if (item.kind == Kind.SERIES) vm.seriesInfo(item).details else vm.movieDetails(item) }.getOrNull()
         imdb = runCatching { vm.imdbRating(item, details?.year.orEmpty()) }.getOrNull()
     }
+    val ar = rememberArabicName(item)
     Box(Modifier.fillMaxWidth().height(h).background(Color(0xFF0B0614))) {
         val bg = details?.backdrop.orEmpty().ifEmpty { item.image }
-        Img(bg, Modifier.fillMaxSize(), w = 1280, h = 720)
+        // تبديل الخلفية بتلاشٍ ناعم عند تغيير العنوان
+        Crossfade(targetState = bg, modifier = Modifier.fillMaxSize(), animationSpec = tween(450), label = "heroBg") { url ->
+            Img(url, Modifier.fillMaxSize(), w = 1280, h = 720)
+        }
         Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0x660B0614), Color(0x110B0614), Color(0xCC0B0614)))))
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color(0x990B0614), 0.22f to Color(0x000B0614), 0.7f to Color(0x000B0614), 1f to Color(0xFF05020B))))
         Column(
             Modifier.align(Alignment.BottomStart).padding(start = 48.dp, bottom = 64.dp).fillMaxWidth(0.52f),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            RText(item.name, 52, Color.White, bold = true, maxLines = 2, lineHeight = 60)
+            // الاسم العربي كبير، والاسم الأصلي صغير تحته
+            RText(ar ?: item.name, 52, Color.White, bold = true, maxLines = 2, lineHeight = 60)
+            if (ar != null && ar != item.name) RText(item.name, 18, Color(0xFFBDB2D6), maxLines = 1)
             val meta = listOfNotNull(
                 t(if (item.kind == Kind.SERIES) "series" else "movies"),
                 details?.year?.takeIf { it.isNotBlank() },
@@ -728,7 +742,7 @@ fun TvHero(vm: AppViewModel, items: List<Item>) {
                 }
             }
         }
-        if (items.size > 1) {
+        if (items.size > 1 && !manual) {
             Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 22.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items.indices.forEach { i ->
                     Box(
