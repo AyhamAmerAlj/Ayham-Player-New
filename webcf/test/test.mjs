@@ -34,3 +34,29 @@ await ok('expired/forged cookie rejected', async () => { assert.equal((await R('
 await ok('code-style secret ignores dashes/case', async () => { const e2 = { ...env, ACCESS_PASSWORD: 'ABCD-EFGH-JKLM' }; const r = await handle(new Request('https://w/login', { method: 'POST', body: JSON.stringify({ password: 'abcdefghjklm' }) }), e2, fake); assert.equal(r.status, 200); });
 await ok('badHost', () => { for (const h of ['localhost', '127.0.0.1', '10.0.0.1', '192.168.0.1', '[::1]']) assert.ok(badHost(h)); });
 console.log(pass + ' tests passed');
+
+// ---- دخول بكود الأدمن (LICENSE) ----
+{
+  const store = { 'AAAAAAAAAAAA': { web: true }, 'BBBBBBBBBBBB': { web: false }, 'CCCCCCCCCCCC': { err: 'revoked' }, 'DDDDDDDDDDDD': { err: 'busy' } };
+  let calls = 0;
+  const LICENSE = { fetch: async (rq) => { calls++; const b = JSON.parse(await rq.text()); const r = store[b.code]; return new Response(JSON.stringify(r ? (r.err ? { ok: false, err: r.err } : { ok: true, web: r.web }) : { ok: false, err: 'invalid' })); } };
+  const e2 = { XTREAM_URL: env.XTREAM_URL, XTREAM_USER: env.XTREAM_USER, XTREAM_PASS: env.XTREAM_PASS, LICENSE }; // بلا كلمة مالك
+  const L = (code, dev = 'dev1') => handle(new Request('https://w/login', { method: 'POST', body: JSON.stringify({ password: code, device: dev }) }), e2, fake);
+  const tokOf = (r) => decodeURIComponent(r.headers.get('set-cookie').split(';')[0]).replace(/^ap_s=/, '');
+  await ok('license code with web flag logs in', async () => { const r = await L('aaaa-aaaa-aaaa'); assert.equal(r.status, 200); assert.match(r.headers.get('set-cookie'), /HttpOnly/); });
+  await ok('valid code without web flag is rejected', async () => { const r = await L('BBBB-BBBB-BBBB'); assert.equal(r.status, 403); assert.equal((await r.json()).err, 'not_web'); assert.equal(r.headers.get('set-cookie'), null); });
+  await ok('revoked / busy / unknown map to errors', async () => { assert.equal((await (await L('CCCC-CCCC-CCCC')).json()).err, 'revoked'); assert.equal((await (await L('DDDD-DDDD-DDDD')).json()).err, 'busy'); assert.equal((await L('ZZZZ-ZZZZ-ZZZZ')).status, 401); assert.equal((await L('short')).status, 401); });
+  await ok('session works for /x and license check is cached', async () => {
+    const t = tokOf(await L('AAAA-AAAA-AAAA', 'devZ'));
+    const Rx = () => handle(new Request('https://w/x', { headers: { cookie: 'ap_s=' + encodeURIComponent(t) } }), e2, fake);
+    assert.equal((await Rx()).status, 200);
+    const before = calls; await Rx(); assert.equal(calls, before, 'cached within 4 min');
+  });
+  await ok('forged / tampered token rejected', async () => {
+    const t = tokOf(await L('AAAA-AAAA-AAAA', 'devY')); const bad = t.replace(/\.[0-9a-f]{64}$/, '.' + '0'.repeat(64));
+    assert.equal((await handle(new Request('https://w/x', { headers: { cookie: 'ap_s=' + encodeURIComponent(bad) } }), e2, fake)).status, 401);
+    assert.equal((await handle(new Request('https://w/x', { headers: { cookie: 'ap_s=' + encodeURIComponent('9999999999999.O.-.' + '0'.repeat(64)) } }), e2, fake)).status, 401);
+  });
+  await ok('owner password still works when set', async () => { assert.equal((await R('/login', { method: 'POST', body: JSON.stringify({ password: env.ACCESS_PASSWORD }) })).status, 200); });
+}
+console.log('tests passed (with license):', pass);

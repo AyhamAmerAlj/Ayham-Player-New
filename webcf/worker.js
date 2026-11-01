@@ -17,8 +17,10 @@ export function badHost(h) {
   return false;
 }
 
-function configured(env) { return !!(env.XTREAM_URL && env.XTREAM_USER && env.XTREAM_PASS && env.ACCESS_PASSWORD && String(env.ACCESS_PASSWORD).length >= 8); }
-const secret = (env) => env.SESSION_SECRET || ('k|' + env.ACCESS_PASSWORD + '|' + env.XTREAM_PASS);
+const ownerPw = (env) => (env.ACCESS_PASSWORD && String(env.ACCESS_PASSWORD).length >= 8 ? String(env.ACCESS_PASSWORD) : '');
+// الدخول: كلمة المالك (اختيارية) أو كود من لوحة الأدمن ملاحظته فيها web (عبر الربط LICENSE).
+function configured(env) { return !!(env.XTREAM_URL && env.XTREAM_USER && env.XTREAM_PASS && (ownerPw(env) || env.LICENSE)); }
+const secret = (env) => env.SESSION_SECRET || ('k|' + (env.ACCESS_PASSWORD || '') + '|' + env.XTREAM_PASS);
 
 async function hmac(env, msg) {
   const key = await crypto.subtle.importKey('raw', enc.encode(secret(env)), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
@@ -31,13 +33,32 @@ function safeEq(a, b) { a = String(a || ''); b = String(b || ''); let d = a.leng
 const normSecret = (x) => { x = String(x || ''); return /^[A-Za-z0-9-]+$/.test(x) ? x.toUpperCase().replace(/-/g, '') : x; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function makeSession(env) { const exp = Date.now() + DAYS * 864e5; return exp + '.' + (await hmac(env, 'sess|' + exp)); }
+const normCode = (x) => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const normDev = (x) => String(x || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 24);
+// التوكن: انتهاء.جهة.جهاز.توقيع  (جهة = O للمالك أو كود الترخيص)
+async function makeSession(env, sub = 'O', dev = '-') { const exp = Date.now() + DAYS * 864e5; return exp + '.' + sub + '.' + dev + '.' + (await hmac(env, 'sess|' + exp + '|' + sub + '|' + dev)); }
+async function licCheck(env, code, dev) {
+  try {
+    const r = await env.LICENSE.fetch(new Request('https://license/v1/check', { method: 'POST', body: JSON.stringify({ code, device: 'w' + dev, name: 'Web' }) }));
+    return await r.json();
+  } catch (e) { return { ok: false, err: 'server' }; }
+}
+const licCache = new Map(); // كود+جهاز -> {t, ok} لتخفيف الاتصال بالترخيص (4 دقائق)
 async function validSession(env, req) {
   const m = (req.headers.get('cookie') || '').match(new RegExp('(?:^|;\\s*)' + COOKIE + '=([^;]+)'));
   if (!m) return false;
-  const [exp, sig] = decodeURIComponent(m[1]).split('.');
-  if (!exp || !sig || +exp < Date.now()) return false;
-  return safeEq(sig, await hmac(env, 'sess|' + exp));
+  const [exp, sub, dev, sig] = decodeURIComponent(m[1]).split('.');
+  if (!exp || !sub || !dev || !sig || +exp < Date.now()) return false;
+  if (!safeEq(sig, await hmac(env, 'sess|' + exp + '|' + sub + '|' + dev))) return false;
+  if (sub === 'O') return !!ownerPw(env);
+  if (!env.LICENSE) return false;
+  const k = sub + '|' + dev, c = licCache.get(k);
+  if (c && Date.now() - c.t < 240000) return c.ok;
+  const r = await licCheck(env, sub, dev);
+  const ok = !!(r.ok && r.web);
+  licCache.set(k, { t: Date.now(), ok });
+  if (licCache.size > 500) licCache.clear();
+  return ok;
 }
 
 const px = async (env, abs) => '/p?u=' + encodeURIComponent(abs) + '&s=' + (await hmac(env, 'u|' + abs));
@@ -105,9 +126,16 @@ export async function handle(req, env, fetcher = fetch) {
   if (p === '/login') {
     if (req.method !== 'POST') return json({ ok: false }, 405);
     let b = {}; try { b = JSON.parse((await req.text()).slice(0, 512)); } catch (e) { /* */ }
-    if (!safeEq(normSecret(b.password), normSecret(env.ACCESS_PASSWORD))) { await sleep(1200); return json({ ok: false, err: 'wrong' }, 401); }
-    const tok = await makeSession(env);
-    return json({ ok: true }, 200, { 'set-cookie': COOKIE + '=' + encodeURIComponent(tok) + '; Path=/; Max-Age=' + DAYS * 86400 + '; HttpOnly; Secure; SameSite=Lax' });
+    const cookie = (tok) => ({ 'set-cookie': COOKIE + '=' + encodeURIComponent(tok) + '; Path=/; Max-Age=' + DAYS * 86400 + '; HttpOnly; Secure; SameSite=Lax' });
+    if (ownerPw(env) && safeEq(normSecret(b.password), normSecret(ownerPw(env)))) return json({ ok: true }, 200, cookie(await makeSession(env)));
+    const code = normCode(b.password), dev = normDev(b.device) || 'x';
+    if (env.LICENSE && code.length === 12) {
+      const r = await licCheck(env, code, dev);
+      if (r.ok && r.web) { licCache.set(code + '|' + dev, { t: Date.now(), ok: true }); return json({ ok: true }, 200, cookie(await makeSession(env, code, dev))); }
+      if (r.ok) { await sleep(800); return json({ ok: false, err: 'not_web' }, 403); }
+      if (r.err === 'revoked' || r.err === 'devices_full' || r.err === 'busy') return json({ ok: false, err: r.err }, 403);
+    }
+    await sleep(1200); return json({ ok: false, err: 'wrong' }, 401);
   }
   if (p === '/logout') return json({ ok: true }, 200, { 'set-cookie': COOKIE + '=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax' });
 

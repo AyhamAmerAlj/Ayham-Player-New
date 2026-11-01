@@ -183,6 +183,7 @@ function errText(e){
 }
 
 /* ---------- الدخول ---------- */
+function devId(){try{let d=localStorage.ayd;if(!d){d=Array.from(crypto.getRandomValues(new Uint8Array(9)),x=>(x%36).toString(36)).join('');localStorage.ayd=d}return d}catch(e){return 'x'}}
 function showLogin(msg){
   $('#app').classList.add('hide');$('#nav').classList.add('hide');$('#login').classList.remove('hide');
   $('#lmsg').textContent=msg||'';authed=false;
@@ -192,10 +193,11 @@ $('#lf').addEventListener('submit',async ev=>{
   const pw=$('#in-pwd').value;const m=$('#lmsg'),b=$('#lbtn');
   if(!pw){m.textContent='اكتب كود التفعيل.';return}
   b.disabled=true;b.textContent='…';m.textContent='';
-  let r;try{r=await fetch('/login',{method:'POST',body:JSON.stringify({password:pw})})}catch(e){m.textContent='لا يوجد اتصال.';b.disabled=false;b.textContent='دخول';return}
+  let r;try{r=await fetch('/login',{method:'POST',body:JSON.stringify({password:pw,device:devId()})})}catch(e){m.textContent='لا يوجد اتصال.';b.disabled=false;b.textContent='دخول';return}
   b.disabled=false;b.textContent='دخول';
   if(r.status===503){m.textContent='الموقع غير مهيّأ بعد (أسرار الخادم ناقصة).';return}
-  if(!r.ok){m.textContent='الكود غير صحيح.';return}
+  if(!r.ok){let e='';try{e=(await r.json()).err}catch(x){}
+    m.textContent={not_web:'هذا الكود غير مفعّل للموقع.',revoked:'هذا الكود مُلغى.',devices_full:'وصل الكود لأقصى عدد أجهزة.',busy:'الكود مستخدم الآن على جهاز آخر، جرّب بعد دقائق.'}[e]||'الكود غير صحيح.';return}
   try{const j=await api('');if(!j.ok){m.textContent='السيرفر رفض بيانات الاشتراك المخزّنة (تحقق من الأسرار).';return}}
   catch(e){m.textContent=errText(e);return}
   startApp();

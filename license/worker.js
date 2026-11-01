@@ -40,7 +40,8 @@ export async function check(st, body) {
   r.devices[dev].last = t;
   if (body.name) r.devices[dev].name = String(body.name).slice(0, 40);
   await putRec(st, code, r);
-  return { ok: true };
+  // web: الكود مسموح له بدخول موقع الويب (فقط إذا كتبتَ كلمة web في ملاحظة الكود)
+  return { ok: true, web: /\bweb\b/i.test(r.note || '') };
 }
 
 export async function release(st, body) {
