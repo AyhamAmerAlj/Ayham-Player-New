@@ -69,6 +69,7 @@ object C {
     val textDim: Color get() = ThemeState.palette.textDim
     val danger: Color get() = ThemeState.palette.danger
     val ok: Color get() = ThemeState.palette.ok
+    val gold: Color get() = ThemeState.palette.gold ?: ThemeState.palette.primaryLight
 
     val glow: Brush get() = Brush.linearGradient(listOf(primary, accent))
 }
@@ -214,13 +215,18 @@ fun GlowButton(
     Focusable(modifier = modifier, shape = RoundedCornerShape(24.dp), focusScale = 1.06f, onClick = onClick) { f ->
         Row(
             Modifier
-                .background(
-                    when {
-                        f -> C.surfaceHi
-                        primary -> C.primary
-                        else -> C.surface
+                .then(
+                    ThemeState.palette.stripe.let { st ->
+                        if (primary && !f && st != null) Modifier.background(Brush.horizontalGradient(st), RoundedCornerShape(24.dp))
+                        else Modifier.background(
+                            when {
+                                f -> C.surfaceHi
+                                primary -> C.primary
+                                else -> C.surface
+                            },
+                            RoundedCornerShape(24.dp),
+                        )
                     },
-                    RoundedCornerShape(24.dp),
                 )
                 .padding(horizontal = 22.dp)
                 .height(height),

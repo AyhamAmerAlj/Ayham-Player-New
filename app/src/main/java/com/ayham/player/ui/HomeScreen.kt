@@ -111,7 +111,7 @@ fun Sidebar(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusRequ
             Column {
                 RText("Ayham", 16, Color.White, bold = true, maxLines = 1)
                 RText("Player", 16, C.primaryLight, bold = true, maxLines = 1)
-                ThemeState.palette.tagline?.let { RText(it, 11, C.textDim, maxLines = 1) }
+                ThemeState.palette.tagline?.let { RText(it, 11, C.gold, maxLines = 1) }
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {

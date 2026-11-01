@@ -106,7 +106,7 @@ fun SplashScreen() {
                 Modifier.align(Alignment.BottomCenter).padding(bottom = 130.dp).alpha(a.value),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                RText(tl, 24, C.text, bold = true)
+                RText(tl, 24, C.gold, bold = true)
                 ThemeState.palette.taglineSub?.let { BodyText(it, 15, C.textDim) }
             }
         }
@@ -198,6 +198,8 @@ fun LoginScreen(vm: AppViewModel) {
                 )
                 RText("Ayham Player", if (compact) 24 else 40, C.text, bold = true)
                 BodyText(if (ar) "كل ما تحب مشاهدته في مكان واحد" else "Everything you love to watch, in one place", if (compact) 13 else 17, C.textDim)
+                ThemeState.palette.tagline?.let { RText(it, if (compact) 16 else 22, C.gold, bold = true) }
+                ThemeState.palette.taglineSub?.let { BodyText(it, if (compact) 11 else 14, C.textDim) }
                 // رمز QR فقط للتلفاز (تدخل البيانات من هاتفك)
                 if (tv) { Spacer(Modifier.height(10.dp)); QrLoginCard { s, u, p -> vm.connect(s, u, p) } }
             }
@@ -234,7 +236,11 @@ fun LoadingScreen(vm: AppViewModel) {
         Modifier.fillMaxSize().background(Brush.radialGradient(listOf(tc(0xFF3B1A86), C.bg), radius = 1300f)),
         contentAlignment = Alignment.Center,
     ) {
-        Image(painterResource(R.drawable.ic_launcher), null, Modifier.size(120.dp).graphicsLayer { scaleX = sc; scaleY = sc })
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Image(painterResource(R.drawable.ic_launcher), null, Modifier.size(120.dp).graphicsLayer { scaleX = sc; scaleY = sc })
+            ThemeState.palette.tagline?.let { RText(it, 18, C.gold, bold = true) }
+        }
+        StripeBar(Modifier.align(Alignment.TopCenter))
     }
 }
 
@@ -299,13 +305,14 @@ fun MainScreen(vm: AppViewModel) {
         }
         val bg = Brush.verticalGradient(listOf(Color.Black, tc(0xFF06020D)))
         if (full) {
-            Box(Modifier.fillMaxSize().background(bg)) { content(Modifier.fillMaxSize().then(throttle)) }
+            Box(Modifier.fillMaxSize().background(bg)) { content(Modifier.fillMaxSize().then(throttle)); StripeBar(Modifier.align(Alignment.TopCenter)) }
         } else {
             Box(Modifier.fillMaxSize().background(bg)) {
                 content(Modifier.fillMaxSize().then(if (vm.tab == 0) Modifier else Modifier.padding(top = 88.dp)).then(throttle))
                 CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
                     Box(Modifier.align(Alignment.TopCenter)) { TvTopNav(vm, sideReq) }
                 }
+                StripeBar(Modifier.align(Alignment.TopCenter))
             }
         }
     }
@@ -848,7 +855,7 @@ fun SettingsTab(vm: AppViewModel) {
             Chip("FC Barcelona", ThemeState.id == Themes.BARCELONA) { vm.changeTheme(Themes.BARCELONA) }
         }
         ThemeState.palette.tagline?.let { tl ->
-            RText(tl, 20, C.primaryLight, bold = true)
+            RText(tl, 20, C.gold, bold = true)
             ThemeState.palette.taglineSub?.let { BodyText(it, 15, C.textDim) }
         }
 

@@ -28,6 +28,12 @@ class Palette(
     /** عبارة تظهر في الشاشة الافتتاحية والقائمة الجانبية والإعدادات (ليست في الأصلي). */
     val tagline: String? = null,
     val taglineSub: String? = null,
+    /** ألوان الشريط/الأزرار الرئيسية المتدرجة (blaugrana). null = الأصلي بدون تغيير. */
+    val stripe: List<Color>? = null,
+    /** لون ذهبي للتمييز (التقييم، العبارة). */
+    val gold: Color? = null,
+    /** لون توهج خفيف في زوايا الشاشة الرئيسية. */
+    val glow: Color? = null,
 )
 
 /** كل الثيمات. لإضافة ثيم جديد: Palette جديدة + خريطة remap + إضافتها في all. */
@@ -69,6 +75,8 @@ object Themes {
         // نصوص: أبيض ورمادي فاتح
         0xA99BC4L to 0xA6B5CFL, 0xBDB2D6L to 0xB7C6DEL, 0xD9CCF5L to 0xD5E2F5L,
         0xE5DEF5L to 0xE6EEF9L, 0xF5F0FFL to 0xF4F8FFL,
+        // تقييم النجوم: ذهبي برشلونة
+        0xF5C518L to 0xEDBB00L,
     )
 
     val barcelona = Palette(
@@ -87,6 +95,9 @@ object Themes {
         remap = barcelonaRemap,
         tagline = "Més que un club",
         taglineSub = "Est. 29 Nov 1899  ·  VisçaBarça",
+        stripe = listOf(Color(0xFF004D98), Color(0xFFA50044)),
+        gold = Color(0xFFEDBB00),
+        glow = Color(0xFFA50044),
     )
 
     val all: List<Palette> = listOf(original, barcelona)

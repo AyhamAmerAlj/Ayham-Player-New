@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import com.ayham.player.AppViewModel
@@ -126,6 +127,14 @@ fun TvHome(
         Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(tc(0x990B0614), tc(0x220B0614), tc(0x990B0614)))))
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to tc(0xAA0B0614), 0.3f to tc(0x000B0614), 0.5f to tc(0xBB05020B), 1f to tc(0xFF05020B))))
 
+        // توهج خفيف بألوان الثيم في زاويتين (برشلونة فقط)
+        ThemeState.palette.glow?.let { g ->
+            Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(g.copy(alpha = 0.30f), Color.Transparent), center = Offset(0f, 0f), radius = 1100f)))
+            Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(C.primary.copy(alpha = 0.30f), Color.Transparent), center = Offset(2600f, 1500f), radius = 1300f)))
+        }
+        if (ThemeState.id == Themes.BARCELONA) {
+            Box(Modifier.align(Alignment.TopEnd).padding(top = if (small) 80.dp else 96.dp, end = 44.dp)) { NextMatchCard(vm, small) }
+        }
         Column(Modifier.fillMaxSize().padding(top = if (small) 76.dp else 88.dp, bottom = 10.dp)) {
             // ---------- التفاصيل ----------
             Column(
@@ -155,7 +164,7 @@ fun TvHome(
                     }) { f ->
                         Row(
                             Modifier.clip(RoundedCornerShape(26.dp))
-                                .background(Brush.horizontalGradient(if (f) listOf(tc(0xFFA855F7), tc(0xFF7C3AED)) else listOf(tc(0xFF8B1FD9), tc(0xFF6D28D9))))
+                                .background(Brush.horizontalGradient(ThemeState.palette.stripe ?: if (f) listOf(tc(0xFFA855F7), tc(0xFF7C3AED)) else listOf(tc(0xFF8B1FD9), tc(0xFF6D28D9))))
                                 .padding(horizontal = 24.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
