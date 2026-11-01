@@ -1,5 +1,15 @@
 package com.ayham.player.ui
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -73,6 +83,7 @@ fun t(key: String): String = Strings.get(LocalLang.current, key)
 @Composable
 fun AyhamTheme(lang: String, content: @Composable () -> Unit) {
     val dir = if (lang == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr
+    val host = remember { KeyboardHost() }
     MaterialTheme(
         colorScheme = darkColorScheme(
             primary = C.primary,
@@ -85,8 +96,20 @@ fun AyhamTheme(lang: String, content: @Composable () -> Unit) {
         CompositionLocalProvider(
             LocalLang provides lang,
             LocalLayoutDirection provides dir,
+            LocalKeyboardHost provides host,
         ) {
-            Box(Modifier.background(C.bg)) { content() }
+            // زر الرجوع يغلق الكيبورد أولاً قبل أي شيء آخر
+            BackHandler(enabled = host.target != null) { host.dismiss() }
+            Column(Modifier.fillMaxSize().background(C.bg)) {
+                Box(Modifier.weight(1f).fillMaxWidth()) { content() }
+                AnimatedVisibility(
+                    visible = host.target != null,
+                    enter = slideInVertically(tween(220)) { it } + fadeIn(tween(220)),
+                    exit = slideOutVertically(tween(180)) { it } + fadeOut(tween(180)),
+                ) {
+                    host.last?.let { InAppKeyboard(host, lang, it) }
+                }
+            }
         }
     }
 }

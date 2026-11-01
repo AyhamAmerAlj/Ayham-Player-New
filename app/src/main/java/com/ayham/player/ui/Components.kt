@@ -1,5 +1,11 @@
 package com.ayham.player.ui
 
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.focus.onFocusChanged
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -359,10 +365,42 @@ fun AyhamField(
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     onDone: () -> Unit = {},
 ) {
+    // الكيبورد الداخلي: الحقل للقراءة فقط، والكتابة تتم من لوحة التطبيق نفسها.
+    val host = LocalKeyboardHost.current
+    val id = remember { Any() }
+    val latestValue = rememberUpdatedState(value)
+    val latestChange = rememberUpdatedState(onChange)
+    val latestDone = rememberUpdatedState(onDone)
+
+    fun open() {
+        host?.open(
+            KbTarget(
+                id = id,
+                read = { latestValue.value },
+                write = { latestChange.value(it) },
+                onDone = { latestDone.value() },
+            ),
+        )
+    }
+
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
-        modifier = modifier.fillMaxWidth(),
+        readOnly = host != null,
+        modifier = modifier
+            .fillMaxWidth()
+            .onFocusChanged { if (it.isFocused && host != null) open() }
+            .then(
+                if (host == null) Modifier
+                else Modifier.pointerInput(host) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            if (event.type == PointerEventType.Press) open()
+                        }
+                    }
+                },
+            ),
         singleLine = true,
         label = { RText(label, 16, C.textDim) },
         leadingIcon = if (icon != null) ({ Icon(icon, null, tint = C.primaryLight, modifier = Modifier.size(24.dp)) }) else null,
