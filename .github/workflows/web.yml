@@ -32,6 +32,7 @@ jobs:
           WEB_ACCESS_PASSWORD: ${{ secrets.WEB_ACCESS_PASSWORD }}
         run: |
           set_secret() { if [ -n "$2" ]; then printf %s "$2" | npx --yes wrangler@4 secret put "$1" >/dev/null && echo "set $1"; else echo "skip $1 (empty)"; fi; }
+          printf '%s' "$(printf '%s' "link|$CLOUDFLARE_API_TOKEN" | sha256sum | cut -d' ' -f1)" | npx --yes wrangler@4 secret put LINK_KEY >/dev/null && echo 'set LINK_KEY'
           set_secret XTREAM_URL "$WEB_XTREAM_URL"
           set_secret XTREAM_USER "$WEB_XTREAM_USER"
           set_secret XTREAM_PASS "$WEB_XTREAM_PASS"

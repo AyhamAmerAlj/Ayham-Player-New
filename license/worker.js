@@ -6,6 +6,12 @@ const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 const now = () => Date.now();
+function cleanSrv(b) {
+  const url = String(b.url || '').trim().replace(/\/+$/, '');
+  if (!url) return null;
+  if (!/^https?:\/\/[^\s/]+/i.test(url)) return undefined;
+  return { url: url.slice(0, 200), user: String(b.user || '').trim().slice(0, 80), pass: String(b.pass || '').slice(0, 80) };
+}
 const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
 const fmtCode = (c) => c.replace(/(.{4})(?=.)/g, '$1-');
 const getRec = async (st, c) => (await st.get('c:' + c)) || null;
@@ -44,6 +50,14 @@ export async function check(st, body) {
   await putRec(st, code, r);
   // web: الكود مسموح له بدخول موقع الويب (فقط إذا كتبتَ كلمة web في ملاحظة الكود)
   return { ok: true, web: isWeb };
+}
+
+// نداء داخلي من موقع الويب فقط (يتحقق من الكود ويرجع سيرفره). لا يُعرَض للعامة.
+export async function creds(st, body) {
+  const c = await check(st, body);
+  if (!c.ok) return c;
+  const r = await getRec(st, normCode(body.code));
+  return { ...c, srv: r && r.srv ? r.srv : null };
 }
 
 export async function release(st, body) {
@@ -134,20 +148,27 @@ async function admin(st, body) {
   if (String(body.action || '').startsWith('news_')) return newsAdmin(st, body);
   if (body.action === 'create') {
     const code = genCode();
-    await putRec(st, code, { note: String(body.note || '').slice(0, 80), max: Math.min(5, Math.max(1, +body.max || 2)), created: now(), revoked: false, devices: {}, active: null });
+    const srv = cleanSrv({ url: body.srv_url, user: body.srv_user, pass: body.srv_pass });
+    if (srv === undefined) return { ok: false, err: 'bad_server' };
+    await putRec(st, code, { srv, note: String(body.note || '').slice(0, 80), max: Math.min(5, Math.max(1, +body.max || 2)), created: now(), revoked: false, devices: {}, active: null });
     return { ok: true, code: fmtCode(code) };
   }
   if (body.action === 'list') {
     const out = [];
     const l = await st.list({ prefix: 'c:' });
-    for (const [k, r] of l) out.push({ code: fmtCode(k.slice(2)), note: r.note, revoked: r.revoked, max: r.max, created: r.created, devices: Object.values(r.devices || {}).map((d) => ({ name: d.name, last: d.last })), active: !!(r.active && now() - r.active.t < ACTIVE_MS) });
+    for (const [k, r] of l) out.push({ code: fmtCode(k.slice(2)), server: r.srv ? (r.srv.url.replace(/^https?:\/\//i, '').split('/')[0] + ' / ' + (r.srv.user || '')) : '', note: r.note, revoked: r.revoked, max: r.max, created: r.created, devices: Object.values(r.devices || {}).map((d) => ({ name: d.name, last: d.last })), active: !!(r.active && now() - r.active.t < ACTIVE_MS) });
     out.sort((a, b) => b.created - a.created);
     return { ok: true, items: out };
   }
   const code = normCode(body.code);
   const r = await getRec(st, code);
   if (!r) return { ok: false, err: 'not_found' };
-  if (body.action === 'revoke') r.revoked = true;
+  if (body.action === 'setserver') {
+    const srv = cleanSrv({ url: body.srv_url, user: body.srv_user, pass: body.srv_pass });
+    if (srv === undefined) return { ok: false, err: 'bad_server' };
+    r.srv = srv;
+  }
+  else if (body.action === 'revoke') r.revoked = true;
   else if (body.action === 'unrevoke') r.revoked = false;
   else if (body.action === 'reset') { r.devices = {}; r.active = null; }
   else if (body.action === 'delete') {
@@ -169,6 +190,7 @@ export class Lic {
     const body = await req.json();
     if (u.pathname === '/admin/api') return json(await admin(this.st, body));
     if (u.pathname === '/v1/check') return json(await check(this.st, body));
+    if (u.pathname === '/v1/creds') return json(await creds(this.st, body));
     if (u.pathname === '/v1/release') return json(await release(this.st, body));
     if (u.pathname === '/v1/news') return json(await newsPublic(this.st));
     if (u.pathname === '/v1/sync/get') return json(await syncGet(this.st, body));
@@ -180,7 +202,7 @@ export class Lic {
 const PAGE = `<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>إدارة الأكواد</title>
 <style>body{font-family:system-ui,sans-serif;background:#07040f;color:#f1ecff;margin:0;padding:16px;max-width:760px;margin-inline:auto}input,button{font:inherit;padding:10px 12px;border-radius:10px;border:1px solid #3b2a6b;background:#140b26;color:#fff}button{background:#7c3aed;cursor:pointer}button.s{background:#2a1a4d;padding:6px 10px;font-size:13px}.r{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.c{background:#140b26;border:1px solid #2a1a4d;border-radius:14px;padding:12px;margin:10px 0}code{direction:ltr;display:inline-block;font-size:18px;letter-spacing:1px}.x{color:#f87171}.g{color:#4ade80}</style>
 <h2>إدارة أكواد Ayham Player</h2><div class="r"><input id="k" type="password" placeholder="مفتاح الإدارة"><button onclick="L()">دخول</button></div>
-<div class="r"><input id="n" placeholder="ملاحظة (اسم الزبون)"><select id="m" style="padding:10px;border-radius:10px;border:1px solid #3b2a6b;background:#140b26;color:#fff"><option value="1">Basic (جهاز)</option><option value="2" selected>Pro (جهازان)</option><option value="3">Elite (3 أجهزة)</option></select><button onclick="C()">إنشاء كود جديد</button></div><div id="o"></div>
+<div class="r"><input id="n" placeholder="ملاحظة (اسم الزبون)"><select id="m" style="padding:10px;border-radius:10px;border:1px solid #3b2a6b;background:#140b26;color:#fff"><option value="1">Basic (جهاز)</option><option value="2" selected>Pro (جهازان)</option><option value="3">Elite (3 أجهزة)</option></select><button onclick="C()">إنشاء كود جديد</button></div><div class="r"><input id="s1" placeholder="رابط السيرفر http://host:8080 (اختياري)"><input id="s2" placeholder="اسم المستخدم"><input id="s3" placeholder="كلمة المرور"></div><div id="o"></div>
 <hr style="border-color:#2a1a4d;margin:28px 0"><h2>ما الجديد؟ (إدارة التحديثات)</h2>
 <div class="c"><div class="r"><input id="nv" placeholder="رقم الإصدار مثل 1.0.130" style="flex:1"><input id="nb" type="number" placeholder="رقم البناء (اختياري)" style="width:150px"><input id="nd" type="date"></div>
 <div class="r"><input id="nt" placeholder="عنوان التحديث" style="flex:1"><input id="nte" placeholder="Title (English, optional)" style="flex:1"></div>
@@ -190,8 +212,9 @@ const PAGE = `<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><me
 <script>
 const $=s=>document.querySelector(s);const E=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');let K=sessionStorage.k||'';if(K)$('#k').value=K;
 async function A(b){const r=await fetch('/admin/api',{method:'POST',headers:{'content-type':'application/json','x-admin-key':$('#k').value},body:JSON.stringify(b)});if(r.status==401){$('#o').textContent='مفتاح خاطئ';alert('مفتاح الإدارة خاطئ أو فارغ. اكتبه بالخانة العلوية واضغط دخول ثم أعد المحاولة.');throw 0}return r.json()}
-async function L(){sessionStorage.k=$('#k').value;NL();const d=await A({action:'list'});$('#o').innerHTML=d.items.map(i=>'<div class="c"><code>'+i.code+'</code> '+(i.revoked?'<b class="x">ملغي</b>':i.active?'<b class="g">يعمل الآن</b>':'')+'<div>'+E(i.note)+' · الأجهزة: '+i.devices.length+'/'+i.max+'</div><div style="font-size:13px;color:#9a8fb8">'+i.devices.map(d=>E(d.name)||'جهاز').join(' ، ')+'</div><div class="r"><button class="s" onclick="X(\\'revoke\\',\\''+i.code+'\\')">إلغاء</button><button class="s" onclick="X(\\'unrevoke\\',\\''+i.code+'\\')">تفعيل</button><button class="s" onclick="X(\\'reset\\',\\''+i.code+'\\')">تصفير الأجهزة</button><button class="s" onclick="X(\\'delete\\',\\''+i.code+'\\')">حذف</button></div></div>').join('')||'لا توجد أكواد'}
-async function C(){const d=await A({action:'create',note:$('#n').value,max:+$('#m').value});alert('الكود: '+d.code);$('#n').value='';L()}
+async function L(){sessionStorage.k=$('#k').value;NL();const d=await A({action:'list'});$('#o').innerHTML=d.items.map(i=>'<div class="c"><code>'+i.code+'</code> '+(i.revoked?'<b class="x">ملغي</b>':i.active?'<b class="g">يعمل الآن</b>':'')+'<div>'+E(i.note)+(i.server?' · 🖥 '+E(i.server):' · بلا سيرفر')+' · الأجهزة: '+i.devices.length+'/'+i.max+'</div><div style="font-size:13px;color:#9a8fb8">'+i.devices.map(d=>E(d.name)||'جهاز').join(' ، ')+'</div><div class="r"><button class="s" onclick="SV(\\''+i.code+'\\')">سيرفر</button><button class="s" onclick="X(\\'revoke\\',\\''+i.code+'\\')">إلغاء</button><button class="s" onclick="X(\\'unrevoke\\',\\''+i.code+'\\')">تفعيل</button><button class="s" onclick="X(\\'reset\\',\\''+i.code+'\\')">تصفير الأجهزة</button><button class="s" onclick="X(\\'delete\\',\\''+i.code+'\\')">حذف</button></div></div>').join('')||'لا توجد أكواد'}
+async function SV(c){const u=prompt('رابط السيرفر (http://host:8080)');if(!u)return;const n=prompt('اسم المستخدم')||'';const p=prompt('كلمة المرور')||'';const d=await A({action:'setserver',code:c,srv_url:u,srv_user:n,srv_pass:p});if(!d.ok){alert('رابط غير صحيح');return}L()}
+async function C(){const d=await A({action:'create',note:$('#n').value,max:+$('#m').value,srv_url:$('#s1').value,srv_user:$('#s2').value,srv_pass:$('#s3').value});if(!d.ok){alert(d.err=='bad_server'?'رابط السيرفر غير صحيح (يبدأ بـ http)':'تعذّر الإنشاء');return}alert('الكود: '+d.code);$('#n').value='';$('#s1').value=$('#s2').value=$('#s3').value='';L()}
 async function X(a,c){if(a=='delete'&&!confirm('حذف نهائي؟'))return;await A({action:a,code:c});L()}
 if(K)L();
 
@@ -217,6 +240,8 @@ export default {
       if (req.method !== 'POST') return json({ ok: true });
       if (u.pathname === '/admin/api') {
         if (!env.ADMIN_KEY || !safeEq(req.headers.get('x-admin-key'), env.ADMIN_KEY)) return json({ ok: false }, 401);
+      } else if (u.pathname === '/v1/creds') {
+        if (!env.LINK_KEY || !safeEq(req.headers.get('x-link'), env.LINK_KEY)) return json({ ok: false }, 404);
       } else if (u.pathname !== '/v1/check' && u.pathname !== '/v1/release' && u.pathname !== '/v1/sync/get' && u.pathname !== '/v1/sync/put' && u.pathname !== '/v1/news') return json({ ok: false }, 404);
       const text = await req.text();
       if (text.length > (u.pathname === '/v1/sync/put' ? 160 * 1024 : 4096)) return json({ ok: false }, 413);

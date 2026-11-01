@@ -2,7 +2,7 @@ import w, { Lic } from '../worker.js';
 const mem = new Map();
 const storage = { get: async (k) => (mem.has(k) ? structuredClone(mem.get(k)) : undefined), put: async (k, v) => { mem.set(k, structuredClone(v)); }, delete: async (k) => { mem.delete(k); }, list: async ({ prefix }) => new Map([...mem].filter(([k]) => k.startsWith(prefix)).map(([k, v]) => [k, structuredClone(v)])) };
 const lic = new Lic({ storage });
-const env = { ADMIN_KEY: 'k', LIC: { idFromName: () => 'x', get: () => ({ fetch: (r) => lic.fetch(r) }) } };
+const env = { ADMIN_KEY: 'k', LINK_KEY: 'lk', LIC: { idFromName: () => 'x', get: () => ({ fetch: (r) => lic.fetch(r) }) } };
 const call = async (path, body, hdr = {}) => (await w.fetch(new Request('http://x' + path, { method: 'POST', headers: hdr, body: JSON.stringify(body) }), env)).json();
 const eq = (a, b, m) => { if (JSON.stringify(a) !== JSON.stringify(b)) { console.log('FAIL', m, a, b); process.exit(1); } console.log('ok', m); };
 const noAuth = await w.fetch(new Request('http://x/admin/api', { method: 'POST', body: '{}' }), env); eq(noAuth.status, 401, 'admin needs key');
@@ -60,4 +60,20 @@ eq((await call('/admin/api', { action: 'news_list' }, A)).items.length, 0, 'news
   eq((await call('/v1/check', { code: wc, device: 'wsite' })).ok, true, 'web code: 2nd device at the same time ok');
   eq((await call('/v1/check', { code: wc, device: 'phone' })).ok, true, '3rd device at the same time ok');
   eq((await call('/v1/check', { code: wc, device: 'fourth' })).err, 'devices_full', '4th device blocked');
+}
+
+{
+  const adm = { 'x-admin-key': 'k' };
+  const sc = (await call('/admin/api', { action: 'create', note: 'web zbon', max: 3, srv_url: 'http://s1.example:8080/', srv_user: 'u1', srv_pass: 'p1' }, adm)).code;
+  const rawCall = async (path, body, hdr = {}) => (await w.fetch(new Request('http://x' + path, { method: 'POST', headers: hdr, body: JSON.stringify(body) }), env));
+  eq((await rawCall('/v1/creds', { code: sc, device: 'wa' })).status, 404, 'creds needs link key');
+  eq((await rawCall('/v1/creds', { code: sc, device: 'wa' }, { 'x-link': 'bad' })).status, 404, 'creds wrong link key');
+  const cr = await (await rawCall('/v1/creds', { code: sc, device: 'wa' }, { 'x-link': 'lk' })).json();
+  eq([cr.ok, cr.web, cr.srv.url, cr.srv.user, cr.srv.pass], [true, true, 'http://s1.example:8080', 'u1', 'p1'], 'creds returns server');
+  eq((await call('/v1/check', { code: sc, device: 'wb' })).srv, undefined, 'public check never leaks server');
+  eq((await call('/admin/api', { action: 'list' }, adm)).items.find((i) => i.note === 'web zbon').server, 's1.example:8080 / u1', 'list shows host/user only');
+  eq(JSON.stringify(await call('/admin/api', { action: 'list' }, adm)).includes('p1'), false, 'list hides password');
+  eq((await call('/admin/api', { action: 'create', note: 'x', srv_url: 'ftp://bad' }, adm)).err, 'bad_server', 'bad url rejected');
+  eq((await call('/admin/api', { action: 'setserver', code: sc, srv_url: 'http://s2.example:80', srv_user: 'u2', srv_pass: 'p2' }, adm)).ok, true, 'setserver');
+  eq((await (await rawCall('/v1/creds', { code: sc, device: 'wa' }, { 'x-link': 'lk' })).json()).srv.user, 'u2', 'server updated');
 }

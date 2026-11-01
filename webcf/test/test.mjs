@@ -37,10 +37,10 @@ console.log(pass + ' tests passed');
 
 // ---- دخول بكود الأدمن (LICENSE) ----
 {
-  const store = { 'AAAAAAAAAAAA': { web: true }, 'BBBBBBBBBBBB': { web: false }, 'CCCCCCCCCCCC': { err: 'revoked' }, 'DDDDDDDDDDDD': { err: 'busy' } };
+  const store = { 'AAAAAAAAAAAA': { web: true, srv: { url: 'http://iptv.example:8080', user: 'usr', pass: 'pw123' } }, 'EEEEEEEEEEEE': { web: true, srv: { url: 'http://other.example:9000/', user: 'bob', pass: 'bobpw' } }, 'FFFFFFFFFFFF': { web: true }, 'BBBBBBBBBBBB': { web: false }, 'CCCCCCCCCCCC': { err: 'revoked' }, 'DDDDDDDDDDDD': { err: 'busy' } };
   let calls = 0;
-  const LICENSE = { fetch: async (rq) => { calls++; const b = JSON.parse(await rq.text()); const r = store[b.code]; return new Response(JSON.stringify(r ? (r.err ? { ok: false, err: r.err } : { ok: true, web: r.web }) : { ok: false, err: 'invalid' })); } };
-  const e2 = { XTREAM_URL: env.XTREAM_URL, XTREAM_USER: env.XTREAM_USER, XTREAM_PASS: env.XTREAM_PASS, LICENSE }; // بلا كلمة مالك
+  const lastHdr = []; const LICENSE = { fetch: async (rq) => { calls++; lastHdr.push(rq.headers.get('x-link')); const b = JSON.parse(await rq.text()); const r = store[b.code]; return new Response(JSON.stringify(r ? (r.err ? { ok: false, err: r.err } : { ok: true, web: r.web, srv: r.srv }) : { ok: false, err: 'invalid' })); } };
+  const e2 = { LICENSE, LINK_KEY: 'lk' }; // بلا كلمة مالك وبلا أسرار سيرفر
   const L = (code, dev = 'dev1') => handle(new Request('https://w/login', { method: 'POST', body: JSON.stringify({ password: code, device: dev }) }), e2, fake);
   const tokOf = (r) => decodeURIComponent(r.headers.get('set-cookie').split(';')[0]).replace(/^ap_s=/, '');
   await ok('license code with web flag logs in', async () => { const r = await L('aaaa-aaaa-aaaa'); assert.equal(r.status, 200); assert.match(r.headers.get('set-cookie'), /HttpOnly/); });
@@ -58,5 +58,14 @@ console.log(pass + ' tests passed');
     assert.equal((await handle(new Request('https://w/x', { headers: { cookie: 'ap_s=' + encodeURIComponent('9999999999999.O.-.' + '0'.repeat(64)) } }), e2, fake)).status, 401);
   });
   await ok('owner password still works when set', async () => { assert.equal((await R('/login', { method: 'POST', body: JSON.stringify({ password: env.ACCESS_PASSWORD }) })).status, 200); });
+  await ok('each code uses its own server; creds never leave the worker', async () => {
+    const t = tokOf(await L('EEEE-EEEE-EEEE', 'devE'));
+    const seen2 = []; const f2 = async (u) => { seen2.push(u); return new Response('[]', { headers: { 'content-type': 'application/json' } }); };
+    const r = await handle(new Request('https://w/x?action=get_vod_streams', { headers: { cookie: 'ap_s=' + encodeURIComponent(t) } }), e2, f2);
+    assert.equal(r.status, 200); assert.ok(seen2[0].startsWith('http://other.example:9000/player_api.php?username=bob&password=bobpw'));
+    assert.ok(!t.includes('bobpw') && !t.includes('other.example'));
+    assert.equal(lastHdr[lastHdr.length - 1], 'lk');
+  });
+  await ok('code without server and no fallback -> no_server', async () => { const r = await L('FFFF-FFFF-FFFF'); assert.equal(r.status, 403); assert.equal((await r.json()).err, 'no_server'); });
 }
 console.log('tests passed (with license):', pass);

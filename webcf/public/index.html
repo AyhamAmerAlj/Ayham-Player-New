@@ -197,7 +197,7 @@ $('#lf').addEventListener('submit',async ev=>{
   b.disabled=false;b.textContent='دخول';
   if(r.status===503){m.textContent='الموقع غير مهيّأ بعد (أسرار الخادم ناقصة).';return}
   if(!r.ok){let e='';try{e=(await r.json()).err}catch(x){}
-    m.textContent={not_web:'هذا الكود غير مفعّل للموقع.',revoked:'هذا الكود مُلغى.',devices_full:'وصل الكود لأقصى عدد أجهزة.',busy:'الكود مستخدم الآن على جهاز آخر، جرّب بعد دقائق.'}[e]||'الكود غير صحيح.';return}
+    m.textContent={not_web:'هذا الكود غير مفعّل للموقع.',revoked:'هذا الكود مُلغى.',devices_full:'وصل الكود لأقصى عدد أجهزة.',busy:'الكود مستخدم الآن على جهاز آخر، جرّب بعد دقائق.',no_server:'لم يُربط سيرفر بهذا الكود بعد. تواصل مع المسؤول.'}[e]||'الكود غير صحيح.';return}
   try{const j=await api('');if(!j.ok){m.textContent='السيرفر رفض بيانات الاشتراك المخزّنة (تحقق من الأسرار).';return}}
   catch(e){m.textContent=errText(e);return}
   startApp();

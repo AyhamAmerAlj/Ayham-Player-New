@@ -19,8 +19,11 @@ export function badHost(h) {
 
 const ownerPw = (env) => (env.ACCESS_PASSWORD && String(env.ACCESS_PASSWORD).length >= 8 ? String(env.ACCESS_PASSWORD) : '');
 // الدخول: كلمة المالك (اختيارية) أو كود من لوحة الأدمن ملاحظته فيها web (عبر الربط LICENSE).
-function configured(env) { return !!(env.XTREAM_URL && env.XTREAM_USER && env.XTREAM_PASS && (ownerPw(env) || env.LICENSE)); }
-const secret = (env) => env.SESSION_SECRET || ('k|' + (env.ACCESS_PASSWORD || '') + '|' + env.XTREAM_PASS);
+// سيرفر الاشتراك: يأتي مع كل كود من لوحة الأدمن (لكل زبون سيرفره)، أو من أسرار الموقع كاحتياط.
+const envAcct = (env) => (env.XTREAM_URL && env.XTREAM_USER && env.XTREAM_PASS ? { url: String(env.XTREAM_URL).replace(/\/+$/, ''), user: String(env.XTREAM_USER), pass: String(env.XTREAM_PASS) } : null);
+const hasSecret = (env) => !!(env.SESSION_SECRET || env.LINK_KEY || ownerPw(env));
+function configured(env) { return hasSecret(env) && !!(env.LICENSE || (ownerPw(env) && envAcct(env))); }
+const secret = (env) => env.SESSION_SECRET || ('k|' + (env.LINK_KEY || '') + '|' + (env.ACCESS_PASSWORD || ''));
 
 async function hmac(env, msg) {
   const key = await crypto.subtle.importKey('raw', enc.encode(secret(env)), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
@@ -37,28 +40,31 @@ const normCode = (x) => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const normDev = (x) => String(x || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 24);
 // التوكن: انتهاء.جهة.جهاز.توقيع  (جهة = O للمالك أو كود الترخيص)
 async function makeSession(env, sub = 'O', dev = '-') { const exp = Date.now() + DAYS * 864e5; return exp + '.' + sub + '.' + dev + '.' + (await hmac(env, 'sess|' + exp + '|' + sub + '|' + dev)); }
+// نداء داخلي لسيرفر الترخيص (عبر الربط + مفتاح مشترك): يتحقق من الكود ويرجع سيرفره.
 async function licCheck(env, code, dev) {
   try {
-    const r = await env.LICENSE.fetch(new Request('https://license/v1/check', { method: 'POST', body: JSON.stringify({ code, device: 'w' + dev, name: 'Web' }) }));
+    const r = await env.LICENSE.fetch(new Request('https://license/v1/creds', { method: 'POST', headers: { 'x-link': env.LINK_KEY || '' }, body: JSON.stringify({ code, device: 'w' + dev, name: 'Web' }) }));
     return await r.json();
   } catch (e) { return { ok: false, err: 'server' }; }
 }
-const licCache = new Map(); // كود+جهاز -> {t, ok} لتخفيف الاتصال بالترخيص (4 دقائق)
+const acctFrom = (r) => (r.srv && r.srv.url ? { url: String(r.srv.url).replace(/\/+$/, ''), user: String(r.srv.user || ''), pass: String(r.srv.pass || '') } : null);
+const licCache = new Map(); // كود+جهاز -> {t, acct} لتخفيف الاتصال بالترخيص (4 دقائق)
+// يرجع بيانات الحساب إن كانت الجلسة صالحة، وإلا null. acct.url فارغ = لا يوجد سيرفر.
 async function validSession(env, req) {
   const m = (req.headers.get('cookie') || '').match(new RegExp('(?:^|;\\s*)' + COOKIE + '=([^;]+)'));
-  if (!m) return false;
+  if (!m) return null;
   const [exp, sub, dev, sig] = decodeURIComponent(m[1]).split('.');
-  if (!exp || !sub || !dev || !sig || +exp < Date.now()) return false;
-  if (!safeEq(sig, await hmac(env, 'sess|' + exp + '|' + sub + '|' + dev))) return false;
-  if (sub === 'O') return !!ownerPw(env);
-  if (!env.LICENSE) return false;
+  if (!exp || !sub || !dev || !sig || +exp < Date.now()) return null;
+  if (!safeEq(sig, await hmac(env, 'sess|' + exp + '|' + sub + '|' + dev))) return null;
+  if (sub === 'O') return ownerPw(env) ? (envAcct(env) || { url: '' }) : null;
+  if (!env.LICENSE) return null;
   const k = sub + '|' + dev, c = licCache.get(k);
-  if (c && Date.now() - c.t < 240000) return c.ok;
+  if (c && Date.now() - c.t < 240000) return c.acct;
   const r = await licCheck(env, sub, dev);
-  const ok = !!(r.ok && r.web);
-  licCache.set(k, { t: Date.now(), ok });
+  const acct = r.ok && r.web ? (acctFrom(r) || envAcct(env) || { url: '' }) : null;
+  licCache.set(k, { t: Date.now(), acct });
   if (licCache.size > 500) licCache.clear();
-  return ok;
+  return acct;
 }
 
 const px = async (env, abs) => '/p?u=' + encodeURIComponent(abs) + '&s=' + (await hmac(env, 'u|' + abs));
@@ -113,8 +119,7 @@ export async function fetchUpstream(env, req, target, fetcher = fetch, opts = {}
   return new Response(req.method === 'HEAD' ? null : res.body, { status: res.status, headers: h });
 }
 
-const base = (env) => String(env.XTREAM_URL).replace(/\/+$/, '');
-const cred = (env) => encodeURIComponent(env.XTREAM_USER) + '/' + encodeURIComponent(env.XTREAM_PASS);
+const cred = (a) => encodeURIComponent(a.user) + '/' + encodeURIComponent(a.pass);
 
 export async function handle(req, env, fetcher = fetch) {
   const u = new URL(req.url);
@@ -131,7 +136,12 @@ export async function handle(req, env, fetcher = fetch) {
     const code = normCode(b.password), dev = normDev(b.device) || 'x';
     if (env.LICENSE && code.length === 12) {
       const r = await licCheck(env, code, dev);
-      if (r.ok && r.web) { licCache.set(code + '|' + dev, { t: Date.now(), ok: true }); return json({ ok: true }, 200, cookie(await makeSession(env, code, dev))); }
+      if (r.ok && r.web) {
+        const acct = acctFrom(r) || envAcct(env);
+        if (!acct) return json({ ok: false, err: 'no_server' }, 403);
+        licCache.set(code + '|' + dev, { t: Date.now(), acct });
+        return json({ ok: true }, 200, cookie(await makeSession(env, code, dev)));
+      }
       if (r.ok) { await sleep(800); return json({ ok: false, err: 'not_web' }, 403); }
       if (r.err === 'revoked' || r.err === 'devices_full' || r.err === 'busy') return json({ ok: false, err: r.err }, 403);
     }
@@ -147,9 +157,11 @@ export async function handle(req, env, fetcher = fetch) {
     return fetchUpstream(env, req, t, fetcher);
   }
 
-  if (!(await validSession(env, req))) return json({ ok: false, err: 'auth' }, 401);
+  const acct = await validSession(env, req);
+  if (!acct) return json({ ok: false, err: 'auth' }, 401);
   if (p === '/me') return json({ ok: true });
   if (!ro) return json({ ok: false }, 405);
+  if (!acct.url && p !== '/i') return json({ ok: false, err: 'no_server' }, 409);
 
   if (p === '/x') {
     // API Xtream: نضيف بيانات الدخول من الخادم، ونحجب أي حقول حساسة من الردّ.
@@ -157,7 +169,7 @@ export async function handle(req, env, fetcher = fetch) {
     const action = u.searchParams.get('action') || '';
     if (action && !/^[a-z_]+$/.test(action)) return json({ ok: false, err: 'bad' }, 400);
     for (const k of ['category_id', 'vod_id', 'series_id']) { const v = u.searchParams.get(k); if (v && /^[0-9A-Za-z_-]{1,20}$/.test(v)) q.set(k, v); }
-    const target = base(env) + '/player_api.php?username=' + encodeURIComponent(env.XTREAM_USER) + '&password=' + encodeURIComponent(env.XTREAM_PASS) + (action ? '&action=' + action : '') + (q.toString() ? '&' + q.toString() : '');
+    const target = acct.url + '/player_api.php?username=' + encodeURIComponent(acct.user) + '&password=' + encodeURIComponent(acct.pass) + (action ? '&action=' + action : '') + (q.toString() ? '&' + q.toString() : '');
     const r = await fetchUpstream(env, req, target, fetcher);
     if (!action) {
       // اختبار الدخول: نرجع فقط حالة الاشتراك بدون كلمة المرور
@@ -174,7 +186,7 @@ export async function handle(req, env, fetcher = fetch) {
     // /s/live/ID.m3u8  /s/movie/ID.ext  /s/series/ID.ext
     const m = p.match(/^\/s\/(live|movie|series)\/([0-9A-Za-z_-]{1,20})\.([a-z0-9]{2,5})$/);
     if (!m) return json({ ok: false, err: 'bad' }, 400);
-    return fetchUpstream(env, req, base(env) + '/' + m[1] + '/' + cred(env) + '/' + m[2] + '.' + m[3], fetcher);
+    return fetchUpstream(env, req, acct.url + '/' + m[1] + '/' + cred(acct) + '/' + m[2] + '.' + m[3], fetcher);
   }
   return json({ ok: false }, 404);
 }

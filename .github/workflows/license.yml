@@ -30,6 +30,9 @@ jobs:
       - name: Deploy
         if: steps.sec.outputs.ready == '1'
         run: npx --yes wrangler@4 deploy
+      - name: Set link key
+        if: steps.sec.outputs.ready == '1'
+        run: printf '%s' "$(printf '%s' "link|$CLOUDFLARE_API_TOKEN" | sha256sum | cut -d' ' -f1)" | npx --yes wrangler@4 secret put LINK_KEY
       - name: Set admin key
         if: steps.sec.outputs.ready == '1'
         run: printf '%s' "$ADMIN_KEY" | npx --yes wrangler@4 secret put ADMIN_KEY
