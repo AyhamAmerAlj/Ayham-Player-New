@@ -673,7 +673,9 @@ fun TvTopNav(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusReq
 fun TvHero(vm: AppViewModel, items: List<Item>, focusItem: Item? = null) {
     if (items.isEmpty() && focusItem == null) return
     val screenH = LocalConfiguration.current.screenHeightDp
-    val h = (screenH * 0.6f).dp
+    // الشاشات ذات الكثافة العالية ارتفاعها بالـdp صغير: نضمن مساحة كافية وإلا اختفت الأزرار خلف الصف التالي
+    val small = screenH < 520
+    val h = maxOf(screenH * 0.6f, 330f).dp
     var idx by remember { mutableIntStateOf(0) }
     var held by remember { mutableStateOf(false) }
     // عندما يختار المستخدم عنوانًا من صف، يتوقف التبديل التلقائي ويتبع البانر التركيز
@@ -698,12 +700,12 @@ fun TvHero(vm: AppViewModel, items: List<Item>, focusItem: Item? = null) {
         Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(tc(0x660B0614), tc(0x110B0614), tc(0xCC0B0614)))))
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to tc(0x990B0614), 0.22f to tc(0x000B0614), 0.7f to tc(0x000B0614), 1f to tc(0xFF05020B))))
         Column(
-            Modifier.align(Alignment.BottomStart).padding(start = 48.dp, bottom = 64.dp).fillMaxWidth(0.52f),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            Modifier.align(Alignment.BottomStart).padding(start = 48.dp, top = 100.dp, bottom = if (small) 40.dp else 64.dp).fillMaxWidth(0.52f),
+            verticalArrangement = Arrangement.spacedBy(if (small) 6.dp else 10.dp),
         ) {
             // الاسم العربي كبير، والاسم الأصلي صغير تحته
-            RText(ar ?: item.name, 52, Color.White, bold = true, maxLines = 2, lineHeight = 60)
-            if (ar != null && ar != item.name) RText(item.name, 18, tc(0xFFBDB2D6), maxLines = 1)
+            RText(ar ?: item.name, if (small) 34 else 52, Color.White, bold = true, maxLines = 2, lineHeight = if (small) 40 else 60)
+            if (!small && ar != null && ar != item.name) RText(item.name, 18, tc(0xFFBDB2D6), maxLines = 1)
             val meta = listOfNotNull(
                 t(if (item.kind == Kind.SERIES) "series" else "movies"),
                 details?.year?.takeIf { it.isNotBlank() },
@@ -717,7 +719,7 @@ fun TvHero(vm: AppViewModel, items: List<Item>, focusItem: Item? = null) {
                     ?.let { RText("★ $it", 17, tc(0xFFF5C518), bold = true) }
             }
             val plot = details?.plot.orEmpty()
-            if (plot.isNotBlank()) BodyText(plot, 17, tc(0xFFE5DEF5), maxLines = 3)
+            if (plot.isNotBlank() && !small) BodyText(plot, 17, tc(0xFFE5DEF5), maxLines = 3)
             Row(
                 Modifier.onFocusChanged { held = it.hasFocus }.padding(top = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
