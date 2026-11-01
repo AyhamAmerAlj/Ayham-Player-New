@@ -39,6 +39,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Language
@@ -264,6 +265,7 @@ fun MainScreen(vm: AppViewModel) {
                     7 -> ItemsPage(vm, vm.recent, "continue_empty")
                     8 -> ItemsPage(vm, vm.history.distinctBy { it.key }, "history_empty")
                     9 -> SubsPage(vm)
+                    10 -> BarcaZone(vm)
                     else -> SettingsTab(vm)
                 }
                 }
@@ -325,7 +327,8 @@ private val navEntries = listOf(
     NavEntry(Icons.Filled.Tv, "series"),
     NavEntry(Icons.Filled.Search, "search"),
     NavEntry(Icons.Filled.VideoLibrary, "library"),
-    NavEntry(Icons.Filled.Settings, "settings"),
+    NavEntry(Icons.Filled.SportsSoccer, "barca", 10),
+    NavEntry(Icons.Filled.Settings, "settings", 6),
 )
 
 /** شريط تنقل سفلي للهاتف. */
@@ -334,7 +337,8 @@ fun BottomNav(vm: AppViewModel) {
     Row(
         Modifier.fillMaxWidth().background(tc(0xFF140A26)).navigationBarsPadding().padding(vertical = 4.dp),
     ) {
-        navEntries.forEachIndexed { i, e ->
+        navEntries.forEachIndexed { i0, e ->
+            val i = if (e.tab >= 0) e.tab else i0
             val sel = vm.tab == i
             Column(
                 Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
@@ -350,7 +354,7 @@ fun BottomNav(vm: AppViewModel) {
     }
 }
 
-private data class NavEntry(val icon: ImageVector, val key: String)
+private data class NavEntry(val icon: ImageVector, val key: String, val tab: Int = -1)
 
 @Composable
 fun NavRail(vm: AppViewModel) {
@@ -362,7 +366,8 @@ fun NavRail(vm: AppViewModel) {
         verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        entries.forEachIndexed { i, e ->
+        entries.forEachIndexed { i0, e ->
+            val i = if (e.tab >= 0) e.tab else i0
             val sel = vm.tab == i
             Focusable(
                 Modifier.fillMaxWidth(), RoundedCornerShape(16.dp), 1.05f,
