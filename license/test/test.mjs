@@ -77,3 +77,6 @@ eq((await call('/admin/api', { action: 'news_list' }, A)).items.length, 0, 'news
   eq((await call('/admin/api', { action: 'setserver', code: sc, srv_url: 'http://s2.example:80', srv_user: 'u2', srv_pass: 'p2' }, adm)).ok, true, 'setserver');
   eq((await (await rawCall('/v1/creds', { code: sc, device: 'wa' }, { 'x-link': 'lk' })).json()).srv.user, 'u2', 'server updated');
 }
+
+eq((await call('/admin/api', { action: 'linkkey' }, { 'x-admin-key': 'k' })).key, 'lk', 'admin can read link key');
+eq((await w.fetch(new Request('http://x/admin/api', { method: 'POST', body: JSON.stringify({ action: 'linkkey' }) }), env)).status, 401, 'link key needs admin key');

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['webcf/**']
+    paths: ['webcf/**', 'webnode/**']
 
 jobs:
   deploy:
@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: 20
       - name: Test
-        run: node test/test.mjs
+        run: node test/test.mjs && node ../webnode/test.mjs
       - name: Deploy
         run: npx --yes wrangler@4 deploy
       - name: Set secrets
