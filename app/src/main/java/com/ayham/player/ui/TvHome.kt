@@ -62,25 +62,38 @@ fun TvHome(
 ) {
     val sH = LocalConfiguration.current.screenHeightDp
     val small = sH < 440
+    val L0 = t("continue_watching")
+    val L1 = t("hall_movies")
+    val L2 = t("hall_series")
+    val L3 = t("movies")
+    val L4 = t("my_list")
+    val L5 = t("rec_movies").substringBefore("(").trim()
+    val L6 = t("rec_series").substringBefore("(").trim()
+    val L7 = t("recent_movies").substringBefore("(").trim()
+    val L8 = t("recent_series").substringBefore("(").trim()
+    val L9 = t("series")
+    val L10 = t("trend_movies")
+    val L11 = t("trend_series")
+    val L12 = t("watch_later")
     val cats = remember(vm.recent, vm.favorites, vm.later, recMovies, recSeries, newMovies, newSeries, trendMovies, trendSeries, topMovies, topSeries, horrorMovies, horrorSeries) {
         val l = ArrayList<HomeCat>()
         fun add(k: String, label: String, items: List<Item>, min: Int = 1) {
             val d = items.filter { it.kind != Kind.LIVE }.distinctBy { it.key }
             if (d.size >= min) l.add(HomeCat(k, label, d))
         }
-        add("cont", t("continue_watching"), vm.recent)
-        add("hm", t("hall_movies"), horrorMovies, 3)
-        add("hs", t("hall_series"), horrorSeries, 3)
-        add("nm", t("movies") + " · " + t("recent_movies").substringBefore("(").trim(), newMovies)
-        add("ns", t("series") + " · " + t("recent_series").substringBefore("(").trim(), newSeries)
-        add("rm", t("rec_movies").substringBefore("(").trim(), recMovies, 4)
-        add("rs", t("rec_series").substringBefore("(").trim(), recSeries, 4)
-        add("tm", t("trend_movies"), trendMovies, 3)
-        add("ts", t("trend_series"), trendSeries, 3)
-        add("topm", t("movies") + " ★", topMovies, 3)
-        add("tops", t("series") + " ★", topSeries, 3)
-        add("fav", t("my_list"), vm.favorites)
-        add("later", t("watch_later"), vm.later)
+        add("cont", L0, vm.recent)
+        add("hm", L1, horrorMovies, 3)
+        add("hs", L2, horrorSeries, 3)
+        add("nm", L3 + " · " + L7, newMovies)
+        add("ns", L9 + " · " + L8, newSeries)
+        add("rm", L5, recMovies, 4)
+        add("rs", L6, recSeries, 4)
+        add("tm", L10, trendMovies, 3)
+        add("ts", L11, trendSeries, 3)
+        add("topm", L3 + " ★", topMovies, 3)
+        add("tops", L9 + " ★", topSeries, 3)
+        add("fav", L4, vm.favorites)
+        add("later", L12, vm.later)
         l
     }
 
