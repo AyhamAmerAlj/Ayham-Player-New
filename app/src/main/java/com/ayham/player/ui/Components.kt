@@ -370,51 +370,11 @@ fun AyhamField(
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     onDone: () -> Unit = {},
 ) {
-    // الكيبورد الداخلي: الحقل للقراءة فقط، والكتابة تتم من لوحة التطبيق نفسها.
-    val host = LocalKeyboardHost.current
-    val id = remember { Any() }
-    val latestValue = rememberUpdatedState(value)
-    val latestChange = rememberUpdatedState(onChange)
-    val latestDone = rememberUpdatedState(onDone)
-
-    fun open() {
-        host?.open(
-            KbTarget(
-                id = id,
-                read = { latestValue.value },
-                write = { latestChange.value(it) },
-                onDone = { latestDone.value() },
-            ),
-        )
-    }
-
+    // لوحة المفاتيح الافتراضية للجهاز
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
-        readOnly = host != null,
-        modifier = modifier
-            .fillMaxWidth()
-            .onFocusChanged {
-                host?.fieldFocused = it.isFocused
-                if (it.isFocused && host != null) open()
-            }
-            .onPreviewKeyEvent { ev ->
-                if (host != null && ev.type == KeyEventType.KeyUp && (ev.key == Key.DirectionCenter || ev.key == Key.Enter)) {
-                    open()
-                    true
-                } else false
-            }
-            .then(
-                if (host == null) Modifier
-                else Modifier.pointerInput(host) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                            if (event.type == PointerEventType.Press) open()
-                        }
-                    }
-                },
-            ),
+        modifier = modifier.fillMaxWidth(),
         singleLine = true,
         label = { RText(label, 16, C.textDim) },
         leadingIcon = if (icon != null) ({ Icon(icon, null, tint = C.primaryLight, modifier = Modifier.size(24.dp)) }) else null,

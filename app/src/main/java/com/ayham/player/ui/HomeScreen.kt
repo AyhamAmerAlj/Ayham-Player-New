@@ -489,8 +489,10 @@ fun HomeTab(vm: AppViewModel) {
     LaunchedEffect(vm.dataVersion) {
         if (Season.halloween) { horrorMovies = vm.horror(Kind.MOVIE); horrorSeries = vm.horror(Kind.SERIES) }
     }
-    val featured = remember(recentMovies, recentSeries) {
-        (recentMovies.take(2) + recentSeries.take(2)).filter { it.image.isNotBlank() }
+    // البانر يبقى ظاهرًا دائمًا: إذا لا يوجد "متابعة" نعرض من الأعلى تقييمًا
+    val featured = remember(recentMovies, recentSeries, topMovies, topSeries) {
+        val main = (recentMovies.take(2) + recentSeries.take(2)).filter { it.image.isNotBlank() }
+        main.ifEmpty { (topMovies.take(3) + topSeries.take(3)).filter { it.image.isNotBlank() } }
     }
     val sugMovies = remember(topMovies) { topMovies.shuffled().take(20) }
     val sugSeries = remember(topSeries) { topSeries.shuffled().take(20) }
@@ -671,7 +673,7 @@ fun TvTopNav(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusReq
 fun TvHero(vm: AppViewModel, items: List<Item>, focusItem: Item? = null) {
     if (items.isEmpty() && focusItem == null) return
     val screenH = LocalConfiguration.current.screenHeightDp
-    val h = (screenH * 0.74f).dp
+    val h = (screenH * 0.6f).dp
     var idx by remember { mutableIntStateOf(0) }
     var held by remember { mutableStateOf(false) }
     // عندما يختار المستخدم عنوانًا من صف، يتوقف التبديل التلقائي ويتبع البانر التركيز

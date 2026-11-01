@@ -88,14 +88,6 @@ fun t(key: String): String = Strings.get(LocalLang.current, key)
 @Composable
 fun AyhamTheme(lang: String, content: @Composable () -> Unit) {
     val dir = if (lang == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr
-    val host = remember { KeyboardHost() }
-    // الكيبورد يُغلق عندما يترك التركيز الحقل ولا يذهب لمفاتيحه (مثلاً نزول لنتائج البحث بالريموت)
-    LaunchedEffect(host.target, host.fieldFocused, host.keysFocused) {
-        if (host.target != null && !host.fieldFocused && !host.keysFocused) {
-            delay(150)
-            if (!host.fieldFocused && !host.keysFocused) host.dismiss()
-        }
-    }
     MaterialTheme(
         colorScheme = darkColorScheme(
             primary = C.primary,
@@ -105,33 +97,8 @@ fun AyhamTheme(lang: String, content: @Composable () -> Unit) {
             onSurface = C.text,
         ),
     ) {
-        CompositionLocalProvider(
-            LocalLang provides lang,
-            LocalLayoutDirection provides dir,
-            LocalKeyboardHost provides host,
-        ) {
-            // زر الرجوع يغلق الكيبورد أولاً قبل أي شيء آخر
-            BackHandler(enabled = host.target != null) { host.dismiss() }
-            Column(Modifier.fillMaxSize().background(C.bg)) {
-                Box(
-                    Modifier.weight(1f).fillMaxWidth().pointerInput(host) {
-                        // لمسة خارج الكيبورد تغلقه (الحقول تعيد فتحه من مستمعها الخاص)
-                        awaitPointerEventScope {
-                            while (true) {
-                                val ev = awaitPointerEvent(PointerEventPass.Initial)
-                                if (ev.type == PointerEventType.Press && host.target != null) host.dismiss()
-                            }
-                        }
-                    },
-                ) { content() }
-                AnimatedVisibility(
-                    visible = host.target != null,
-                    enter = slideInVertically(tween(220)) { it } + fadeIn(tween(220)),
-                    exit = slideOutVertically(tween(180)) { it } + fadeOut(tween(180)),
-                ) {
-                    host.last?.let { InAppKeyboard(host, lang, it) }
-                }
-            }
+        CompositionLocalProvider(LocalLang provides lang, LocalLayoutDirection provides dir) {
+            Box(Modifier.fillMaxSize().background(C.bg)) { content() }
         }
     }
 }
