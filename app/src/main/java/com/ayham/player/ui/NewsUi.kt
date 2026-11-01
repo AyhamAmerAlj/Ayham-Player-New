@@ -50,7 +50,7 @@ fun NewsDialog(vm: AppViewModel) {
     val scroll = rememberScrollState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     androidx.compose.foundation.layout.BoxWithConstraints(
-        Modifier.fillMaxSize().background(Color(0xD9000000))
+        Modifier.fillMaxSize().background(tc(0xD9000000))
             // الريموت: فوق/تحت يمرّر المحتوى لرؤية كل الميزات
             .onPreviewKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -66,7 +66,7 @@ fun NewsDialog(vm: AppViewModel) {
         val shape = RoundedCornerShape(24.dp)
         Column(
             Modifier.widthIn(max = 560.dp).fillMaxWidth(0.92f).heightIn(max = maxH)
-                .clip(shape).background(Color(0xFF120A26)).border(1.5.dp, C.primary, shape).padding(24.dp),
+                .clip(shape).background(tc(0xFF120A26)).border(1.5.dp, C.primary, shape).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             RText(t("whats_new"), 28, Color.White, bold = true)
@@ -94,7 +94,7 @@ private fun NewsBlock(e: NewsEntry, en: Boolean) {
             val ft = if (en) f.titleEn.ifBlank { f.title } else f.title
             val fd = if (en) f.descEn.ifBlank { f.desc } else f.desc
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0xFF1C1033)).padding(12.dp),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(tc(0xFF1C1033)).padding(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Box(Modifier.size(44.dp).clip(CircleShape).background(C.surfaceHi), contentAlignment = Alignment.Center) {

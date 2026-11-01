@@ -512,6 +512,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (q.length < 2) emptyList() else db.search(kind, q, limit)
     }
 
+    fun changeTheme(id: String) {
+        com.ayham.player.ui.ThemeState.select(id)
+        store.appTheme = com.ayham.player.ui.ThemeState.id
+    }
+
     fun changeLiveLayout(v: String) {
         liveLayout = v
         store.liveLayout = v

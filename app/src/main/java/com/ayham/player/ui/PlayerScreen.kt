@@ -838,7 +838,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
 
         if (errorMsg != null) {
             Column(
-                Modifier.align(Alignment.Center).clip(RoundedCornerShape(16.dp)).background(Color(0xCC000000)).padding(24.dp),
+                Modifier.align(Alignment.Center).clip(RoundedCornerShape(16.dp)).background(tc(0xCC000000)).padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 RText(errorMsg.orEmpty(), 22, C.danger, bold = true)
@@ -851,7 +851,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         if (tmsg != null) {
             Box(
                 Modifier.align(Alignment.BottomCenter).padding(bottom = 130.dp)
-                    .clip(RoundedCornerShape(20.dp)).background(Color(0xCC1C1033))
+                    .clip(RoundedCornerShape(20.dp)).background(tc(0xCC1C1033))
                     .padding(horizontal = 22.dp, vertical = 10.dp),
             ) { RText(tmsg, 22, C.text, bold = true) }
         }
@@ -859,7 +859,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         if (extName != null && !controls) {
             Box(
                 Modifier.align(Alignment.TopStart).padding(18.dp)
-                    .clip(RoundedCornerShape(14.dp)).background(Color(0x99000000))
+                    .clip(RoundedCornerShape(14.dp)).background(tc(0x99000000))
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             ) { RText("🎧 " + extName.orEmpty(), 15, C.primaryLight, maxLines = 1) }
         }
@@ -886,7 +886,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     )
                     BodyText(
                         extName.orEmpty(), 11, Color.White, maxLines = 1,
-                        modifier = Modifier.align(Alignment.BottomStart).background(Color(0x99000000)).padding(horizontal = 6.dp, vertical = 1.dp),
+                        modifier = Modifier.align(Alignment.BottomStart).background(tc(0x99000000)).padding(horizontal = 6.dp, vertical = 1.dp),
                     )
                 }
                 if (controls && panel == null) {
@@ -905,11 +905,11 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                 Box(Modifier.fillMaxSize()) {
                     Box(
                         Modifier.fillMaxWidth().height(110.dp).align(Alignment.TopCenter)
-                            .background(Brush.verticalGradient(listOf(Color(0xDD000000), Color.Transparent))),
+                            .background(Brush.verticalGradient(listOf(tc(0xDD000000), Color.Transparent))),
                     )
                     Box(
                         Modifier.fillMaxWidth().height(230.dp).align(Alignment.BottomCenter)
-                            .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xEE000000)))),
+                            .background(Brush.verticalGradient(listOf(Color.Transparent, tc(0xEE000000)))),
                     )
                     Row(
                         Modifier.align(Alignment.TopStart).padding(if (compact) 14.dp else 28.dp),
@@ -950,7 +950,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             tech.forEach { c ->
-                                Box(Modifier.clip(RoundedCornerShape(10.dp)).background(Color(0x66FFFFFF).copy(alpha = 0.16f)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                                Box(Modifier.clip(RoundedCornerShape(10.dp)).background(tc(0x66FFFFFF).copy(alpha = 0.16f)).padding(horizontal = 10.dp, vertical = 4.dp)) {
                                     BodyText(c, 12, C.text, bold = true)
                                 }
                             }
@@ -1007,7 +1007,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         if (introGo != null) {
             Box(
                 Modifier.align(Alignment.BottomEnd).padding(end = 28.dp, bottom = 90.dp)
-                    .background(Color(0xCC140A26), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                    .background(tc(0xCC140A26), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
                     .border(2.dp, Color.White, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
                     .clickable { doSkip(); touch() }
                     .padding(horizontal = 22.dp, vertical = 12.dp),
@@ -1031,8 +1031,8 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                 Modifier.align(Alignment.CenterEnd).fillMaxHeight().widthIn(max = if (cur == Panel.AUDIO || cur == Panel.SYNC) 440.dp else 430.dp)
                     .fillMaxWidth(if (compact) 0.88f else 1f)
                     .pointerInput(Unit) { detectTapGestures { } }
-                    .background(if (cur == Panel.AUDIO) androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color(0xB30A0418), Color(0xE60F0720)))
-                                else androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color(0xF2140A26), Color(0xF2140A26))))
+                    .background(if (cur == Panel.AUDIO) androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(tc(0xB30A0418), tc(0xE60F0720)))
+                                else androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(tc(0xF2140A26), tc(0xF2140A26))))
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
@@ -1591,7 +1591,7 @@ private fun ProgressRow(exo: ExoPlayer, barFocus: FocusRequester, onVisible: (Bo
         ) {
             Box(
                 Modifier.fillMaxWidth().height(if (focused) 16.dp else 8.dp)
-                    .clip(RoundedCornerShape(8.dp)).background(Color(0x44FFFFFF)),
+                    .clip(RoundedCornerShape(8.dp)).background(tc(0x44FFFFFF)),
             ) {
                 Box(
                     Modifier.fillMaxWidth((shown.toFloat() / dur).coerceIn(0f, 1f))
@@ -1609,7 +1609,7 @@ private fun TrySubWeb(onFile: (String, ByteArray) -> Unit, onClose: () -> Unit) 
     val main = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
     var web by remember { mutableStateOf<android.webkit.WebView?>(null) }
     val file by rememberUpdatedState(onFile)
-    Box(Modifier.fillMaxSize().background(Color(0xFF0B0614))) {
+    Box(Modifier.fillMaxSize().background(tc(0xFF0B0614))) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { c ->
@@ -1688,7 +1688,7 @@ private fun LiveShiftRow(exo: ExoPlayer, onBackToLive: () -> Unit) {
     val behind = (live - pos).coerceAtLeast(0L)
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         BodyText(t("rewind_avail") + ": " + fmt(pos), 14, C.text)
-        Box(Modifier.weight(1f).height(10.dp).clip(RoundedCornerShape(5.dp)).background(Color(0x44FFFFFF))) {
+        Box(Modifier.weight(1f).height(10.dp).clip(RoundedCornerShape(5.dp)).background(tc(0x44FFFFFF))) {
             Box(Modifier.fillMaxHeight().fillMaxWidth((pos.toFloat() / dur).coerceIn(0f, 1f)).background(C.primary))
             val lf = (live.toFloat() / dur).coerceIn(0.01f, 0.99f)
             Row(Modifier.fillMaxSize()) {

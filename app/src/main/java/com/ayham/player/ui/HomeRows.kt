@@ -110,7 +110,7 @@ fun FocusRow(title: String, items: List<Item>, vm: AppViewModel, onItem: (Item) 
                 val shape = RoundedCornerShape(14.dp)
                 Box(
                     Modifier.width(w).height(rowH).clip(shape).background(C.surface)
-                        .then(if (expanded) Modifier.border(2.5.dp, Brush.horizontalGradient(listOf(Color(0xFF8B5CF6), Color(0xFFD946EF))), shape) else Modifier)
+                        .then(if (expanded) Modifier.border(2.5.dp, Brush.horizontalGradient(listOf(tc(0xFF8B5CF6), tc(0xFFD946EF))), shape) else Modifier)
                         .onFocusChanged { f ->
                             if (f.isFocused) { focusIdx = i; setFocus(item) } else if (focusIdx == i) focusIdx = -1
                         }
@@ -130,12 +130,12 @@ fun FocusRow(title: String, items: List<Item>, vm: AppViewModel, onItem: (Item) 
                         Box(
                             Modifier.align(Alignment.TopEnd).padding(6.dp)
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0xDD0B0616))
-                                .border(0.8.dp, Color(0x55F5C518), RoundedCornerShape(6.dp))
+                                .background(tc(0xDD0B0616))
+                                .border(0.8.dp, tc(0x55F5C518), RoundedCornerShape(6.dp))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                RText("★", 11, Color(0xFFF5C518), bold = true)
+                                RText("★", 11, tc(0xFFF5C518), bold = true)
                                 RText(rating, 11, Color.White, bold = true)
                             }
                         }
@@ -147,11 +147,11 @@ fun FocusRow(title: String, items: List<Item>, vm: AppViewModel, onItem: (Item) 
                         val fraction = (prog.first.toFloat() / prog.second.toFloat()).coerceIn(0.04f, 1f)
                         Box(
                             Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(4.dp)
-                                .background(Color(0x44FFFFFF))
+                                .background(tc(0x44FFFFFF))
                         ) {
                             Box(
                                 Modifier.fillMaxHeight().fillMaxWidth(fraction)
-                                    .background(Brush.horizontalGradient(listOf(Color(0xFF8B5CF6), Color(0xFFD946EF))))
+                                    .background(Brush.horizontalGradient(listOf(tc(0xFF8B5CF6), tc(0xFFD946EF))))
                             )
                         }
                     }
@@ -159,7 +159,7 @@ fun FocusRow(title: String, items: List<Item>, vm: AppViewModel, onItem: (Item) 
                     if (expanded) {
                         Box(
                             Modifier.fillMaxSize().background(
-                                Brush.verticalGradient(colorStops = arrayOf(0.45f to Color.Transparent, 1f to Color(0xEE0B0616))),
+                                Brush.verticalGradient(colorStops = arrayOf(0.45f to Color.Transparent, 1f to tc(0xEE0B0616))),
                             ),
                         )
                         RText(
@@ -193,7 +193,7 @@ fun FocusRow(title: String, items: List<Item>, vm: AppViewModel, onItem: (Item) 
                         val r = imdb
                         if (r != null) ImdbBadge(r)
                         else (d?.rating?.takeIf { x -> x.isNotBlank() && x != "0" } ?: it.rating.takeIf { x -> x.isNotBlank() && x != "0" })?.let { x ->
-                            RText("★ $x", 16, Color(0xFFF5C518), bold = true)
+                            RText("★ $x", 16, tc(0xFFF5C518), bold = true)
                         }
                     }
                     val plot = details?.plot.orEmpty()

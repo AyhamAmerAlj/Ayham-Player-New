@@ -37,13 +37,13 @@ fun UpdateDialog(vm: AppViewModel) {
     val downloading = st == AppViewModel.UpdState.DOWNLOADING
     BackHandler(enabled = !downloading) { vm.updDismissed = true }
     Box(
-        Modifier.fillMaxSize().background(Color(0xCC000000))
+        Modifier.fillMaxSize().background(tc(0xCC000000))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { },
         contentAlignment = Alignment.Center,
     ) {
         val shape = RoundedCornerShape(22.dp)
         Column(
-            Modifier.widthIn(max = 520.dp).fillMaxWidth(0.9f).clip(shape).background(Color(0xFF120A26))
+            Modifier.widthIn(max = 520.dp).fillMaxWidth(0.9f).clip(shape).background(tc(0xFF120A26))
                 .border(1.5.dp, C.primary, shape).padding(26.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -53,7 +53,7 @@ fun UpdateDialog(vm: AppViewModel) {
             when {
                 downloading -> {
                     BodyText(t("downloading") + "  " + (vm.updProgress * 100).toInt() + "%", 16, C.text)
-                    Box(Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)).background(Color(0x33FFFFFF))) {
+                    Box(Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)).background(tc(0x33FFFFFF))) {
                         Box(Modifier.fillMaxWidth(vm.updProgress.coerceIn(0.02f, 1f)).fillMaxHeight().background(C.primary))
                     }
                 }

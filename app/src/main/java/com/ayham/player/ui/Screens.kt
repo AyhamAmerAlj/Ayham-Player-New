@@ -101,14 +101,23 @@ fun SplashScreen() {
             Modifier.fillMaxSize().alpha(a.value),
             contentScale = ContentScale.Crop,
         )
+        ThemeState.palette.tagline?.let { tl ->
+            Column(
+                Modifier.align(Alignment.BottomCenter).padding(bottom = 130.dp).alpha(a.value),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                RText(tl, 24, C.text, bold = true)
+                ThemeState.palette.taglineSub?.let { BodyText(it, 15, C.textDim) }
+            }
+        }
         Box(
             Modifier.align(Alignment.BottomCenter).padding(bottom = 96.dp).width(300.dp).height(5.dp)
-                .clip(RoundedCornerShape(3.dp)).background(Color(0x22FFFFFF)).alpha(a.value),
+                .clip(RoundedCornerShape(3.dp)).background(tc(0x22FFFFFF)).alpha(a.value),
         ) {
             Box(
                 Modifier.fillMaxWidth(0.35f).fillMaxHeight().graphicsLayer { translationX = (pos * 2.0f - 0.35f) * 300.dp.toPx() * 0.5f + 0f }
                     .clip(RoundedCornerShape(3.dp))
-                    .background(Brush.horizontalGradient(listOf(Color(0xFF7C3AED), Color(0xFFE879F9)))),
+                    .background(Brush.horizontalGradient(listOf(tc(0xFF7C3AED), tc(0xFFE879F9)))),
             )
         }
     }
@@ -124,12 +133,12 @@ private fun LoginSteps(step: Int, ar: Boolean) {
             val on = n == step
             Box(
                 Modifier.size(28.dp).clip(CircleShape).background(
-                    when { done -> Color(0xFF22C55E); on -> C.primary; else -> Color(0x22FFFFFF) },
+                    when { done -> tc(0xFF22C55E); on -> C.primary; else -> tc(0x22FFFFFF) },
                 ),
                 contentAlignment = Alignment.Center,
-            ) { RText(if (done) "✓" else "${n + 1}", 14, if (done) Color(0xFF06210F) else Color.White, bold = true) }
+            ) { RText(if (done) "✓" else "${n + 1}", 14, if (done) tc(0xFF06210F) else Color.White, bold = true) }
             BodyText(l, 13, if (on || done) C.text else C.textDim)
-            if (n < labels.lastIndex) Box(Modifier.weight(1f).height(2.dp).background(Color(0x22FFFFFF)))
+            if (n < labels.lastIndex) Box(Modifier.weight(1f).height(2.dp).background(tc(0x22FFFFFF)))
         }
     }
 }
@@ -143,7 +152,7 @@ fun LoginScreen(vm: AppViewModel) {
     val ar = vm.lang == "ar"
     Box(
         Modifier.fillMaxSize().background(
-            Brush.radialGradient(listOf(Color(0xFF3B1A86), C.bg), radius = 1500f),
+            Brush.radialGradient(listOf(tc(0xFF3B1A86), C.bg), radius = 1500f),
         ),
     ) {
         val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -153,8 +162,8 @@ fun LoginScreen(vm: AppViewModel) {
         val form: @Composable (Modifier) -> Unit = { mod ->
             Column(
                 mod.clip(RoundedCornerShape(28.dp))
-                    .background(Brush.linearGradient(listOf(Color(0x1AFFFFFF), Color(0x0AFFFFFF))))
-                    .border(1.dp, Color(0x55C4A1FF), RoundedCornerShape(28.dp))
+                    .background(Brush.linearGradient(listOf(tc(0x1AFFFFFF), tc(0x0AFFFFFF))))
+                    .border(1.dp, tc(0x55C4A1FF), RoundedCornerShape(28.dp))
                     .padding(if (compact) 18.dp else 30.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
@@ -222,7 +231,7 @@ fun LoadingScreen(vm: AppViewModel) {
         label = "pulse",
     )
     Box(
-        Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Color(0xFF3B1A86), C.bg), radius = 1300f)),
+        Modifier.fillMaxSize().background(Brush.radialGradient(listOf(tc(0xFF3B1A86), C.bg), radius = 1300f)),
         contentAlignment = Alignment.Center,
     ) {
         Image(painterResource(R.drawable.ic_launcher), null, Modifier.size(120.dp).graphicsLayer { scaleX = sc; scaleY = sc })
@@ -288,7 +297,7 @@ fun MainScreen(vm: AppViewModel) {
                 if (now - lastKey[0] < 130) true else { lastKey[0] = now; false }
             } else false
         }
-        val bg = Brush.verticalGradient(listOf(Color.Black, Color(0xFF06020D)))
+        val bg = Brush.verticalGradient(listOf(Color.Black, tc(0xFF06020D)))
         if (full) {
             Box(Modifier.fillMaxSize().background(bg)) { content(Modifier.fillMaxSize().then(throttle)) }
         } else {
@@ -316,13 +325,13 @@ private val navEntries = listOf(
 @Composable
 fun BottomNav(vm: AppViewModel) {
     Row(
-        Modifier.fillMaxWidth().background(Color(0xFF140A26)).navigationBarsPadding().padding(vertical = 4.dp),
+        Modifier.fillMaxWidth().background(tc(0xFF140A26)).navigationBarsPadding().padding(vertical = 4.dp),
     ) {
         navEntries.forEachIndexed { i, e ->
             val sel = vm.tab == i
             Column(
                 Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                    .background(if (sel) Color(0x448B5CF6) else Color.Transparent)
+                    .background(if (sel) tc(0x448B5CF6) else Color.Transparent)
                     .clickable { vm.selectTab(i) }
                     .padding(vertical = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -341,7 +350,7 @@ fun NavRail(vm: AppViewModel) {
     val entries = navEntries
     Column(
         Modifier.width(104.dp).fillMaxHeight()
-            .background(Brush.verticalGradient(listOf(Color(0x552A1850), Color(0x330B0614))))
+            .background(Brush.verticalGradient(listOf(tc(0x552A1850), tc(0x330B0614))))
             .padding(vertical = 14.dp, horizontal = 8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -357,7 +366,7 @@ fun NavRail(vm: AppViewModel) {
                         .background(
                             when {
                                 f -> C.surfaceHi
-                                sel -> Color(0x558B5CF6)
+                                sel -> tc(0x558B5CF6)
                                 else -> Color.Transparent
                             },
                         )
@@ -409,7 +418,7 @@ fun SetupCard(vm: AppViewModel) {
     if (kinds.all { vm.stateOf(it) == LoadState.DONE }) return
     Column(
         Modifier.fillMaxWidth().padding(if (isCompact()) 14.dp else 28.dp).clip(RoundedCornerShape(20.dp))
-            .background(Color(0x33000000)).padding(if (isCompact()) 16.dp else 24.dp),
+            .background(tc(0x33000000)).padding(if (isCompact()) 16.dp else 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         RText(t("setup_title"), if (isCompact()) 20 else 28, C.text, bold = true)
@@ -449,7 +458,7 @@ fun HeroBanner(vm: AppViewModel, item: Item) {
         Img(bg, Modifier.fillMaxSize(), w = 600, h = 340)
         Box(
             Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(listOf(Color(0xF00B0614), Color(0x990B0614), Color(0x220B0614))),
+                Brush.horizontalGradient(listOf(tc(0xF00B0614), tc(0x990B0614), tc(0x220B0614))),
             ),
         )
         Box(
@@ -785,7 +794,7 @@ fun SettingsTab(vm: AppViewModel) {
       }
       Column(
         Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState())
-            .clip(RoundedCornerShape(20.dp)).background(Color(0x661C1033)).padding(if (isCompact()) 14.dp else 28.dp),
+            .clip(RoundedCornerShape(20.dp)).background(tc(0x661C1033)).padding(if (isCompact()) 14.dp else 28.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
       ) {
 
@@ -829,6 +838,16 @@ fun SettingsTab(vm: AppViewModel) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Chip("العربية", vm.lang == "ar") { vm.changeLang("ar") }
             Chip("English", vm.lang == "en") { vm.changeLang("en") }
+        }
+
+        RText(if (ar) "الثيم" else "Theme", 22, C.primaryLight, bold = true)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip("Ayham Original", ThemeState.id == Themes.ORIGINAL) { vm.changeTheme(Themes.ORIGINAL) }
+            Chip("FC Barcelona", ThemeState.id == Themes.BARCELONA) { vm.changeTheme(Themes.BARCELONA) }
+        }
+        ThemeState.palette.tagline?.let { tl ->
+            RText(tl, 20, C.primaryLight, bold = true)
+            ThemeState.palette.taglineSub?.let { BodyText(it, 15, C.textDim) }
         }
 
         RText(t("live_layout"), 22, C.primaryLight, bold = true)

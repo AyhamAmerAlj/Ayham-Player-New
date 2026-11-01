@@ -17,6 +17,11 @@ class Store(ctx: Context) {
         }.apply()
     }
 
+    /** الثيم المختار: original أو barcelona. */
+    var appTheme: String
+        get() = sp.getString("app_theme", "original") ?: "original"
+        set(v) { sp.edit().putString("app_theme", v).apply() }
+
     var lang: String
         get() = sp.getString("lang", "ar") ?: "ar"
         set(v) { sp.edit().putString("lang", v).apply() }

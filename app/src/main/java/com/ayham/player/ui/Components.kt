@@ -111,7 +111,7 @@ fun PosterCard(
     Focusable(modifier = modifier.width(ww).height(hh), shape = shape, focusScale = 1.06f, onClick = onClick) { f ->
         Box(
             Modifier.fillMaxSize().clip(shape).background(C.surface)
-                .then(if (f) Modifier.border(2.5.dp, Brush.horizontalGradient(listOf(Color(0xFF8B5CF6), Color(0xFFD946EF))), shape) else Modifier)
+                .then(if (f) Modifier.border(2.5.dp, Brush.horizontalGradient(listOf(tc(0xFF8B5CF6), tc(0xFFD946EF))), shape) else Modifier)
         ) {
             if (item.image.isBlank()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -125,12 +125,12 @@ fun PosterCard(
                 Box(
                     Modifier.align(Alignment.TopEnd).padding(6.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Color(0xDD0B0616))
-                        .border(0.8.dp, Color(0x55F5C518), RoundedCornerShape(6.dp))
+                        .background(tc(0xDD0B0616))
+                        .border(0.8.dp, tc(0x55F5C518), RoundedCornerShape(6.dp))
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        RText("★", 11, Color(0xFFF5C518), bold = true)
+                        RText("★", 11, tc(0xFFF5C518), bold = true)
                         RText(rating, 11, Color.White, bold = true)
                     }
                 }
@@ -139,7 +139,7 @@ fun PosterCard(
             // طبقة تدرج سينمائي وعنوان العمل أسفل البوستر
             Box(
                 Modifier.align(Alignment.BottomStart).fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xAA05020B), Color(0xF505020B))))
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, tc(0xAA05020B), tc(0xF505020B))))
                     .padding(start = 8.dp, end = 8.dp, top = 22.dp, bottom = 8.dp),
             ) {
                 BodyText(item.name, 12, if (f) Color.White else C.text, bold = true, maxLines = 2)
@@ -177,7 +177,7 @@ fun ChannelCard(
             Modifier.fillMaxSize().clip(shape).background(if (f) C.surfaceHi else C.surface).padding(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)).background(Color(0x22FFFFFF)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)).background(tc(0x22FFFFFF)), contentAlignment = Alignment.Center) {
                 if (item.image.isBlank()) RText(item.name.take(1), 22, C.primaryLight, bold = true)
                 Img(item.image, Modifier.fillMaxSize().padding(4.dp), ContentScale.Fit, 100, 100)
             }
@@ -206,7 +206,7 @@ fun ChannelRow(
             Modifier.fillMaxSize().clip(shape).background(if (f) C.surfaceHi else C.surface).padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.size(46.dp).clip(RoundedCornerShape(8.dp)).background(Color(0x22FFFFFF)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(46.dp).clip(RoundedCornerShape(8.dp)).background(tc(0x22FFFFFF)), contentAlignment = Alignment.Center) {
                 if (item.image.isBlank()) RText(item.name.take(1), 20, C.primaryLight, bold = true)
                 Img(item.image, Modifier.fillMaxSize().padding(3.dp), ContentScale.Fit, 100, 100)
             }
@@ -332,7 +332,7 @@ fun IconBtn(
                     when {
                         f -> C.primary
                         active -> C.surfaceHi
-                        else -> Color(0x66000000)
+                        else -> tc(0x66000000)
                     },
                 ),
             contentAlignment = Alignment.Center,
@@ -431,9 +431,9 @@ fun AyhamField(
             unfocusedTextColor = C.text,
             cursorColor = C.accent,
             focusedBorderColor = if (icon != null) C.accent else C.primary,
-            unfocusedBorderColor = Color(0x44FFFFFF),
-            focusedContainerColor = Color(0x22000000),
-            unfocusedContainerColor = Color(0x11000000),
+            unfocusedBorderColor = tc(0x44FFFFFF),
+            focusedContainerColor = tc(0x22000000),
+            unfocusedContainerColor = tc(0x11000000),
         ),
     )
 }
@@ -442,10 +442,10 @@ fun AyhamField(
 @Composable
 fun ImdbBadge(rating: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box(Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0xFFF5C518)).padding(horizontal = 7.dp, vertical = 2.dp)) {
+        Box(Modifier.clip(RoundedCornerShape(6.dp)).background(tc(0xFFF5C518)).padding(horizontal = 7.dp, vertical = 2.dp)) {
             RText("IMDb", 13, Color.Black, bold = true)
         }
-        RText("★ $rating", 17, Color(0xFFF5C518), bold = true)
+        RText("★ $rating", 17, tc(0xFFF5C518), bold = true)
     }
 }
 
@@ -458,7 +458,7 @@ fun VodRow(item: Item, onClick: () -> Unit) {
             Modifier.fillMaxSize().clip(shape).background(if (f) C.surfaceHi else C.surface).padding(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.width(48.dp).fillMaxHeight().clip(RoundedCornerShape(8.dp)).background(Color(0x22FFFFFF)), contentAlignment = Alignment.Center) {
+            Box(Modifier.width(48.dp).fillMaxHeight().clip(RoundedCornerShape(8.dp)).background(tc(0x22FFFFFF)), contentAlignment = Alignment.Center) {
                 if (item.image.isBlank()) RText(item.name.take(1), 20, C.primaryLight, bold = true)
                 Img(item.image, Modifier.fillMaxSize())
             }

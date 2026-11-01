@@ -58,17 +58,17 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import com.ayham.player.R
 
 object C {
-    val bg = Color(0xFF0B0614)
-    val bg2 = Color(0xFF140A26)
-    val surface = Color(0xFF1C1033)
-    val surfaceHi = Color(0xFF2A1850)
-    val primary = Color(0xFF8B5CF6)
-    val primaryLight: Color get() = if (Season.halloween) Color(0xFFFFB36B) else Color(0xFFC4A1FF)
-    val accent: Color get() = if (Season.halloween) Color(0xFFFF8A1F) else Color(0xFFE879F9)
-    val text = Color(0xFFF5F0FF)
-    val textDim = Color(0xFFA99BC4)
-    val danger = Color(0xFFFF6B8B)
-    val ok = Color(0xFF5EEAD4)
+    val bg: Color get() = ThemeState.palette.bg
+    val bg2: Color get() = ThemeState.palette.bg2
+    val surface: Color get() = ThemeState.palette.surface
+    val surfaceHi: Color get() = ThemeState.palette.surfaceHi
+    val primary: Color get() = ThemeState.palette.primary
+    val primaryLight: Color get() = ThemeState.palette.primaryLight
+    val accent: Color get() = ThemeState.palette.accent
+    val text: Color get() = ThemeState.palette.text
+    val textDim: Color get() = ThemeState.palette.textDim
+    val danger: Color get() = ThemeState.palette.danger
+    val ok: Color get() = ThemeState.palette.ok
 
     val glow: Brush get() = Brush.linearGradient(listOf(primary, accent))
 }
@@ -207,7 +207,7 @@ fun Focusable(
             .graphicsLayer { scaleX = sc; scaleY = sc }
             .then(
                 if (focused) Modifier.border(2.5.dp, C.glow, shape)
-                else Modifier.border(1.dp, Color(0x22FFFFFF), shape)
+                else Modifier.border(1.dp, tc(0x22FFFFFF), shape)
             )
             .onFocusChanged { focused = it.isFocused }
             .then(

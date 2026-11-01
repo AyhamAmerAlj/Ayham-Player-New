@@ -75,8 +75,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val purpleGlow = Brush.linearGradient(listOf(Color(0xFF8B5CF6), Color(0xFFD946EF)))
-private val panelBorder = Color(0x558B5CF6)
+private val purpleGlow: Brush get() = Brush.linearGradient(listOf(tc(0xFF8B5CF6), tc(0xFFD946EF)))
+private val panelBorder: Color get() = tc(0x558B5CF6)
 
 // ============================ الشريط العلوي + الشريط الجانبي (التلفاز) ============================
 private data class SideItem(val tab: Int, val key: String, val icon: ImageVector)
@@ -101,8 +101,8 @@ fun Sidebar(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusRequ
     Column(
         Modifier.width(188.dp).fillMaxHeight()
             .onFocusChanged { onSideFocus(it.hasFocus) }
-            .background(Brush.verticalGradient(listOf(Color(0xFF0B0616), Color(0xFF05020B))))
-            .border(1.dp, Color(0x228B5CF6))
+            .background(Brush.verticalGradient(listOf(tc(0xFF0B0616), tc(0xFF05020B))))
+            .border(1.dp, tc(0x228B5CF6))
             .padding(horizontal = 12.dp, vertical = 12.dp),
     ) {
         Row(Modifier.padding(start = 6.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -111,6 +111,7 @@ fun Sidebar(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusRequ
             Column {
                 RText("Ayham", 16, Color.White, bold = true, maxLines = 1)
                 RText("Player", 16, C.primaryLight, bold = true, maxLines = 1)
+                ThemeState.palette.tagline?.let { RText(it, 11, C.textDim, maxLines = 1) }
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -122,8 +123,8 @@ fun Sidebar(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusRequ
                         Modifier.fillMaxWidth().height(40.dp).clip(shape)
                             .background(
                                 when {
-                                    f -> Brush.horizontalGradient(listOf(Color(0xFF8B5CF6), Color(0xFF6D28D9)))
-                                    sel -> Brush.horizontalGradient(listOf(Color(0xAA7C3AED), Color(0x553B1A7A)))
+                                    f -> Brush.horizontalGradient(listOf(tc(0xFF8B5CF6), tc(0xFF6D28D9)))
+                                    sel -> Brush.horizontalGradient(listOf(tc(0xAA7C3AED), tc(0x553B1A7A)))
                                     else -> Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))
                                 },
                             )
@@ -162,7 +163,7 @@ fun TopBar(vm: AppViewModel) {
         Focusable(Modifier.weight(1f).widthIn(max = 640.dp), shape, 1.02f, onClick = { vm.selectTab(4) }) { f ->
             Row(
                 Modifier.fillMaxWidth().height(42.dp).clip(shape)
-                    .background(Color(0xFF120A24))
+                    .background(tc(0xFF120A24))
                     .border(1.5.dp, if (f) C.primary else panelBorder, shape)
                     .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -175,7 +176,7 @@ fun TopBar(vm: AppViewModel) {
         Spacer(Modifier.weight(0.2f))
         Focusable(shape = RoundedCornerShape(24.dp), focusScale = 1.05f, onClick = { vm.selectTab(6) }) { f ->
             Row(
-                Modifier.clip(RoundedCornerShape(24.dp)).background(if (f) Color(0x558B5CF6) else Color.Transparent).padding(horizontal = 8.dp, vertical = 3.dp),
+                Modifier.clip(RoundedCornerShape(24.dp)).background(if (f) tc(0x558B5CF6) else Color.Transparent).padding(horizontal = 8.dp, vertical = 3.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -193,7 +194,7 @@ private fun TopIcon(icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
     Focusable(shape = CircleShape, focusScale = 1.1f, onClick = onClick) { f ->
         Box(
             Modifier.size(38.dp).clip(CircleShape)
-                .background(if (f) C.primary else if (selected) Color(0x668B5CF6) else Color.Transparent),
+                .background(if (f) C.primary else if (selected) tc(0x668B5CF6) else Color.Transparent),
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, null, tint = Color.White, modifier = Modifier.size(24.dp))
@@ -231,18 +232,18 @@ fun FeaturedBanner(vm: AppViewModel, items: List<Item>) {
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Box(
             Modifier.fillMaxWidth().padding(horizontal = pad).height(h).clip(shape)
-                .background(Color(0xFF0E0820)).border(1.5.dp, panelBorder, shape),
+                .background(tc(0xFF0E0820)).border(1.5.dp, panelBorder, shape),
         ) {
             val bg = details?.backdrop.orEmpty().ifEmpty { item.image }
             Img(bg, Modifier.fillMaxSize(), w = 960, h = 540)
             Box(
                 Modifier.fillMaxSize().background(
-                    Brush.horizontalGradient(listOf(Color(0xF8080414), Color(0xDD080414), Color(0x88080414), Color(0x11080414))),
+                    Brush.horizontalGradient(listOf(tc(0xF8080414), tc(0xDD080414), tc(0x88080414), tc(0x11080414))),
                 ),
             )
             Box(
                 Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(colorStops = arrayOf(0.6f to Color.Transparent, 1f to Color(0xEE080414))),
+                    Brush.verticalGradient(colorStops = arrayOf(0.6f to Color.Transparent, 1f to tc(0xEE080414))),
                 ),
             )
             Column(
@@ -251,18 +252,18 @@ fun FeaturedBanner(vm: AppViewModel, items: List<Item>) {
             ) {
                 // شارات النوع والجودة
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFF6D28D9)).padding(horizontal = 12.dp, vertical = 3.dp)) {
+                    Box(Modifier.clip(RoundedCornerShape(8.dp)).background(tc(0xFF6D28D9)).padding(horizontal = 12.dp, vertical = 3.dp)) {
                         RText(t(if (item.kind == Kind.SERIES) "series" else "movies"), 13, Color.White, bold = true)
                     }
-                    QualityPill("4K UHD", Color(0xFF8B5CF6))
+                    QualityPill("4K UHD", tc(0xFF8B5CF6))
                     val r = imdb
                     if (r != null) {
                         ImdbBadge(r)
                     } else {
                         val localR = (details?.rating?.takeIf { it.isNotBlank() && it != "0" } ?: item.rating.takeIf { it.isNotBlank() && it != "0" })
                         if (localR != null) {
-                            Box(Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0x33F5C518)).border(0.8.dp, Color(0x88F5C518), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 2.dp)) {
-                                RText("★ $localR", 13, Color(0xFFF5C518), bold = true)
+                            Box(Modifier.clip(RoundedCornerShape(6.dp)).background(tc(0x33F5C518)).border(0.8.dp, tc(0x88F5C518), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 2.dp)) {
+                                RText("★ $localR", 13, tc(0xFFF5C518), bold = true)
                             }
                         }
                     }
@@ -276,7 +277,7 @@ fun FeaturedBanner(vm: AppViewModel, items: List<Item>) {
                 if (meta.isNotEmpty()) BodyText(meta, 14, C.primaryLight, bold = true, maxLines = 1)
                 val plot = details?.plot.orEmpty()
                 if (plot.isNotBlank()) {
-                    if (!compact) BodyText(plot, 16, Color(0xFFE5DEF5), maxLines = 3)
+                    if (!compact) BodyText(plot, 16, tc(0xFFE5DEF5), maxLines = 3)
                 } else if (loaded && !compact) {
                     BodyText(t("no_ar_desc"), 15, C.textDim, maxLines = 1)
                 }
@@ -292,10 +293,10 @@ fun FeaturedBanner(vm: AppViewModel, items: List<Item>) {
                             Modifier.clip(RoundedCornerShape(26.dp))
                                 .background(
                                     Brush.horizontalGradient(
-                                        if (f) listOf(Color(0xFF9F67FF), Color(0xFF7C3AED)) else listOf(Color(0xFF7C3AED), Color(0xFF5B21B6)),
+                                        if (f) listOf(tc(0xFF9F67FF), tc(0xFF7C3AED)) else listOf(tc(0xFF7C3AED), tc(0xFF5B21B6)),
                                     ),
                                 )
-                                .border(1.dp, Color(0x88C4A1FF), RoundedCornerShape(26.dp))
+                                .border(1.dp, tc(0x88C4A1FF), RoundedCornerShape(26.dp))
                                 .padding(horizontal = 24.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -307,7 +308,7 @@ fun FeaturedBanner(vm: AppViewModel, items: List<Item>) {
                     Focusable(shape = RoundedCornerShape(26.dp), focusScale = 1.07f, onClick = { vm.openDetail(item) }) { f ->
                         Box(
                             Modifier.clip(RoundedCornerShape(26.dp))
-                                .background(if (f) Color(0x66FFFFFF) else Color(0x33FFFFFF))
+                                .background(if (f) tc(0x66FFFFFF) else tc(0x33FFFFFF))
                                 .padding(horizontal = 22.dp, vertical = 10.dp),
                         ) { RText(t("details"), 18, Color.White, bold = true, maxLines = 1) }
                     }
@@ -315,13 +316,13 @@ fun FeaturedBanner(vm: AppViewModel, items: List<Item>) {
                     Focusable(shape = RoundedCornerShape(26.dp), focusScale = 1.07f, onClick = { vm.toggle("fav", item) }) { f ->
                         Row(
                             Modifier.clip(RoundedCornerShape(26.dp))
-                                .background(if (f) Color(0x558B5CF6) else if (inFav) Color(0x338B5CF6) else Color(0x22FFFFFF))
-                                .border(1.dp, if (inFav) Color(0xFFA78BFA) else Color(0x44FFFFFF), RoundedCornerShape(26.dp))
+                                .background(if (f) tc(0x558B5CF6) else if (inFav) tc(0x338B5CF6) else tc(0x22FFFFFF))
+                                .border(1.dp, if (inFav) tc(0xFFA78BFA) else tc(0x44FFFFFF), RoundedCornerShape(26.dp))
                                 .padding(horizontal = 18.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            Icon(Icons.Filled.Favorite, null, tint = if (inFav) Color(0xFFD946EF) else Color.White, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Filled.Favorite, null, tint = if (inFav) tc(0xFFD946EF) else Color.White, modifier = Modifier.size(18.dp))
                             RText(t("my_list"), 16, Color.White, bold = true, maxLines = 1)
                         }
                     }
@@ -335,7 +336,7 @@ fun FeaturedBanner(vm: AppViewModel, items: List<Item>) {
                     items.indices.forEach { i ->
                         Box(
                             Modifier.height(5.dp).width(if (i == idx) 30.dp else 22.dp).clip(RoundedCornerShape(3.dp))
-                                .background(if (i == idx) Color.White else Color(0x66FFFFFF)),
+                                .background(if (i == idx) Color.White else tc(0x66FFFFFF)),
                         )
                     }
                 }
@@ -355,7 +356,7 @@ private fun HomeTile(label: String, icon: ImageVector, modifier: Modifier, onCli
                 .clip(shape)
                 .background(
                     Brush.linearGradient(
-                        if (f) listOf(Color(0xFF3B1A7A), Color(0xFF1A0B3A)) else listOf(Color(0xFF1B0D3D), Color(0xFF0A0518)),
+                        if (f) listOf(tc(0xFF3B1A7A), tc(0xFF1A0B3A)) else listOf(tc(0xFF1B0D3D), tc(0xFF0A0518)),
                     ),
                 )
                 .border(1.dp, if (f) C.primary else panelBorder, shape),
@@ -410,8 +411,8 @@ fun SquareRow(title: String, items: List<Item>, onItem: (Item) -> Unit) {
                 val shape = RoundedCornerShape(14.dp)
                 Focusable(Modifier.width(h * 1.12f).height(h), shape, 1.07f, onClick = { onItem(item) }) { f ->
                     Box(
-                        Modifier.fillMaxSize().clip(shape).background(Color(0xFF140A2B))
-                            .then(if (f) Modifier.border(2.5.dp, Brush.horizontalGradient(listOf(Color(0xFF8B5CF6), Color(0xFFD946EF))), shape) else Modifier.border(1.dp, Color(0x228B5CF6), shape))
+                        Modifier.fillMaxSize().clip(shape).background(tc(0xFF140A2B))
+                            .then(if (f) Modifier.border(2.5.dp, Brush.horizontalGradient(listOf(tc(0xFF8B5CF6), tc(0xFFD946EF))), shape) else Modifier.border(1.dp, tc(0x228B5CF6), shape))
                     ) {
                         Img(item.image, Modifier.fillMaxSize(), w = 300, h = 300)
 
@@ -419,7 +420,7 @@ fun SquareRow(title: String, items: List<Item>, onItem: (Item) -> Unit) {
                         Box(
                             Modifier.align(Alignment.TopStart).padding(8.dp)
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(Brush.horizontalGradient(listOf(Color(0xFF8B5CF6), Color(0xFF6D28D9))))
+                                .background(Brush.horizontalGradient(listOf(tc(0xFF8B5CF6), tc(0xFF6D28D9))))
                                 .padding(horizontal = 7.dp, vertical = 2.dp)
                         ) {
                             RText("#${idx + 1}", 11, Color.White, bold = true)
@@ -431,12 +432,12 @@ fun SquareRow(title: String, items: List<Item>, onItem: (Item) -> Unit) {
                             Box(
                                 Modifier.align(Alignment.TopEnd).padding(8.dp)
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(Color(0xDD0B0616))
-                                    .border(0.8.dp, Color(0x55F5C518), RoundedCornerShape(6.dp))
+                                    .background(tc(0xDD0B0616))
+                                    .border(0.8.dp, tc(0x55F5C518), RoundedCornerShape(6.dp))
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    RText("★", 11, Color(0xFFF5C518), bold = true)
+                                    RText("★", 11, tc(0xFFF5C518), bold = true)
                                     RText(r, 11, Color.White, bold = true)
                                 }
                             }
@@ -444,7 +445,7 @@ fun SquareRow(title: String, items: List<Item>, onItem: (Item) -> Unit) {
 
                         Box(
                             Modifier.fillMaxSize().background(
-                                Brush.verticalGradient(colorStops = arrayOf(0.55f to Color.Transparent, 1f to Color(0xEE05020B))),
+                                Brush.verticalGradient(colorStops = arrayOf(0.55f to Color.Transparent, 1f to tc(0xEE05020B))),
                             ),
                         )
                         BodyText(
@@ -593,7 +594,7 @@ fun HalloweenBanner() {
     val shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 28.dp)
-            .background(Color(0xFF1A0D06), shape).border(2.dp, C.accent, shape).padding(horizontal = 18.dp, vertical = 12.dp),
+            .background(tc(0xFF1A0D06), shape).border(2.dp, C.accent, shape).padding(horizontal = 18.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -612,7 +613,7 @@ fun TvTopNav(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusReq
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(20_000) } }
     val time = remember(now / 60_000) { SimpleDateFormat("hh:mm a", Locale.ENGLISH).format(Date(now)) }
-    val barBg = Brush.horizontalGradient(listOf(Color(0xCC120A24), Color(0xB30B0616)))
+    val barBg = Brush.horizontalGradient(listOf(tc(0xCC120A24), tc(0xB30B0616)))
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 36.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -622,7 +623,7 @@ fun TvTopNav(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusReq
         Focusable(shape = RoundedCornerShape(30.dp), focusScale = 1.04f, onClick = { vm.selectTab(6) }) { f ->
             Row(
                 Modifier.height(52.dp).clip(RoundedCornerShape(30.dp)).background(barBg)
-                    .border(1.dp, if (f) C.accent else Color(0x338B5CF6), RoundedCornerShape(30.dp)).padding(horizontal = 14.dp),
+                    .border(1.dp, if (f) C.accent else tc(0x338B5CF6), RoundedCornerShape(30.dp)).padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
@@ -634,7 +635,7 @@ fun TvTopNav(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusReq
         // الوسط: أيقونات التنقل
         Row(
             Modifier.height(56.dp).clip(RoundedCornerShape(32.dp)).background(barBg)
-                .border(1.dp, Color(0x338B5CF6), RoundedCornerShape(32.dp)).padding(horizontal = 8.dp),
+                .border(1.dp, tc(0x338B5CF6), RoundedCornerShape(32.dp)).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -644,7 +645,7 @@ fun TvTopNav(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusReq
                 Focusable(if (sel) Modifier.focusRequester(selectedFocus) else Modifier, shape, 1.06f, onClick = { vm.selectTab(si.tab) }) { f ->
                     Row(
                         Modifier.height(42.dp).clip(shape)
-                            .background(if (f) C.primary else if (sel) Color(0x887C3AED) else Color.Transparent)
+                            .background(if (f) C.primary else if (sel) tc(0x887C3AED) else Color.Transparent)
                             .padding(horizontal = if (sel || f) 14.dp else 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -686,35 +687,35 @@ fun TvHero(vm: AppViewModel, items: List<Item>, focusItem: Item? = null) {
         imdb = runCatching { vm.imdbRating(item, details?.year.orEmpty()) }.getOrNull()
     }
     val ar = rememberArabicName(item)
-    Box(Modifier.fillMaxWidth().height(h).background(Color(0xFF0B0614))) {
+    Box(Modifier.fillMaxWidth().height(h).background(tc(0xFF0B0614))) {
         val bg = details?.backdrop.orEmpty().ifEmpty { item.image }
         // تبديل الخلفية بتلاشٍ ناعم عند تغيير العنوان
         Crossfade(targetState = bg, modifier = Modifier.fillMaxSize(), animationSpec = tween(450), label = "heroBg") { url ->
             Img(url, Modifier.fillMaxSize(), w = 1280, h = 720)
         }
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0x660B0614), Color(0x110B0614), Color(0xCC0B0614)))))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color(0x990B0614), 0.22f to Color(0x000B0614), 0.7f to Color(0x000B0614), 1f to Color(0xFF05020B))))
+        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(tc(0x660B0614), tc(0x110B0614), tc(0xCC0B0614)))))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to tc(0x990B0614), 0.22f to tc(0x000B0614), 0.7f to tc(0x000B0614), 1f to tc(0xFF05020B))))
         Column(
             Modifier.align(Alignment.BottomStart).padding(start = 48.dp, bottom = 64.dp).fillMaxWidth(0.52f),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             // الاسم العربي كبير، والاسم الأصلي صغير تحته
             RText(ar ?: item.name, 52, Color.White, bold = true, maxLines = 2, lineHeight = 60)
-            if (ar != null && ar != item.name) RText(item.name, 18, Color(0xFFBDB2D6), maxLines = 1)
+            if (ar != null && ar != item.name) RText(item.name, 18, tc(0xFFBDB2D6), maxLines = 1)
             val meta = listOfNotNull(
                 t(if (item.kind == Kind.SERIES) "series" else "movies"),
                 details?.year?.takeIf { it.isNotBlank() },
                 details?.genre?.takeIf { it.isNotBlank() }?.split(",", "/")?.take(2)?.joinToString(" · ") { it.trim() },
                 details?.duration?.takeIf { it.isNotBlank() },
             ).joinToString("  •  ")
-            BodyText(meta, 16, Color(0xFFD9CCF5), bold = true, maxLines = 1)
+            BodyText(meta, 16, tc(0xFFD9CCF5), bold = true, maxLines = 1)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 imdb?.let { ImdbBadge(it) }
                 (details?.rating?.takeIf { it.isNotBlank() && it != "0" } ?: item.rating.takeIf { it.isNotBlank() && it != "0" })
-                    ?.let { RText("★ $it", 17, Color(0xFFF5C518), bold = true) }
+                    ?.let { RText("★ $it", 17, tc(0xFFF5C518), bold = true) }
             }
             val plot = details?.plot.orEmpty()
-            if (plot.isNotBlank()) BodyText(plot, 17, Color(0xFFE5DEF5), maxLines = 3)
+            if (plot.isNotBlank()) BodyText(plot, 17, tc(0xFFE5DEF5), maxLines = 3)
             Row(
                 Modifier.onFocusChanged { held = it.hasFocus }.padding(top = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -725,8 +726,8 @@ fun TvHero(vm: AppViewModel, items: List<Item>, focusItem: Item? = null) {
                 }) { f ->
                     Row(
                         Modifier.clip(RoundedCornerShape(28.dp))
-                            .background(Brush.horizontalGradient(if (f) listOf(Color(0xFFA855F7), Color(0xFF7C3AED)) else listOf(Color(0xFF8B1FD9), Color(0xFF6D28D9))))
-                            .border(if (f) 2.dp else 1.dp, if (f) Color.White else Color(0x88C4A1FF), RoundedCornerShape(28.dp))
+                            .background(Brush.horizontalGradient(if (f) listOf(tc(0xFFA855F7), tc(0xFF7C3AED)) else listOf(tc(0xFF8B1FD9), tc(0xFF6D28D9))))
+                            .border(if (f) 2.dp else 1.dp, if (f) Color.White else tc(0x88C4A1FF), RoundedCornerShape(28.dp))
                             .padding(horizontal = 30.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -737,7 +738,7 @@ fun TvHero(vm: AppViewModel, items: List<Item>, focusItem: Item? = null) {
                 }
                 Focusable(shape = RoundedCornerShape(28.dp), focusScale = 1.07f, onClick = { vm.openDetail(item) }) { f ->
                     Box(
-                        Modifier.clip(RoundedCornerShape(28.dp)).background(if (f) Color(0x66FFFFFF) else Color(0x33FFFFFF)).padding(horizontal = 24.dp, vertical = 12.dp),
+                        Modifier.clip(RoundedCornerShape(28.dp)).background(if (f) tc(0x66FFFFFF) else tc(0x33FFFFFF)).padding(horizontal = 24.dp, vertical = 12.dp),
                     ) { RText(t("details"), 18, Color.White, bold = true, maxLines = 1) }
                 }
             }
@@ -747,7 +748,7 @@ fun TvHero(vm: AppViewModel, items: List<Item>, focusItem: Item? = null) {
                 items.indices.forEach { i ->
                     Box(
                         Modifier.height(6.dp).width(if (i == idx) 34.dp else 8.dp).clip(RoundedCornerShape(3.dp))
-                            .background(if (i == idx) C.primary else Color(0x88FFFFFF)),
+                            .background(if (i == idx) C.primary else tc(0x88FFFFFF)),
                     )
                 }
             }

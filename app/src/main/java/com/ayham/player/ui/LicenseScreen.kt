@@ -44,14 +44,14 @@ fun LicenseScreen() {
     LaunchedEffect(Unit) { while (true) { delay(15_000); if (LicenseManager.hasSaved) LicenseManager.retry() } }
     val go: () -> Unit = { scope.launch { LicenseManager.activate(code) } }
     Box(
-        Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Color(0xFF2A1260), C.bg), radius = 1300f)),
+        Modifier.fillMaxSize().background(Brush.radialGradient(listOf(tc(0xFF2A1260), C.bg), radius = 1300f)),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             Modifier.fillMaxWidth(0.9f).padding(vertical = 16.dp)
                 .then(if (tv) Modifier.fillMaxWidth(0.5f) else Modifier)
                 .verticalScroll(rememberScrollState()).imePadding()
-                .clip(RoundedCornerShape(24.dp)).background(Color(0x33000000)).padding(24.dp),
+                .clip(RoundedCornerShape(24.dp)).background(tc(0x33000000)).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {

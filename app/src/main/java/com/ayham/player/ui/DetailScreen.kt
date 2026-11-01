@@ -82,11 +82,11 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
         Img(bg, Modifier.fillMaxSize(), w = 960, h = 540)
         if (compact) Box(
             Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(listOf(Color(0xF20B0614), Color(0xE60B0614), Color(0xAA0B0614))),
+                Brush.horizontalGradient(listOf(tc(0xF20B0614), tc(0xE60B0614), tc(0xAA0B0614))),
             ),
         ) else {
-            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0x990B0614), Color(0x330B0614), Color(0xB30B0614)))))
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.25f to Color(0x000B0614), 0.62f to Color(0xE60B0614), 1f to Color(0xFF0B0614))))
+            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(tc(0x990B0614), tc(0x330B0614), tc(0xB30B0614)))))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.25f to tc(0x000B0614), 0.62f to tc(0xE60B0614), 1f to tc(0xFF0B0614))))
         }
 
         LazyColumn(
@@ -180,10 +180,10 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
                 onDismissRequest = { showVersions = false },
                 properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
             ) {
-                Box(Modifier.fillMaxSize().background(Color(0xCC000000)), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize().background(tc(0xCC000000)), contentAlignment = Alignment.Center) {
                     Column(
                         Modifier.fillMaxWidth(if (compact) 0.94f else 0.55f).fillMaxHeight(0.88f).clip(RoundedCornerShape(22.dp))
-                            .background(Color(0xFF120A24)).padding(22.dp),
+                            .background(tc(0xFF120A24)).padding(22.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         RText(com.ayham.player.data.Versions.core(item.name).replaceFirstChar { it.uppercase() }, 24, C.text, bold = true, maxLines = 1)
@@ -271,14 +271,14 @@ private fun EpisodeRow(vm: AppViewModel, series: Item, eps: List<Episode>, i: In
     val done = frac > 0.92f
     Focusable(Modifier.fillMaxWidth(), shape, 1.02f, onClick = { vm.playEpisodes(series, eps, i) }) { f ->
         Row(
-            Modifier.fillMaxWidth().clip(shape).background(if (f) C.surfaceHi else Color(0xCC1C1033)).padding(10.dp),
+            Modifier.fillMaxWidth().clip(shape).background(if (f) C.surfaceHi else tc(0xCC1C1033)).padding(10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Box(Modifier.width(if (isCompact()) 110.dp else 150.dp).height(if (isCompact()) 62.dp else 84.dp).clip(RoundedCornerShape(8.dp)).background(Color(0x22FFFFFF))) {
+            Box(Modifier.width(if (isCompact()) 110.dp else 150.dp).height(if (isCompact()) 62.dp else 84.dp).clip(RoundedCornerShape(8.dp)).background(tc(0x22FFFFFF))) {
                 Img(ep.image.ifEmpty { series.image }, Modifier.fillMaxSize(), w = 320, h = 180)
                 if (frac > 0f && !done) {
-                    Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) {
+                    Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(tc(0x66000000))) {
                         Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(C.accent))
                     }
                 }
@@ -307,11 +307,11 @@ private fun EpisodeCard(vm: AppViewModel, series: Item, eps: List<Episode>, i: I
                     .then(if (f) Modifier.border(2.dp, C.accent, shape) else Modifier),
             ) {
                 Img(ep.image.ifEmpty { series.image }, Modifier.fillMaxSize(), w = 400, h = 225)
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to Color(0x00000000), 1f to Color(0xCC000000))))
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to tc(0x00000000), 1f to tc(0xCC000000))))
                 BodyText("${t("episode")} ${ep.num}", 13, Color.White, bold = true, modifier = Modifier.align(Alignment.BottomStart).padding(10.dp, 10.dp, 10.dp, 12.dp))
                 if (done) Icon(Icons.Filled.CheckCircle, null, tint = C.ok, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(24.dp))
                 if (frac > 0f && !done) {
-                    Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color(0x66000000))) {
+                    Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(tc(0x66000000))) {
                         Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(C.accent))
                     }
                 }

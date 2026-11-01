@@ -24,6 +24,8 @@ import com.ayham.player.ui.LoginScreen
 import com.ayham.player.ui.MainScreen
 import com.ayham.player.ui.PlayerScreen
 import com.ayham.player.ui.SplashScreen
+import com.ayham.player.ui.ThemeState
+import androidx.compose.ui.graphics.toArgb
 
 class MainActivity : ComponentActivity() {
     private val vm: AppViewModel by viewModels()
@@ -34,6 +36,9 @@ class MainActivity : ComponentActivity() {
         requestedOrientation = if (com.ayham.player.ui.isTvDevice(this))
             android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_USER
+        // الثيم المحفوظ يُطبّق قبل أول رسم للواجهة
+        ThemeState.select(com.ayham.player.data.Store(this).appTheme)
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(ThemeState.palette.bg.toArgb()))
         LicenseManager.init(this)
         lifecycleScope.launch { LicenseManager.start(); LicenseManager.heartbeat() }
         setContent {
