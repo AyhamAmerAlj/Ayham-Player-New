@@ -53,3 +53,11 @@ eq((await call('/v1/news', {})).items[0].title, 'T2', 'news edit');
 eq((await call('/admin/api', { action: 'news_save', title: 'x' }, A)).err, 'missing', 'needs version');
 await call('/admin/api', { action: 'news_delete', id: ns.id }, A);
 eq((await call('/admin/api', { action: 'news_list' }, A)).items.length, 0, 'news deleted');
+
+{
+  const wc = (await call('/admin/api', { action: 'create', note: 'web ahmad', max: 3 }, { 'x-admin-key': 'k' })).code;
+  eq((await call('/v1/check', { code: wc, device: 'tv' })).web, true, 'web flag returned');
+  eq((await call('/v1/check', { code: wc, device: 'wsite' })).ok, true, 'web code: 2nd device at the same time ok');
+  eq((await call('/v1/check', { code: wc, device: 'phone' })).ok, true, '3rd device at the same time ok');
+  eq((await call('/v1/check', { code: wc, device: 'fourth' })).err, 'devices_full', '4th device blocked');
+}

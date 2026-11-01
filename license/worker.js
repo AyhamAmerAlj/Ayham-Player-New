@@ -31,17 +31,19 @@ export async function check(st, body) {
   if (r.revoked) return { ok: false, err: 'revoked' };
   const t = now();
   r.devices = r.devices || {};
+  // أكواد الموقع (web في الملاحظة): حتى 3 أجهزة تعمل بنفس الوقت (تلفاز + موقع + ...)
+  const isWeb = /\bweb\b/i.test(r.note || '');
   if (!r.devices[dev]) {
-    if (Object.keys(r.devices).length >= (r.max || 2)) return { ok: false, err: 'devices_full' };
+    if (Object.keys(r.devices).length >= (isWeb ? Math.max(3, r.max || 3) : (r.max || 2))) return { ok: false, err: 'devices_full' };
     r.devices[dev] = { name: String(body.name || '').slice(0, 40), first: t, last: t };
   }
-  if (r.active && r.active.d !== dev && t - r.active.t < ACTIVE_MS) return { ok: false, err: 'busy' };
+  if (!isWeb && r.active && r.active.d !== dev && t - r.active.t < ACTIVE_MS) return { ok: false, err: 'busy' };
   r.active = { d: dev, t };
   r.devices[dev].last = t;
   if (body.name) r.devices[dev].name = String(body.name).slice(0, 40);
   await putRec(st, code, r);
   // web: الكود مسموح له بدخول موقع الويب (فقط إذا كتبتَ كلمة web في ملاحظة الكود)
-  return { ok: true, web: /\bweb\b/i.test(r.note || '') };
+  return { ok: true, web: isWeb };
 }
 
 export async function release(st, body) {
