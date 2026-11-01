@@ -69,3 +69,12 @@ console.log(pass + ' tests passed');
   await ok('code without server and no fallback -> no_server', async () => { const r = await L('FFFF-FFFF-FFFF'); assert.equal(r.status, 403); assert.equal((await r.json()).err, 'no_server'); });
 }
 console.log('tests passed (with license):', pass);
+
+await ok('403 retries with other user-agents; persistent 403 -> 502 with status', async () => {
+  const uas = []; const f = async (u, init) => { uas.push(init.headers.get('user-agent')); return uas.length < 3 ? new Response('no', { status: 403 }) : new Response('{"user_info":{"auth":1}}', { headers: { 'content-type': 'application/json' } }); };
+  const t = await login(); const r = await handle(new Request('https://w/x', { headers: { cookie: 'ap_s=' + encodeURIComponent(t) } }), env, f);
+  assert.equal(r.status, 200); assert.equal(uas[0], 'AyhamPlayer/1.0'); assert.match(uas[2], /okhttp/);
+  const f2 = async () => new Response('no', { status: 403 });
+  const r2 = await handle(new Request('https://w/x', { headers: { cookie: 'ap_s=' + encodeURIComponent(t) } }), env, f2);
+  assert.equal(r2.status, 502); assert.equal((await r2.json()).status, 403);
+});

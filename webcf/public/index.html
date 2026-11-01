@@ -167,7 +167,7 @@ async function api(action,extra){
   try{r=await fetch('/x'+(action?'?action='+action+(extra||''):''))}catch(e){const x=new Error('net');x.code='net';throw x}
   if(r.status===401){const x=new Error('auth');x.code='auth';throw x}
   if(r.status===503){const x=new Error('cfg');x.code='cfg';throw x}
-  if(r.status===502){const x=new Error('upstream');x.code='upstream';throw x}
+  if(r.status===502){const x=new Error('upstream');x.code='upstream';try{x.st=(await r.json()).status}catch(e){}throw x}
   if(!r.ok){const x=new Error('http'+r.status);x.code='http';throw x}
   try{return await r.json()}catch(e){const x=new Error('json');x.code='json';throw x}
 }
@@ -175,7 +175,7 @@ function errText(e){
   switch(e&&e.code){
     case'auth':return'انتهت الجلسة. ادخل الكود من جديد.';
     case'cfg':return'الموقع غير مهيّأ بعد (أسرار الخادم ناقصة).';
-    case'upstream':return'تعذّر الوصول للسيرفر عبر الوسيط. قد يمنع مزوّدك عناوين Cloudflare، أو السيرفر مطفأ.';
+    case'upstream':return e.st===403||e.st===401||e.st===451?'السيرفر رفض الاتصال من خوادم الموقع (HTTP '+e.st+'). غالبًا المزوّد يحجب عناوين Cloudflare. جرّب سيرفرًا آخر أو اطلب منه السماح.':e.st?'السيرفر ردّ بخطأ (HTTP '+e.st+'). تحقق من الرابط والمنفذ.':'تعذّر الوصول للسيرفر عبر الوسيط. قد يمنع مزوّدك عناوين Cloudflare، أو السيرفر مطفأ.';
     case'net':return'لا يوجد اتصال بالإنترنت.';
     case'json':return'ردّ السيرفر غير مفهوم.';
     default:return'تعذّر الاتصال بالسيرفر ('+esc(e&&e.message)+')';

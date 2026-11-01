@@ -85,19 +85,26 @@ export async function rewrite(env, text, base) {
   return out.join('\n');
 }
 
-const UA = 'Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
+// نجرّب أولًا نفس هوية التطبيق (تعمل مع سيرفرك)، وإن رُفضنا (403/401/406) نجرّب هويات أخرى مألوفة للسيرفرات.
+const UAS = ['AyhamPlayer/1.0', 'VLC/3.0.20 LibVLC/3.0.20', 'okhttp/4.12.0', 'Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36'];
 
 // يجلب الرابط مع تتبّع التحويلات يدويًا، ويعيد كتابة قوائم m3u8 ليمر كل شيء عبر الوسيط.
 export async function fetchUpstream(env, req, target, fetcher = fetch, opts = {}) {
   let cur;
   try { cur = new URL(target); } catch (e) { return json({ ok: false, err: 'bad_url' }, 400); }
   if (!/^https?:$/.test(cur.protocol) || badHost(cur.hostname)) return json({ ok: false, err: 'bad_url' }, 400);
-  const headers = new Headers({ 'user-agent': UA, accept: '*/*' });
+  const headers = new Headers({ 'user-agent': UAS[0], accept: '*/*' });
   const range = req.headers.get('range');
   if (range) headers.set('range', range);
   let res = null;
   for (let i = 0; i < 6; i++) {
-    try { res = await fetcher(cur.toString(), { method: req.method, headers, redirect: 'manual' }); } catch (e) { return json({ ok: false, err: 'upstream' }, 502); }
+    try {
+      res = await fetcher(cur.toString(), { method: req.method, headers, redirect: 'manual' });
+      for (let u = 1; i === 0 && u < UAS.length && [401, 403, 406].includes(res.status); u++) { // رفض بسبب الهوية؟ جرّب هوية أخرى
+        headers.set('user-agent', UAS[u]);
+        res = await fetcher(cur.toString(), { method: req.method, headers, redirect: 'manual' });
+      }
+    } catch (e) { return json({ ok: false, err: 'upstream' }, 502); }
     if (res.status >= 300 && res.status < 400 && res.headers.get('location')) {
       try { cur = new URL(res.headers.get('location'), cur); } catch (e) { break; }
       if (!/^https?:$/.test(cur.protocol) || badHost(cur.hostname)) return json({ ok: false, err: 'bad_url' }, 400);
@@ -171,6 +178,7 @@ export async function handle(req, env, fetcher = fetch) {
     for (const k of ['category_id', 'vod_id', 'series_id']) { const v = u.searchParams.get(k); if (v && /^[0-9A-Za-z_-]{1,20}$/.test(v)) q.set(k, v); }
     const target = acct.url + '/player_api.php?username=' + encodeURIComponent(acct.user) + '&password=' + encodeURIComponent(acct.pass) + (action ? '&action=' + action : '') + (q.toString() ? '&' + q.toString() : '');
     const r = await fetchUpstream(env, req, target, fetcher);
+    if (r.status >= 400 && r.status !== 401) return json({ ok: false, err: 'upstream', status: r.status }, 502);
     if (!action) {
       // اختبار الدخول: نرجع فقط حالة الاشتراك بدون كلمة المرور
       if (r.status !== 200) return r;
