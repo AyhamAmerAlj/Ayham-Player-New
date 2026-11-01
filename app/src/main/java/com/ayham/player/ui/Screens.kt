@@ -859,6 +859,12 @@ fun SettingsTab(vm: AppViewModel) {
             ThemeState.palette.taglineSub?.let { BodyText(it, 15, C.textDim) }
         }
 
+        RText(if (ar) "مباراة برشلونة القادمة" else "Next Barcelona match", 22, C.primaryLight, bold = true)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip(if (ar) "إظهار في الرئيسية" else "Show on Home", vm.matchCard || ThemeState.id == Themes.BARCELONA) { vm.changeMatchCard(!vm.matchCard) }
+        }
+        if (ThemeState.id == Themes.BARCELONA) BodyText(if (ar) "تظهر دائمًا مع ثيم برشلونة" else "Always shown with the Barcelona theme", 13, C.textDim)
+
         RText(t("live_layout"), 22, C.primaryLight, bold = true)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Chip(t("layout_grid"), vm.liveLayout == "grid") { vm.changeLiveLayout("grid") }

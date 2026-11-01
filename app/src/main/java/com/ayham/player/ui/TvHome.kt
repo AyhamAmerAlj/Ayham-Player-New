@@ -132,7 +132,7 @@ fun TvHome(
             Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(g.copy(alpha = 0.30f), Color.Transparent), center = Offset(0f, 0f), radius = 1100f)))
             Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(C.primary.copy(alpha = 0.30f), Color.Transparent), center = Offset(2600f, 1500f), radius = 1300f)))
         }
-        if (ThemeState.id == Themes.BARCELONA) {
+        if (ThemeState.id == Themes.BARCELONA || vm.matchCard) {
             Box(Modifier.align(Alignment.TopEnd).padding(top = if (small) 80.dp else 96.dp, end = 44.dp)) { NextMatchCard(vm, small) }
         }
         Column(Modifier.fillMaxSize().padding(top = if (small) 76.dp else 88.dp, bottom = 10.dp)) {

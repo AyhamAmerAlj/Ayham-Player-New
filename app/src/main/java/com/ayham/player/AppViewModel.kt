@@ -110,6 +110,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var maxRes by mutableStateOf(store.maxRes)
         private set
     var liveLayout by mutableStateOf(store.liveLayout)
+    var matchCard by mutableStateOf(store.matchCard)
+        private set
+    fun changeMatchCard(v: Boolean) { matchCard = v; store.matchCard = v }
     var vodLayout by mutableStateOf(store.vodLayout)
         private set
 

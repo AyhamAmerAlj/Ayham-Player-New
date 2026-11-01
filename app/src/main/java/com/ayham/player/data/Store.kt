@@ -41,6 +41,11 @@ class Store(ctx: Context) {
         get() = sp.getString("live_layout", "grid") ?: "grid"
         set(v) { sp.edit().putString("live_layout", v).apply() }
 
+    /** بطاقة المباراة القادمة لبرشلونة في الرئيسية (تظهر دائمًا في ثيم برشلونة). */
+    var matchCard: Boolean
+        get() = sp.getBoolean("match_card", false)
+        set(v) { sp.edit().putBoolean("match_card", v).apply() }
+
     var liveFormat: String
         get() = sp.getString("live_fmt", "m3u8") ?: "m3u8"
         set(v) { sp.edit().putString("live_fmt", v).apply() }
