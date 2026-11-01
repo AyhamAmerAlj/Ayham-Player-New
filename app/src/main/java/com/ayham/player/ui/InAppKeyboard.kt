@@ -47,6 +47,10 @@ class KbTarget(
 class KeyboardHost {
     var target: KbTarget? by mutableStateOf(null)
     var last: KbTarget? = null
+    /** هل الحقل النشط له التركيز؟ يُستخدم لإغلاق اللوحة عند الانتقال لعنصر آخر. */
+    var fieldFocused: Boolean by mutableStateOf(false)
+    /** هل أحد مفاتيح اللوحة له التركيز؟ */
+    var keysFocused: Boolean by mutableStateOf(false)
 
     fun open(t: KbTarget) {
         last = t
@@ -55,11 +59,13 @@ class KeyboardHost {
 
     fun dismiss() {
         target = null
+        keysFocused = false
     }
 
     fun done() {
         val t = target
         target = null
+        keysFocused = false
         t?.onDone()
     }
 }
@@ -123,6 +129,7 @@ fun InAppKeyboard(host: KeyboardHost, appLang: String, target: KbTarget) {
         Column(
             Modifier
                 .fillMaxWidth()
+                .onFocusChanged { host.keysFocused = it.hasFocus }
                 .background(C.bg2)
                 .padding(start = 6.dp, end = 6.dp, top = 8.dp, bottom = 10.dp),
         ) {
@@ -141,33 +148,36 @@ fun InAppKeyboard(host: KeyboardHost, appLang: String, target: KbTarget) {
                 }
             }
 
-            Row(
-                Modifier.fillMaxWidth().height(KbKeyHeight),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                KbKey(
-                    label = if (symbols) (if (letters == KbLetters.AR) "أ ب ج" else "ABC") else "123",
-                    modifier = Modifier.weight(1.4f),
-                ) { symbols = !symbols }
-                KbKey(
-                    label = if (letters == KbLetters.AR) "EN" else "عربي",
-                    modifier = Modifier.weight(1.2f),
+            // الصف السفلي بترتيب ثابت من اليمين: 123 ثم ⌫ (يمين) ثم . ومسافة ثم عربي/EN ثم تم
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                Row(
+                    Modifier.fillMaxWidth().height(KbKeyHeight),
+                    horizontalArrangement = Arrangement.Center,
                 ) {
-                    letters = if (letters == KbLetters.AR) KbLetters.EN else KbLetters.AR
-                    symbols = false
-                    shift = false
+                    KbKey(
+                        label = if (symbols) (if (letters == KbLetters.AR) "أ ب ج" else "ABC") else "123",
+                        modifier = Modifier.weight(1.4f),
+                    ) { symbols = !symbols }
+                    KbKey("⌫", Modifier.weight(1.4f)) { backspace() }
+                    KbKey(".", Modifier.weight(1f)) { type(".") }
+                    KbKey(
+                        label = if (letters == KbLetters.AR) "مسافة" else "space",
+                        modifier = Modifier.weight(4f),
+                    ) { type(" ") }
+                    KbKey(
+                        label = if (letters == KbLetters.AR) "EN" else "عربي",
+                        modifier = Modifier.weight(1.2f),
+                    ) {
+                        letters = if (letters == KbLetters.AR) KbLetters.EN else KbLetters.AR
+                        symbols = false
+                        shift = false
+                    }
+                    KbKey(
+                        label = if (letters == KbLetters.AR) "تم" else "Done",
+                        modifier = Modifier.weight(1.8f),
+                        primary = true,
+                    ) { host.done() }
                 }
-                KbKey(".", Modifier.weight(1f)) { type(".") }
-                KbKey(
-                    label = if (letters == KbLetters.AR) "مسافة" else "space",
-                    modifier = Modifier.weight(4f),
-                ) { type(" ") }
-                KbKey("⌫", Modifier.weight(1.4f)) { backspace() }
-                KbKey(
-                    label = if (letters == KbLetters.AR) "تم" else "Done",
-                    modifier = Modifier.weight(1.8f),
-                    primary = true,
-                ) { host.done() }
             }
         }
     }

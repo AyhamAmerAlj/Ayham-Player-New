@@ -4,6 +4,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.focus.onFocusChanged
 
 import androidx.compose.foundation.background
@@ -389,7 +392,16 @@ fun AyhamField(
         readOnly = host != null,
         modifier = modifier
             .fillMaxWidth()
-            .onFocusChanged { if (it.isFocused && host != null) open() }
+            .onFocusChanged {
+                host?.fieldFocused = it.isFocused
+                if (it.isFocused && host != null) open()
+            }
+            .onPreviewKeyEvent { ev ->
+                if (host != null && ev.type == KeyEventType.KeyUp && (ev.key == Key.DirectionCenter || ev.key == Key.Enter)) {
+                    open()
+                    true
+                } else false
+            }
             .then(
                 if (host == null) Modifier
                 else Modifier.pointerInput(host) {

@@ -16,6 +16,7 @@ import com.ayham.player.data.LicState
 import com.ayham.player.data.LicenseManager
 import kotlinx.coroutines.launch
 import com.ayham.player.ui.LicenseScreen
+import com.ayham.player.ui.LocalKeyboardHost
 import com.ayham.player.ui.AyhamTheme
 import com.ayham.player.ui.DetailScreen
 import com.ayham.player.ui.LoadingScreen
@@ -72,9 +73,16 @@ private fun Root(vm: AppViewModel) {
 @Composable
 private fun Ready(vm: AppViewModel) {
     val holder = rememberSaveableStateHolder()
-    BackHandler(enabled = vm.stack.isNotEmpty() || vm.tab != 0) { vm.pop() }
+    val kb = LocalKeyboardHost.current
+    // زر الرجوع: أولاً يغلق الكيبورد، ثم يرجع خطوة، ولا يخرج من التطبيق إلا من الرئيسية
+    BackHandler(enabled = kb?.target != null || vm.stack.isNotEmpty() || vm.tab != 0) {
+        val k = kb
+        if (k != null && k.target != null) k.dismiss() else vm.pop()
+    }
 
     val top = vm.stack.lastOrNull()
+    // الانتقال لشاشة أو تبويب آخر يغلق الكيبورد حتى لا يبقى فوق الشاشة الجديدة
+    androidx.compose.runtime.LaunchedEffect(top, vm.tab) { kb?.dismiss() }
     androidx.compose.runtime.LaunchedEffect(Unit) { vm.checkUpdate(false) }
     // ما الجديد؟: جلب مرة واحدة بعد الفتح بخيط خلفي (لا يؤثر على السرعة)
     androidx.compose.runtime.LaunchedEffect(Unit) {

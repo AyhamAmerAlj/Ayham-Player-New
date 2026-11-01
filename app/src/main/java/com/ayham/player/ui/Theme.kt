@@ -38,6 +38,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -84,6 +89,13 @@ fun t(key: String): String = Strings.get(LocalLang.current, key)
 fun AyhamTheme(lang: String, content: @Composable () -> Unit) {
     val dir = if (lang == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr
     val host = remember { KeyboardHost() }
+    // الكيبورد يُغلق عندما يترك التركيز الحقل ولا يذهب لمفاتيحه (مثلاً نزول لنتائج البحث بالريموت)
+    LaunchedEffect(host.target, host.fieldFocused, host.keysFocused) {
+        if (host.target != null && !host.fieldFocused && !host.keysFocused) {
+            delay(150)
+            if (!host.fieldFocused && !host.keysFocused) host.dismiss()
+        }
+    }
     MaterialTheme(
         colorScheme = darkColorScheme(
             primary = C.primary,
@@ -101,7 +113,17 @@ fun AyhamTheme(lang: String, content: @Composable () -> Unit) {
             // زر الرجوع يغلق الكيبورد أولاً قبل أي شيء آخر
             BackHandler(enabled = host.target != null) { host.dismiss() }
             Column(Modifier.fillMaxSize().background(C.bg)) {
-                Box(Modifier.weight(1f).fillMaxWidth()) { content() }
+                Box(
+                    Modifier.weight(1f).fillMaxWidth().pointerInput(host) {
+                        // لمسة خارج الكيبورد تغلقه (الحقول تعيد فتحه من مستمعها الخاص)
+                        awaitPointerEventScope {
+                            while (true) {
+                                val ev = awaitPointerEvent(PointerEventPass.Initial)
+                                if (ev.type == PointerEventType.Press && host.target != null) host.dismiss()
+                            }
+                        }
+                    },
+                ) { content() }
                 AnimatedVisibility(
                     visible = host.target != null,
                     enter = slideInVertically(tween(220)) { it } + fadeIn(tween(220)),
