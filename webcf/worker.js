@@ -178,7 +178,12 @@ export async function handle(req, env, fetcher = fetch) {
     for (const k of ['category_id', 'vod_id', 'series_id']) { const v = u.searchParams.get(k); if (v && /^[0-9A-Za-z_-]{1,20}$/.test(v)) q.set(k, v); }
     const target = acct.url + '/player_api.php?username=' + encodeURIComponent(acct.user) + '&password=' + encodeURIComponent(acct.pass) + (action ? '&action=' + action : '') + (q.toString() ? '&' + q.toString() : '');
     const r = await fetchUpstream(env, req, target, fetcher);
-    if (r.status >= 400 && r.status !== 401) return json({ ok: false, err: 'upstream', status: r.status }, 502);
+    if (r.status >= 400 && r.status !== 401) {
+      // تشخيص: من رفض؟ نرجع نوع الخادم ومقتطفًا قصيرًا من الردّ (بعد حجب بيانات الدخول).
+      let snip = ''; try { snip = (await r.text()).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90); } catch (e) { /* */ }
+      for (const x of [acct.user, acct.pass]) if (x && x.length > 2) snip = snip.split(x).join('***');
+      return json({ ok: false, err: 'upstream', status: r.status, server: (r.headers.get('server') || '').slice(0, 30), snip }, 502);
+    }
     if (!action) {
       // اختبار الدخول: نرجع فقط حالة الاشتراك بدون كلمة المرور
       if (r.status !== 200) return r;
