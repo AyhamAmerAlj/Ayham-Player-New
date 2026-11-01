@@ -507,6 +507,10 @@ fun HomeTab(vm: AppViewModel) {
     val playLive: (Item, List<Item>) -> Unit = { it, src -> vm.playLive(it, LiveSource(favs = src)) }
 
     val tvUi = !isCompact()
+    if (tvUi) {
+        TvHome(vm, recMovies, recSeries, recentMovies, recentSeries, trendMovies, trendSeries, topMovies, topSeries, horrorMovies, horrorSeries)
+        return
+    }
     var heroFocus by remember { mutableStateOf<Item?>(null) }
     val setFocus: (Item) -> Unit = { heroFocus = it }
     CompositionLocalProvider(LocalFocusSink provides setFocus) {
