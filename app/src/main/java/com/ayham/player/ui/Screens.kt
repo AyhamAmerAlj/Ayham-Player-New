@@ -783,11 +783,13 @@ fun SettingsTab(vm: AppViewModel) {
         if (ar) "المحتوى" else "Content",
         if (ar) "الحساب والتطبيق" else "Account & app",
     )
-    Row(Modifier.fillMaxSize().padding(if (isCompact()) 12.dp else 32.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-      Column(Modifier.width(if (isCompact()) 150.dp else 270.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        RText(t("settings"), if (isCompact()) 24 else 34, C.text, bold = true)
-        BodyText(if (ar) "اختر قسمًا لعرض إعداداته" else "Pick a section", 13, C.textDim)
-        Spacer(Modifier.height(6.dp))
+    val shortScreen = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 560
+    val padAll = if (isCompact()) 12.dp else if (shortScreen) 16.dp else 32.dp
+    Row(Modifier.fillMaxSize().padding(start = padAll, end = padAll, top = if (shortScreen && !isCompact()) 4.dp else padAll, bottom = padAll), horizontalArrangement = Arrangement.spacedBy(if (shortScreen) 16.dp else 24.dp)) {
+      Column(Modifier.width(if (isCompact()) 150.dp else if (shortScreen) 230.dp else 270.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(if (shortScreen) 4.dp else 8.dp)) {
+        RText(t("settings"), if (isCompact()) 24 else if (shortScreen) 26 else 34, C.text, bold = true)
+        if (!shortScreen) BodyText(if (ar) "اختر قسمًا لعرض إعداداته" else "Pick a section", 13, C.textDim)
+        Spacer(Modifier.height(if (shortScreen) 2.dp else 6.dp))
         cats.forEachIndexed { n, label ->
             PanelItem(label, selected = cat == n, modifier = if (n == cat) Modifier.autoFocus() else Modifier) { cat = n }
         }
