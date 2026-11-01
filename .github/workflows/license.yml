@@ -16,13 +16,14 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+      APIFOOTBALL_KEY: ${{ secrets.APIFOOTBALL_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
       - name: Test
-        run: node test/test.mjs
+        run: node test/test.mjs && node test/barca.mjs
       - name: Check secrets
         id: sec
         run: |
@@ -33,6 +34,10 @@ jobs:
       - name: Set link key
         if: steps.sec.outputs.ready == '1'
         run: printf '%s' "$(printf '%s' "link|$CLOUDFLARE_API_TOKEN" | sha256sum | cut -d' ' -f1)" | npx --yes wrangler@4 secret put LINK_KEY
+      - name: Set football key (BARÇA ZONE)
+        if: steps.sec.outputs.ready == '1'
+        run: |
+          if [ -n "$APIFOOTBALL_KEY" ]; then printf '%s' "$APIFOOTBALL_KEY" | npx --yes wrangler@4 secret put APIFOOTBALL_KEY >/dev/null && echo "set APIFOOTBALL_KEY"; else echo "skip APIFOOTBALL_KEY (empty)"; fi
       - name: Set admin key
         if: steps.sec.outputs.ready == '1'
         run: printf '%s' "$ADMIN_KEY" | npx --yes wrangler@4 secret put ADMIN_KEY

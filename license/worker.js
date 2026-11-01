@@ -1,6 +1,7 @@
 // خادم التراخيص لـ Ayham Player (Cloudflare Worker + Durable Object بتخزين SQLite).
 // كل كود: يسمح بجهازين كحد أقصى، وجهاز واحد فقط يعمل بنفس الوقت.
 // نستخدم Durable Object واحدًا لأن عملياته متسلسلة (لا تتضارب) وحدّه المجاني للكتابة كافٍ.
+import { barca } from './barca.js';
 const ACTIVE_MS = 10 * 60 * 1000; // الجلسة تُعتبر حيّة 10 دقائق بعد آخر نبضة
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -184,13 +185,18 @@ async function admin(st, body) {
 
 // الكائن الدائم: كل العمليات تمر عليه بالتسلسل.
 export class Lic {
-  constructor(state) { this.st = state.storage; }
+  constructor(state, env) { this.st = state.storage; this.env = env || {}; }
   async fetch(req) {
     const u = new URL(req.url);
     const body = await req.json();
     if (u.pathname === '/admin/api') return json(await admin(this.st, body));
     if (u.pathname === '/v1/check') return json(await check(this.st, body));
     if (u.pathname === '/v1/creds') return json(await creds(this.st, body));
+    if (u.pathname === '/v1/barca') {
+      const a = await syncAuth(this.st, body); // لازم كود صالح وجهاز مسجّل
+      if (a.err) return json({ ok: false, err: a.err });
+      return json(await barca(this.st, this.env, body));
+    }
     if (u.pathname === '/v1/release') return json(await release(this.st, body));
     if (u.pathname === '/v1/news') return json(await newsPublic(this.st));
     if (u.pathname === '/v1/sync/get') return json(await syncGet(this.st, body));
@@ -243,7 +249,7 @@ export default {
         if (!env.ADMIN_KEY || !safeEq(req.headers.get('x-admin-key'), env.ADMIN_KEY)) return json({ ok: false }, 401);
       } else if (u.pathname === '/v1/creds') {
         if (!env.LINK_KEY || !safeEq(req.headers.get('x-link'), env.LINK_KEY)) return json({ ok: false }, 404);
-      } else if (u.pathname !== '/v1/check' && u.pathname !== '/v1/release' && u.pathname !== '/v1/sync/get' && u.pathname !== '/v1/sync/put' && u.pathname !== '/v1/news') return json({ ok: false }, 404);
+      } else if (u.pathname !== '/v1/check' && u.pathname !== '/v1/release' && u.pathname !== '/v1/sync/get' && u.pathname !== '/v1/sync/put' && u.pathname !== '/v1/news' && u.pathname !== '/v1/barca') return json({ ok: false }, 404);
       const text = await req.text();
       if (u.pathname === '/admin/api' && /"action"\s*:\s*"linkkey"/.test(text)) return json({ ok: true, key: env.LINK_KEY || '' }); // لربط استضافة الوسيط الخارجية
       if (text.length > (u.pathname === '/v1/sync/put' ? 160 * 1024 : 4096)) return json({ ok: false }, 413);
