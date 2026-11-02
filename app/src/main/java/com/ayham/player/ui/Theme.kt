@@ -177,7 +177,7 @@ fun Focusable(
                 if (focused) Modifier.border(2.5.dp, C.glow, shape)
                 else Modifier.border(1.dp, tc(0x22FFFFFF), shape)
             )
-            .onFocusChanged { focused = it.isFocused }
+            .onFocusChanged { if (it.isFocused && !focused) UiSound.move(); focused = it.isFocused }
             .then(
                 if (onLongClick == null) Modifier else Modifier.onPreviewKeyEvent { ev ->
                     // ضغطة مطوّلة على OK بالريموت
@@ -196,7 +196,7 @@ fun Focusable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onLongClick = onLongClick,
-                onClick = onClick,
+                onClick = { UiSound.click(); onClick() },
             ),
     ) {
         content(focused)

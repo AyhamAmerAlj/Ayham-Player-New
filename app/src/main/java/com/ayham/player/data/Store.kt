@@ -94,6 +94,10 @@ class Store(ctx: Context) {
         get() = sp.getString("vod_layout", "grid") ?: "grid"
         set(v) { sp.edit().putString("vod_layout", v).apply() }
 
+    var uiSounds: Boolean
+        get() = sp.getBoolean("ui_sounds", true)
+        set(v) { sp.edit().putBoolean("ui_sounds", v).apply() }
+
     var extAuto: Boolean
         get() = sp.getBoolean("ext_auto", true)
         set(v) { sp.edit().putBoolean("ext_auto", v).apply() }

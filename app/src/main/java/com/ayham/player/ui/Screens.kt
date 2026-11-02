@@ -876,6 +876,12 @@ fun SettingsTab(vm: AppViewModel) {
             Chip(t("layout_list"), vm.liveLayout == "list") { vm.changeLiveLayout("list") }
         }
 
+        RText(if (ar) "أصوات التنقل" else "Navigation sounds", 22, C.primaryLight, bold = true)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip(if (ar) "تشغيل" else "On", vm.uiSounds) { vm.changeUiSounds(true) }
+            Chip(if (ar) "إيقاف" else "Off", !vm.uiSounds) { vm.changeUiSounds(false) }
+        }
+
         RText(t("vod_layout"), 22, C.primaryLight, bold = true)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Chip(t("layout_posters"), vm.vodLayout == "grid") { vm.changeVodLayout("grid") }
