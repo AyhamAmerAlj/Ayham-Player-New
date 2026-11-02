@@ -136,6 +136,18 @@ fun PosterCard(
                 }
             }
 
+            // شارة "جديد" / "حلقة جديدة" لما أُضيف خلال آخر 7 أيام
+            val addedSec = item.added.let { if (it > 100_000_000_000L) it / 1000L else it }
+            val ageSec = System.currentTimeMillis() / 1000L - addedSec
+            if (item.kind != Kind.LIVE && addedSec > 0 && ageSec in 0L..(7L * 86400L)) {
+                Box(
+                    Modifier.align(Alignment.TopStart).padding(6.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Brush.horizontalGradient(listOf(tc(0xFF8B5CF6), tc(0xFFD946EF))))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) { RText(t(if (item.kind == Kind.SERIES) "badge_new_ep" else "badge_new"), 10, Color.White, bold = true, maxLines = 1) }
+            }
+
             // طبقة تدرج سينمائي وعنوان العمل أسفل البوستر
             Box(
                 Modifier.align(Alignment.BottomStart).fillMaxWidth()

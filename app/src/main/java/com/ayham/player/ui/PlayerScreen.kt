@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -184,6 +185,10 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     var pv by remember { mutableStateOf<PlayerView?>(null) }
     var audioOverridden by remember { mutableStateOf(false) }
     var retryCount by remember { mutableIntStateOf(0) }
+    // ---- الحلقة التالية تلقائيًا ----
+    var remainMs by remember { mutableLongStateOf(Long.MAX_VALUE) }
+    var nextOff by remember { mutableStateOf(false) }
+    val nextCardOn = !queue[index].isLive && index + 1 < queue.size && !nextOff && remainMs in 1L..12_000L && errorMsg == null && !controls && panel == null
 
     // الصوت الخارجي
     var syncAudio by remember { mutableStateOf(true) }
@@ -421,6 +426,24 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         touch()
     }
 
+    /** تشغيل الحلقة التالية الآن (مع حفظ الحالية كمكتملة). */
+    fun nextNow() {
+        val d = exo.duration.coerceAtLeast(0L)
+        if (d > 0) vm.saveProgress(req.item, queue[index].key, d, d)
+        remainMs = Long.MAX_VALUE
+        go(1)
+    }
+
+    /** زر الرجوع: يغلق اللوحة، أو يلغي عدّاد الحلقة التالية، أو يخفي الشريط فقط. الخروج فقط لو الشريط مخفي. */
+    fun onBack() {
+        when {
+            panel != null -> closePanel()
+            nextCardOn -> nextOff = true
+            controls -> controls = false
+            else -> exit()
+        }
+    }
+
     // تطبيق الصوتيات المحفوظة للقناة تلقائيًا (بدون ما تفتح اللوحة كل مرة)
     LaunchedEffect(index) {
         if (!queue[index].isLive) return@LaunchedEffect
@@ -479,6 +502,11 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             return true
         }
         if (panel != null || controls) return false
+        if (nextCardOn && (code == AKeyEvent.KEYCODE_DPAD_CENTER || code == AKeyEvent.KEYCODE_ENTER || code == AKeyEvent.KEYCODE_NUMPAD_ENTER)) {
+            okSwallow[0] = true
+            nextNow()
+            return true
+        }
         val live = queue[index].isLive
         if (!live && introTarget() != null &&
             (code == AKeyEvent.KEYCODE_DPAD_CENTER || code == AKeyEvent.KEYCODE_ENTER || code == AKeyEvent.KEYCODE_NUMPAD_ENTER)) {
@@ -536,7 +564,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                 if (state == Player.STATE_ENDED && !queue[index].isLive) {
                     val d = exo.duration.coerceAtLeast(0L)
                     vm.saveProgress(req.item, queue[index].key, d, d)
-                    if (index + 1 < queue.size) index++ else exit()
+                    if (index + 1 < queue.size && !nextOff) { remainMs = Long.MAX_VALUE; index++ } else exit()
                 }
             }
 
@@ -595,6 +623,8 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
 
     // ---------- تحميل المقطع عند تغيير القناة/الحلقة ----------
     LaunchedEffect(index) {
+        nextOff = false
+        remainMs = Long.MAX_VALUE
         errorMsg = null
         retryCount = 0
         val e = queue[index]
@@ -626,6 +656,16 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             delay(3000)
             retryCount++
             retry()
+        }
+    }
+
+    // الوقت المتبقي لعدّاد الحلقة التالية
+    LaunchedEffect(exo, index) {
+        remainMs = Long.MAX_VALUE
+        while (true) {
+            val d = exo.duration
+            remainMs = if (d > 0 && d != MC.TIME_UNSET && !queue[index].isLive) (d - exo.currentPosition).coerceAtLeast(0L) else Long.MAX_VALUE
+            delay(500)
         }
     }
 
@@ -713,7 +753,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
 
     BackHandler {
         // رجوع مرة وحدة: لو فيه لوحة مفتوحة نغلقها، غير هيج نطلع من المشغّل مباشرة
-        if (panel != null) closePanel() else exit()
+        onBack()
     }
 
     // ======================= الواجهة =======================
@@ -726,7 +766,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                 if ((code == AKeyEvent.KEYCODE_BACK || code == AKeyEvent.KEYCODE_ESCAPE) && panel != Panel.TRYSUB) {
                     // رجوع من أول ضغطة مهما كان العنصر المحدد (حتى أثناء التقديم)
                     if (ev.type == KeyEventType.KeyDown && ev.nativeKeyEvent.repeatCount == 0) {
-                        if (panel != null) closePanel() else exit()
+                        onBack()
                     }
                     true
                 } else if (ev.type != KeyEventType.KeyDown) {
@@ -1003,7 +1043,34 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             }
         }
 
-        val introGo = if (!controls && panel == null) introTarget() else null
+        if (nextCardOn) {
+            val ar = vm.lang == "ar"
+            val secs = ((remainMs + 999L) / 1000L).toInt()
+            Column(
+                Modifier.align(Alignment.BottomEnd).padding(end = if (compact) 14.dp else 32.dp, bottom = if (compact) 70.dp else 96.dp)
+                    .width(if (compact) 260.dp else 340.dp)
+                    .clip(RoundedCornerShape(16.dp)).background(tc(0xEE140A26))
+                    .border(1.5.dp, Brush.horizontalGradient(listOf(C.primary, C.accent)), RoundedCornerShape(16.dp))
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                BodyText((if (ar) "الحلقة التالية خلال " else "Next episode in ") + secs + (if (ar) " ث" else "s"), 13, C.accent, bold = true)
+                BodyText(queue[index + 1].title, 16, C.text, bold = true, maxLines = 2)
+                Box(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(tc(0x33FFFFFF))) {
+                    Box(Modifier.fillMaxWidth((1f - remainMs / 12_000f).coerceIn(0f, 1f)).fillMaxHeight().background(Brush.horizontalGradient(listOf(C.primary, C.accent))))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(
+                        Modifier.clip(RoundedCornerShape(10.dp)).background(C.primary).clickable { nextNow() }.padding(horizontal = 16.dp, vertical = 8.dp),
+                    ) { BodyText((if (ar) "▶ تشغيل الآن (OK)" else "▶ Play now (OK)"), 14, Color.White, bold = true) }
+                    Box(
+                        Modifier.clip(RoundedCornerShape(10.dp)).background(tc(0x33FFFFFF)).clickable { nextOff = true }.padding(horizontal = 14.dp, vertical = 8.dp),
+                    ) { BodyText(if (ar) "إلغاء" else "Cancel", 14, C.text) }
+                }
+            }
+        }
+
+        val introGo = if (!controls && panel == null && !nextCardOn) introTarget() else null
         if (introGo != null) {
             Box(
                 Modifier.align(Alignment.BottomEnd).padding(end = 28.dp, bottom = 90.dp)
@@ -1510,6 +1577,7 @@ private fun trackLabel(f: Format, i: Int, lang: String): String {
 private fun ProgressRow(exo: ExoPlayer, barFocus: FocusRequester, onVisible: (Boolean) -> Unit, onToggle: () -> Unit, onTouch: () -> Unit) {
     var pos by remember { mutableLongStateOf(0L) }
     var dur by remember { mutableLongStateOf(0L) }
+    var buffered by remember { mutableLongStateOf(0L) }
     var scrub by remember { mutableStateOf<Long?>(null) }
     var focused by remember { mutableStateOf(false) }
     var job by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
@@ -1517,19 +1585,26 @@ private fun ProgressRow(exo: ExoPlayer, barFocus: FocusRequester, onVisible: (Bo
     LaunchedEffect(exo) {
         while (true) {
             if (scrub == null) pos = exo.currentPosition
+            buffered = exo.bufferedPosition
             dur = if (exo.duration == MC.TIME_UNSET) 0L else exo.duration
             delay(1000)
         }
     }
     LaunchedEffect(dur > 0) { onVisible(dur > 0) }
+    // لو الشريط اختفى (رجوع/إخفاء تلقائي) وفيه تقديم معلّق، ننفذه بدل ما يضيع
+    DisposableEffect(Unit) { onDispose { scrub?.let { exo.seekTo(it) } } }
     if (dur <= 0) return
     val shown = scrub ?: pos
+    val active = focused || scrub != null
+    val density = androidx.compose.ui.platform.LocalDensity.current
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         BodyText(fmt(shown), 14, if (scrub != null) C.accent else C.text, bold = scrub != null)
         var barW by remember { mutableStateOf(1) }
         fun posAt(x: Float): Long = (x / barW.coerceAtLeast(1) * dur).toLong().coerceIn(0L, dur)
+        val trackH by androidx.compose.animation.core.animateDpAsState(if (active) 14.dp else 8.dp, label = "trk")
+        val thumb by androidx.compose.animation.core.animateDpAsState(if (active) 28.dp else 14.dp, label = "thm")
         Box(
-            Modifier.weight(1f).height(34.dp)
+            Modifier.weight(1f).height(76.dp)
                 .onSizeChanged { barW = it.width }
                 .pointerInput(dur) {
                     detectTapGestures { off ->
@@ -1562,7 +1637,7 @@ private fun ProgressRow(exo: ExoPlayer, barFocus: FocusRequester, onVisible: (Bo
                             onTouch()
                             job?.cancel()
                             job = scope.launch {
-                                delay(700)
+                                delay(900)
                                 scrub?.let { exo.seekTo(it) }
                                 scrub = null
                             }
@@ -1587,19 +1662,48 @@ private fun ProgressRow(exo: ExoPlayer, barFocus: FocusRequester, onVisible: (Bo
                     }
                 }
                 .focusable(),
-            contentAlignment = Alignment.CenterStart,
         ) {
+            val frac = (shown.toFloat() / dur).coerceIn(0f, 1f)
+            val buf = (buffered.toFloat() / dur).coerceIn(0f, 1f)
+            // المسار: مخزّن مؤقتًا (أبيض خفيف) ثم المُشاهَد (تدرج)
             Box(
-                Modifier.fillMaxWidth().height(if (focused) 16.dp else 8.dp)
-                    .clip(RoundedCornerShape(8.dp)).background(tc(0x44FFFFFF)),
+                Modifier.align(Alignment.BottomStart).padding(bottom = 16.dp).fillMaxWidth().height(trackH)
+                    .clip(RoundedCornerShape(8.dp)).background(tc(0x33FFFFFF)),
             ) {
-                Box(
-                    Modifier.fillMaxWidth((shown.toFloat() / dur).coerceIn(0f, 1f))
-                        .fillMaxHeight().background(C.glow),
-                )
+                Box(Modifier.fillMaxWidth(buf).fillMaxHeight().background(tc(0x44FFFFFF)))
+                Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(Brush.horizontalGradient(listOf(C.primary, C.accent))))
+            }
+            val xPx = frac * barW
+            val xDp = with(density) { xPx.toDp() }
+            // المقبض الدائري المتوهج
+            Box(
+                Modifier.align(Alignment.BottomStart)
+                    .offset(x = xDp - thumb / 2, y = -(16.dp + trackH / 2 - thumb / 2))
+                    .size(thumb).clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(Color.White)
+                    .border(if (active) 4.dp else 2.dp, if (scrub != null) C.accent else C.primary, androidx.compose.foundation.shape.CircleShape),
+            )
+            // فقاعة الوقت فوق المقبض (تظهر عند التركيز أو التقديم) مع فرق الثواني
+            if (active) {
+                val bw = 96.dp
+                val bwPx = with(density) { bw.toPx() }
+                val bx = with(density) { (xPx - bwPx / 2).coerceIn(0f, (barW - bwPx).coerceAtLeast(0f)).toDp() }
+                val delta = scrub?.let { it - pos }
+                Column(
+                    Modifier.align(Alignment.TopStart).offset(x = bx).width(bw)
+                        .clip(RoundedCornerShape(12.dp)).background(tc(0xEE140A26))
+                        .border(1.dp, if (scrub != null) C.accent else tc(0x55FFFFFF), RoundedCornerShape(12.dp))
+                        .padding(vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    BodyText(fmt(shown), 16, Color.White, bold = true)
+                    if (delta != null && kotlin.math.abs(delta) >= 1000L) {
+                        BodyText((if (delta > 0) "+" else "-") + fmt(kotlin.math.abs(delta)), 12, C.accent, bold = true)
+                    }
+                }
             }
         }
-        BodyText(fmt(dur), 14, C.text)
+        BodyText("-" + fmt((dur - shown).coerceAtLeast(0L)), 14, C.text)
     }
 }
 
