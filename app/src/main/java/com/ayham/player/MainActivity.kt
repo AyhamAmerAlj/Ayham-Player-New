@@ -92,6 +92,14 @@ private fun Ready(vm: AppViewModel) {
         kotlinx.coroutines.delay(2500)
         vm.loadNews(true)
     }
+    // إعلان الرئيسية: عند الفتح ثم كل 15 دقيقة (طلب خفيف واحد)
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(1500)
+        while (true) {
+            vm.loadAnn()
+            kotlinx.coroutines.delay(15 * 60 * 1000L)
+        }
+    }
     // مزامنة بيانات المشاهدة عند الفتح ثم كل 3 دقائق
     androidx.compose.runtime.LaunchedEffect(Unit) {
         while (true) {

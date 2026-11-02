@@ -145,8 +145,34 @@ async function newsAdmin(st, body) {
   return { ok: false, err: 'bad_action' };
 }
 
+// ---- إعلان الرئيسية (بانر واحد فعّال): عرض، صيانة، قناة جديدة... ----
+const ANN_KINDS = ['offer', 'maint', 'new', 'info'];
+export async function annPublic(st) {
+  const a = await st.get('ann');
+  if (!a || !a.active || (a.expires && a.expires < now())) return { ok: true, ann: null };
+  return { ok: true, ann: { id: a.id, text: a.text, text_en: a.text_en, kind: a.kind, expires: a.expires } };
+}
+async function annAdmin(st, body) {
+  if (body.action === 'ann_get') return { ok: true, ann: (await st.get('ann')) || null };
+  if (body.action === 'ann_clear') { await st.delete('ann'); return { ok: true }; }
+  if (body.action === 'ann_save') {
+    const text = clip(body.text, 220);
+    if (!text) return { ok: false, err: 'missing' };
+    const days = Math.max(0, Math.min(365, parseInt(body.days, 10) || 0));
+    const a = {
+      id: genCode().toLowerCase().slice(0, 10), text, text_en: clip(body.text_en, 220),
+      kind: ANN_KINDS.includes(body.kind) ? body.kind : 'info', active: true,
+      expires: days ? now() + days * 86400 : 0, updated: now(),
+    };
+    await st.put('ann', a);
+    return { ok: true, ann: a };
+  }
+  return { ok: false, err: 'bad_action' };
+}
+
 async function admin(st, body) {
   if (String(body.action || '').startsWith('news_')) return newsAdmin(st, body);
+  if (String(body.action || '').startsWith('ann_')) return annAdmin(st, body);
   if (body.action === 'create') {
     const code = genCode();
     const srv = cleanSrv({ url: body.srv_url, user: body.srv_user, pass: body.srv_pass });
@@ -199,6 +225,7 @@ export class Lic {
     }
     if (u.pathname === '/v1/release') return json(await release(this.st, body));
     if (u.pathname === '/v1/news') return json(await newsPublic(this.st));
+    if (u.pathname === '/v1/ann') return json(await annPublic(this.st));
     if (u.pathname === '/v1/sync/get') return json(await syncGet(this.st, body));
     if (u.pathname === '/v1/sync/put') return json(await syncPut(this.st, body));
     return json({ ok: false }, 404);
@@ -215,6 +242,12 @@ const PAGE = `<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><me
 <div class="r"><input id="nds" placeholder="وصف التحديث" style="flex:1"><input id="ndse" placeholder="Description (English, optional)" style="flex:1"></div>
 <div id="ni"></div><div class="r"><button class="s" id="nadd">+ إضافة ميزة</button><label><input type="checkbox" id="np"> منشور (يظهر للمستخدمين)</label></div>
 <div class="r"><button id="nsave">حفظ التحديث</button><button class="s" id="nnew">تحديث جديد (تفريغ)</button></div><input type="hidden" id="nid"></div><div id="nl"></div>
+<hr style="border-color:#2a1a4d;margin:28px 0"><h2>إعلان الرئيسية (بانر للمشتركين)</h2>
+<div class="c"><div class="r"><input id="at" placeholder="نص الإعلان (عرض، صيانة، قناة جديدة...)" style="flex:1"></div>
+<div class="r"><input id="ate" placeholder="Text (English, optional)" style="flex:1"></div>
+<div class="r"><select id="ak" style="padding:10px;border-radius:10px;border:1px solid #3b2a6b;background:#140b26;color:#fff"><option value="offer">عرض 🎁</option><option value="new">جديد ✨</option><option value="maint">صيانة 🛠</option><option value="info">معلومة ℹ️</option></select>
+<select id="ad" style="padding:10px;border-radius:10px;border:1px solid #3b2a6b;background:#140b26;color:#fff"><option value="1">ينتهي بعد يوم</option><option value="3">3 أيام</option><option value="7" selected>7 أيام</option><option value="30">30 يومًا</option><option value="0">بدون انتهاء</option></select></div>
+<div class="r"><button id="asave">نشر الإعلان</button><button class="s" id="aclear">إيقاف الإعلان</button></div><div id="ast"></div></div>
 <script>
 const $=s=>document.querySelector(s);const E=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');let K=sessionStorage.k||'';if(K)$('#k').value=K;
 async function A(b){const r=await fetch('/admin/api',{method:'POST',headers:{'content-type':'application/json','x-admin-key':$('#k').value},body:JSON.stringify(b)});if(r.status==401){$('#o').textContent='مفتاح خاطئ';alert('مفتاح الإدارة خاطئ أو فارغ. اكتبه بالخانة العلوية واضغط دخول ثم أعد المحاولة.');throw 0}return r.json()}
@@ -235,7 +268,11 @@ $('#nnew').onclick=()=>fillForm();
 $('#ni').onclick=e=>{if(e.target.classList.contains('i-rm'))e.target.closest('.ni').remove()};
 $('#nsave').onclick=async()=>{const d=await A(readForm());if(!d.ok){alert(d.err=='missing'?'اكتب رقم الإصدار والعنوان':'تعذّر الحفظ');return}alert('تم الحفظ');fillForm();NL()};
 $('#nl').onclick=async e=>{const a=e.target.dataset.na,id=e.target.dataset.id;if(!a)return;const n=NEWS.find(x=>x.id==id);if(a=='edit'){fillForm(n);scrollTo(0,document.body.scrollHeight*0.2)}else if(a=='pub'){await A({action:'news_publish',id,published:!n.published});NL()}else if(a=='del'&&confirm('حذف هذا التحديث نهائيًا؟')){await A({action:'news_delete',id});NL()}};
-fillForm();if(K)NL();
+function AS(a){$('#ast').innerHTML=a?'<div class="c">الإعلان الحالي: <b>'+E(a.text)+'</b> · '+(a.active?'<b class="g">ظاهر</b>':'')+(a.expires?' · ينتهي '+new Date(a.expires*1000).toLocaleString('ar'):' · بدون انتهاء')+'</div>':'لا يوجد إعلان ظاهر'}
+async function AL(){const d=await A({action:'ann_get'});AS(d.ann&&(!d.ann.expires||d.ann.expires*1000>Date.now())?d.ann:null)}
+$('#asave').onclick=async()=>{const d=await A({action:'ann_save',text:$('#at').value,text_en:$('#ate').value,kind:$('#ak').value,days:$('#ad').value});if(!d.ok){alert('اكتب نص الإعلان');return}AS(d.ann);alert('تم النشر')};
+$('#aclear').onclick=async()=>{if(confirm('إيقاف الإعلان؟')){await A({action:'ann_clear'});AS(null)}};
+fillForm();if(K){NL();AL()}
 async function L2(){NL()}
 </script></html>`;
 
@@ -249,7 +286,7 @@ export default {
         if (!env.ADMIN_KEY || !safeEq(req.headers.get('x-admin-key'), env.ADMIN_KEY)) return json({ ok: false }, 401);
       } else if (u.pathname === '/v1/creds') {
         if (!env.LINK_KEY || !safeEq(req.headers.get('x-link'), env.LINK_KEY)) return json({ ok: false }, 404);
-      } else if (u.pathname !== '/v1/check' && u.pathname !== '/v1/release' && u.pathname !== '/v1/sync/get' && u.pathname !== '/v1/sync/put' && u.pathname !== '/v1/news' && u.pathname !== '/v1/barca') return json({ ok: false }, 404);
+      } else if (u.pathname !== '/v1/check' && u.pathname !== '/v1/release' && u.pathname !== '/v1/sync/get' && u.pathname !== '/v1/sync/put' && u.pathname !== '/v1/news' && u.pathname !== '/v1/ann' && u.pathname !== '/v1/barca') return json({ ok: false }, 404);
       const text = await req.text();
       if (u.pathname === '/admin/api' && /"action"\s*:\s*"linkkey"/.test(text)) return json({ ok: true, key: env.LINK_KEY || '' }); // لربط استضافة الوسيط الخارجية
       if (text.length > (u.pathname === '/v1/sync/put' ? 160 * 1024 : 4096)) return json({ ok: false }, 413);

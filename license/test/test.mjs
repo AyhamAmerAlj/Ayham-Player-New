@@ -41,6 +41,13 @@ eq((await call('/v1/sync/get', { code: code2, device: 's1', profile: 'Ali' })).e
 
 // ---- ما الجديد؟ ----
 const A = { 'x-admin-key': 'k' };
+eq((await call('/v1/ann', {})).ann, null, 'ann empty');
+const an = await call('/admin/api', { action: 'ann_save', text: 'عرض خاص', kind: 'offer', days: 1 }, A);
+eq(an.ok, true, 'ann saved');
+const ap = (await call('/v1/ann', {})).ann; eq([ap.text, ap.kind], ['عرض خاص', 'offer'], 'ann public');
+eq((await call('/admin/api', { action: 'ann_save', text: '' }, A)).ok, false, 'ann needs text');
+await call('/admin/api', { action: 'ann_clear' }, A);
+eq((await call('/v1/ann', {})).ann, null, 'ann cleared');
 eq((await call('/v1/news', {})).items, [], 'news empty');
 const ns = await call('/admin/api', { action: 'news_save', version: '1.0.130', build: 130, date: '2026-10-31', title: 'T', desc: 'D', items: [{ icon: '🎃', title: 'a', desc: 'b', image: 'http://bad' }, { title: '' }], published: false }, A);
 eq(ns.ok, true, 'news saved');

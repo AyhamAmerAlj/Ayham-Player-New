@@ -51,3 +51,24 @@ object NewsApi {
         } catch (e: Exception) { null }
     }
 }
+
+/** إعلان الرئيسية من لوحة الإدارة (بانر واحد): عرض، صيانة، جديد، معلومة. */
+data class Ann(val id: String, val text: String, val textEn: String, val kind: String, val expires: Long)
+
+object AnnApi {
+    private val client = OkHttpClient.Builder().callTimeout(8, TimeUnit.SECONDS).build()
+
+    /** Result.success(null) = لا يوجد إعلان. فشل الاتصال يُرجع failure فلا نمسح ما هو معروض. */
+    fun fetch(): Result<Ann?> = runCatching {
+        if (BuildConfig.LICENSE_URL.isBlank()) error("no url")
+        val req = Request.Builder().url(BuildConfig.LICENSE_URL.trimEnd('/') + "/v1/ann")
+            .post("{}".toRequestBody("application/json".toMediaType())).build()
+        client.newCall(req).execute().use { r ->
+            if (!r.isSuccessful) error("http")
+            val o = JsonParser.parseString(r.body?.string().orEmpty()).asJsonObject
+            val a = o.get("ann")?.takeIf { it.isJsonObject }?.asJsonObject ?: return@use null
+            fun s(k: String) = a.get(k)?.takeIf { !it.isJsonNull }?.asString.orEmpty()
+            Ann(s("id"), s("text"), s("text_en"), s("kind"), a.get("expires")?.takeIf { !it.isJsonNull }?.asLong ?: 0L)
+        }
+    }
+}

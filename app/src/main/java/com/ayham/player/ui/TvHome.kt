@@ -135,6 +135,7 @@ fun TvHome(
         if (ThemeState.id == Themes.BARCELONA || vm.matchCard) {
             Box(Modifier.align(Alignment.TopEnd).padding(top = if (small) 80.dp else 96.dp, end = 44.dp)) { NextMatchCard(vm, small) }
         }
+        AnnBanner(vm, Modifier.align(Alignment.TopStart).padding(start = 44.dp, top = if (small) 74.dp else 86.dp).fillMaxWidth(0.5f))
         Column(Modifier.fillMaxSize().padding(top = if (small) 76.dp else 88.dp, bottom = 10.dp)) {
             // ---------- التفاصيل ----------
             Column(

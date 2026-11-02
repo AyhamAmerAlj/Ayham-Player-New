@@ -524,6 +524,7 @@ fun HomeTab(vm: AppViewModel) {
             if (Season.halloween) item { HalloweenBanner() }
             item { SetupCard(vm) }
         } else {
+            item { AnnBanner(vm, Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp)) }
             if (Season.halloween) item { HalloweenBanner() }
             item { SetupCard(vm) }
             item { FeaturedBanner(vm, featured) }

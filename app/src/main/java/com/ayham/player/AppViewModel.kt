@@ -649,6 +649,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         livePlayer ?: PlayerFactory.create(getApplication(), maxRes, com.ayham.player.audio.ExtAudioSession.mainTap).also { livePlayer = it }
 
     /** تشغيل قناة بالشاشة المصغّرة داخل قائمة القنوات. */
+    // ---- إعلان الرئيسية ----
+    var ann by mutableStateOf<com.ayham.player.data.Ann?>(null)
+        private set
+    private var annDismissedId by mutableStateOf(store.annDismissed)
+    val annVisible: com.ayham.player.data.Ann?
+        get() = ann?.takeIf { it.id != annDismissedId && (it.expires == 0L || it.expires * 1000 > System.currentTimeMillis()) }
+    fun dismissAnn() { ann?.let { annDismissedId = it.id; store.annDismissed = it.id } }
+    suspend fun loadAnn() {
+        val r = withContext(Dispatchers.IO) { com.ayham.player.data.AnnApi.fetch() }
+        r.onSuccess { ann = it }
+    }
+
     // ---- العرض المتعدد للقنوات ----
     var multiOpen by mutableStateOf(false)
         private set

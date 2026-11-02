@@ -27,6 +27,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.HdrOn
+import androidx.compose.material.icons.filled.HighQuality
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -1000,6 +1004,9 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             }
                         }
                     }
+                    if (!queue[index].isLive) VodTechPanel(
+                        exo, Modifier.align(Alignment.TopStart).padding(start = if (compact) 18.dp else 28.dp, top = if (compact) 64.dp else 84.dp),
+                    )
                     Column(
                         Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = if (compact) 18.dp else 36.dp, vertical = if (compact) 10.dp else 22.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -1837,6 +1844,69 @@ private fun LiveShiftRow(exo: ExoPlayer, onBackToLive: () -> Unit) {
             GlowButton(t("back_to_live"), primary = true) { onBackToLive() }
         } else {
             BodyText(t("at_live"), 14, C.danger, bold = true)
+        }
+    }
+}
+
+/** معلومات الفيديو التقنية بشكل سينمائي: شريط (الدقة | fps | Mbps | المفكك) + شارات بأيقونات (جودة، ترميز، صوت، قنوات، HDR). */
+@Composable
+private fun VodTechPanel(exo: ExoPlayer, modifier: Modifier = Modifier) {
+    var tick by remember { mutableIntStateOf(0) }
+    var decoder by remember { mutableStateOf("") }
+    DisposableEffect(exo) {
+        val l = object : androidx.media3.exoplayer.analytics.AnalyticsListener {
+            override fun onVideoDecoderInitialized(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, decoderName: String, initializedTimestampMs: Long, initializationDurationMs: Long) {
+                decoder = decoderName
+            }
+        }
+        exo.addAnalyticsListener(l)
+        onDispose { exo.removeAnalyticsListener(l) }
+    }
+    LaunchedEffect(exo) { while (true) { tick++; delay(2000) } }
+    @Suppress("UNUSED_EXPRESSION") tick
+    val v = exo.videoFormat ?: return
+    val a = exo.audioFormat
+    val br = if (v.bitrate > 0) v.bitrate else v.averageBitrate
+    val parts = listOfNotNull(
+        if (v.width > 0 && v.height > 0) "${v.width}x${v.height}" else null,
+        if (v.frameRate > 0f) "${Math.round(v.frameRate)} fps" else null,
+        if (br > 0) String.format(Locale.US, "%.1f Mbps", br / 1_000_000f) else null,
+        decoder.takeIf { it.isNotBlank() }?.removePrefix("OMX.")?.take(26),
+    )
+    val q = when { v.height >= 2000 -> "4K"; v.height >= 1000 -> "FHD"; v.height >= 700 -> "HD"; v.height > 0 -> "SD"; else -> "" }
+    val mime = v.sampleMimeType.orEmpty()
+    val codec = when { mime.contains("hevc") -> "HEVC"; mime.contains("avc") -> "H.264"; mime.contains("av01") -> "AV1"; mime.contains("vp9") -> "VP9"; mime.contains("mpeg2") -> "MPEG-2"; else -> "" }
+    val ct = v.colorInfo?.colorTransfer
+    val hdr = ct == androidx.media3.common.C.COLOR_TRANSFER_ST2084 || ct == androidx.media3.common.C.COLOR_TRANSFER_HLG
+    val am = a?.sampleMimeType.orEmpty()
+    val audio = when {
+        am.contains("eac3-joc") -> "Dolby Atmos"; am.contains("eac3") -> "Dolby Digital+"; am.contains("ac3") -> "Dolby Digital"
+        am.contains("truehd") -> "TrueHD"; am.contains("dts") || am.contains("vnd.dts") -> "DTS"; am.contains("mp4a") -> "AAC"
+        am.contains("opus") -> "Opus"; am.contains("mpeg") -> "MP3"; else -> ""
+    }
+    val ch = when (a?.channelCount ?: 0) { 1 -> "Mono"; 2 -> "2.0"; 6 -> "5.1"; 8 -> "7.1"; 0 -> ""; else -> "${a?.channelCount}ch" }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (parts.isNotEmpty()) Box(
+            Modifier.clip(RoundedCornerShape(20.dp)).background(tc(0xCC120A24)).border(1.dp, Brush.horizontalGradient(listOf(C.primary, C.accent)), RoundedCornerShape(20.dp))
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+        ) { BodyText(parts.joinToString("   │   "), 13, Color.White, bold = true, maxLines = 1) }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            @Composable fun badge(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, hot: Boolean = false) {
+                if (text.isBlank()) return
+                Row(
+                    Modifier.clip(RoundedCornerShape(10.dp)).background(if (hot) tc(0x558B5CF6) else tc(0x99120A24))
+                        .border(1.dp, if (hot) C.accent else tc(0x55FFFFFF), RoundedCornerShape(10.dp)).padding(horizontal = 9.dp, vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Icon(icon, null, tint = if (hot) C.accent else Color.White, modifier = Modifier.size(15.dp))
+                    BodyText(text, 12, Color.White, bold = true, maxLines = 1)
+                }
+            }
+            badge(q, Icons.Filled.HighQuality, hot = q == "4K")
+            badge(codec, Icons.Filled.Memory)
+            if (hdr) badge("HDR", Icons.Filled.HdrOn, hot = true)
+            badge(audio, Icons.Filled.GraphicEq, hot = audio.startsWith("Dolby"))
+            badge(ch, Icons.Filled.Audiotrack)
         }
     }
 }

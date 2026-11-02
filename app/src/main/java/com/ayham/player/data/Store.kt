@@ -112,6 +112,10 @@ class Store(ctx: Context) {
         get() = sp.getInt("clock_city", 0)
         set(v) { sp.edit().putInt("clock_city", v).apply() }
 
+    var annDismissed: String
+        get() = sp.getString("ann_dismissed", "") ?: ""
+        set(v) { sp.edit().putString("ann_dismissed", v).apply() }
+
     var extAuto: Boolean
         get() = sp.getBoolean("ext_auto", true)
         set(v) { sp.edit().putBoolean("ext_auto", v).apply() }
