@@ -102,6 +102,16 @@ class Store(ctx: Context) {
         get() = sp.getInt("ui_sound_pack", 0)
         set(v) { sp.edit().putInt("ui_sound_pack", v).apply() }
 
+    var clockWeather: Boolean
+        get() = sp.getBoolean("clock_weather", false)
+        set(v) { sp.edit().putBoolean("clock_weather", v).apply() }
+    var clockRegion: Boolean
+        get() = sp.getBoolean("clock_region", false)
+        set(v) { sp.edit().putBoolean("clock_region", v).apply() }
+    var clockCity: Int
+        get() = sp.getInt("clock_city", 0)
+        set(v) { sp.edit().putInt("clock_city", v).apply() }
+
     var extAuto: Boolean
         get() = sp.getBoolean("ext_auto", true)
         set(v) { sp.edit().putBoolean("ext_auto", v).apply() }

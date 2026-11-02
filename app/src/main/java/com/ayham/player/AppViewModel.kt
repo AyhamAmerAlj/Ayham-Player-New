@@ -49,6 +49,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     init { com.ayham.player.ui.UiSound.pack = store.uiSoundPack; com.ayham.player.ui.UiSound.enabled = store.uiSounds; com.ayham.player.ui.UiSound.init(app) }
     var uiSounds by mutableStateOf(store.uiSounds)
         private set
+    var clockWeather by mutableStateOf(store.clockWeather)
+        private set
+    var clockRegion by mutableStateOf(store.clockRegion)
+        private set
+    var clockCity by mutableStateOf(store.clockCity)
+        private set
+    fun changeClockWeather(v: Boolean) { clockWeather = v; store.clockWeather = v }
+    fun changeClockRegion(v: Boolean) { clockRegion = v; store.clockRegion = v }
+    fun changeClockCity(v: Int) { clockCity = v; store.clockCity = v }
     var uiSoundPack by mutableStateOf(store.uiSoundPack)
         private set
     fun changeUiSoundPack(v: Int) { uiSoundPack = v; store.uiSoundPack = v; com.ayham.player.ui.UiSound.pack = v; com.ayham.player.ui.UiSound.click() }

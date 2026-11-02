@@ -638,6 +638,7 @@ fun TvTopNav(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusReq
                 ProfileAvatar(vm, 34.dp)
                 RText(vm.profileName.ifBlank { "Ayham" }, 15, Color.White, bold = true, maxLines = 1)
                 RText(time, 15, C.primaryLight, bold = true, maxLines = 1)
+                ClockExtras(vm)
             }
         }
         // الوسط: أيقونات التنقل
@@ -664,14 +665,8 @@ fun TvTopNav(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusReq
                 }
             }
         }
-        // اليمين: الشعار
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Image(painterResource(R.drawable.ic_launcher), null, Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)))
-            Column {
-                RText("Ayham", 16, Color.White, bold = true, maxLines = 1)
-                RText("Player", 14, C.primaryLight, bold = true, maxLines = 1)
-            }
-        }
+        // اليمين: أيقونة التطبيق فقط
+        Image(painterResource(R.drawable.ic_launcher), null, Modifier.size(48.dp).clip(RoundedCornerShape(13.dp)))
     }
 }
 

@@ -876,6 +876,20 @@ fun SettingsTab(vm: AppViewModel) {
             Chip(t("layout_list"), vm.liveLayout == "list") { vm.changeLiveLayout("list") }
         }
 
+        RText(if (ar) "تفاصيل الساعة (الرئيسية)" else "Clock details (Home)", 22, C.primaryLight, bold = true)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip((if (ar) "الطقس: " else "Weather: ") + (if (vm.clockWeather) (if (ar) "ظاهر" else "On") else (if (ar) "مخفي" else "Off")), vm.clockWeather) { vm.changeClockWeather(!vm.clockWeather) }
+            Chip((if (ar) "المنطقة: " else "Region: ") + (if (vm.clockRegion) (if (ar) "ظاهرة" else "On") else (if (ar) "مخفية" else "Off")), vm.clockRegion) { vm.changeClockRegion(!vm.clockRegion) }
+        }
+        if (vm.clockWeather || vm.clockRegion) {
+            BodyText(if (ar) "اختر مدينتك:" else "Choose your city:", 14, C.textDim)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.ayham.player.data.Weather.cities.forEachIndexed { i, c ->
+                    Chip(if (ar) c.ar else c.en, vm.clockCity == i) { vm.changeClockCity(i) }
+                }
+            }
+        }
+
         RText(if (ar) "أصوات التنقل" else "Navigation sounds", 22, C.primaryLight, bold = true)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Chip(if (ar) "تشغيل" else "On", vm.uiSounds) { vm.changeUiSounds(true) }
