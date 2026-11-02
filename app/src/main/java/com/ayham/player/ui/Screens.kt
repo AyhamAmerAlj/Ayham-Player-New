@@ -881,6 +881,11 @@ fun SettingsTab(vm: AppViewModel) {
             Chip(if (ar) "تشغيل" else "On", vm.uiSounds) { vm.changeUiSounds(true) }
             Chip(if (ar) "إيقاف" else "Off", !vm.uiSounds) { vm.changeUiSounds(false) }
         }
+        if (vm.uiSounds) FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip(if (ar) "الافتراضي" else "Default", vm.uiSoundPack == 0) { vm.changeUiSoundPack(0) }
+            Chip(if (ar) "غَيم" else "Ghaym (clouds)", vm.uiSoundPack == 1) { vm.changeUiSoundPack(1) }
+            Chip(if (ar) "مطر" else "Rain", vm.uiSoundPack == 2) { vm.changeUiSoundPack(2) }
+        }
 
         RText(t("vod_layout"), 22, C.primaryLight, bold = true)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

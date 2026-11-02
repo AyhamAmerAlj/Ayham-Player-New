@@ -46,9 +46,12 @@ sealed interface Screen {
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     val store = Store(app)
-    init { com.ayham.player.ui.UiSound.enabled = store.uiSounds; com.ayham.player.ui.UiSound.init(app) }
+    init { com.ayham.player.ui.UiSound.pack = store.uiSoundPack; com.ayham.player.ui.UiSound.enabled = store.uiSounds; com.ayham.player.ui.UiSound.init(app) }
     var uiSounds by mutableStateOf(store.uiSounds)
         private set
+    var uiSoundPack by mutableStateOf(store.uiSoundPack)
+        private set
+    fun changeUiSoundPack(v: Int) { uiSoundPack = v; store.uiSoundPack = v; com.ayham.player.ui.UiSound.pack = v; com.ayham.player.ui.UiSound.click() }
     fun changeUiSounds(v: Boolean) { uiSounds = v; store.uiSounds = v; com.ayham.player.ui.UiSound.enabled = v; if (v) com.ayham.player.ui.UiSound.click() }
     private val db = CatalogDb(app)
 

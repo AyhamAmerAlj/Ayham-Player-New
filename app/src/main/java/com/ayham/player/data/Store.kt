@@ -98,6 +98,10 @@ class Store(ctx: Context) {
         get() = sp.getBoolean("ui_sounds", true)
         set(v) { sp.edit().putBoolean("ui_sounds", v).apply() }
 
+    var uiSoundPack: Int
+        get() = sp.getInt("ui_sound_pack", 0)
+        set(v) { sp.edit().putInt("ui_sound_pack", v).apply() }
+
     var extAuto: Boolean
         get() = sp.getBoolean("ext_auto", true)
         set(v) { sp.edit().putBoolean("ext_auto", v).apply() }

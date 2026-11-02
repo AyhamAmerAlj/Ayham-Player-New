@@ -16,8 +16,9 @@ import kotlin.math.sin
 object UiSound {
     @Volatile var enabled = true
     private var pool: SoundPool? = null
-    private var idMove = 0
-    private var idClick = 0
+    private val idMove = IntArray(3)
+    private val idClick = IntArray(3)
+    @Volatile var pack = 0
     private var ready = 0
     private var last = 0L
 
@@ -30,12 +31,13 @@ object UiSound {
             val p = SoundPool.Builder().setMaxStreams(3).setAudioAttributes(attrs).build()
             p.setOnLoadCompleteListener { _, _, st -> if (st == 0) ready++ }
             val dir = File(ctx.cacheDir, "uisnd").apply { mkdirs() }
-            val fMove = File(dir, "move_v1.wav").also { if (!it.exists()) it.writeBytes(wav(tone(listOf(1318.5 to 1.0, 2637.0 to 0.18), 0.055, 0.30))) }
-            val fClick = File(dir, "click_v1.wav").also {
-                if (!it.exists()) it.writeBytes(wav(mix(tone(listOf(659.3 to 1.0, 1318.5 to 0.22), 0.16, 0.42), tone(listOf(987.8 to 1.0, 1975.6 to 0.2), 0.20, 0.38), 0.045)))
+            for (k in 0..2) {
+                val (m, c) = packs(k)
+                val fm = File(dir, "move_p${k}_v2.wav").also { if (!it.exists()) it.writeBytes(wav(m)) }
+                val fc = File(dir, "click_p${k}_v2.wav").also { if (!it.exists()) it.writeBytes(wav(c)) }
+                idMove[k] = p.load(fm.path, 1)
+                idClick[k] = p.load(fc.path, 1)
             }
-            idMove = p.load(fMove.path, 1)
-            idClick = p.load(fClick.path, 1)
             pool = p
         }
     }
@@ -47,8 +49,48 @@ object UiSound {
         return true
     }
 
-    fun move() { if (enabled && ready >= 2 && gate(55)) pool?.play(idMove, 0.5f, 0.5f, 1, 0, 1f) }
-    fun click() { if (enabled && ready >= 2 && gate(90)) pool?.play(idClick, 0.7f, 0.7f, 1, 0, 1f) }
+    fun move() { if (enabled && ready >= 6 && gate(55)) pool?.play(idMove[pack.coerceIn(0, 2)], 0.5f, 0.5f, 1, 0, 1f) }
+    fun click() { if (enabled && ready >= 6 && gate(90)) pool?.play(idClick[pack.coerceIn(0, 2)], 0.7f, 0.7f, 1, 0, 1f) }
+
+    /** الحزم: 0 الافتراضي (ماريمبا/زجاج)، 1 غَيم (زجاج + قطرة ماء)، 2 مطر (قطرات خفيفة). */
+    private fun packs(k: Int): Pair<ShortArray, ShortArray> = when (k) {
+        1 -> bloop(1050.0, 1500.0, 0.085, 0.30) to mix(bloop(880.0, 1320.0, 0.14, 0.40), bloop(1250.0, 1750.0, 0.17, 0.36), 0.07)
+        2 -> drop(0.035, 2600.0, 0.26) to mix(drop(0.09, 2100.0, 0.42), drop(0.11, 2900.0, 0.36), 0.075)
+        else -> tone(listOf(1318.5 to 1.0, 2637.0 to 0.18), 0.055, 0.30) to
+            mix(tone(listOf(659.3 to 1.0, 1318.5 to 0.22), 0.16, 0.42), tone(listOf(987.8 to 1.0, 1975.6 to 0.2), 0.20, 0.38), 0.045)
+    }
+
+    /** قطرة ماء زجاجية: نغمة يرتفع ترددها بسرعة + رنين زجاج خفيف (جزئي غير توافقي). */
+    private fun bloop(f0: Double, f1: Double, sec: Double, amp: Double): ShortArray {
+        val n = (SR * sec).toInt()
+        val out = ShortArray(n)
+        var ph = 0.0
+        for (i in 0 until n) {
+            val t = i.toDouble() / SR
+            val f = f1 + (f0 - f1) * exp(-t * 38.0)
+            ph += 2 * PI * f / SR
+            val env = (t / 0.003).coerceAtMost(1.0) * exp(-t * (6.0 / sec))
+            val v = sin(ph) + 0.22 * sin(ph * 2.76) * exp(-t * 30.0) + 0.1 * sin(ph * 5.4) * exp(-t * 55.0)
+            out[i] = (v / 1.32 * env * amp * 32767).toInt().coerceIn(-32767, 32767).toShort()
+        }
+        return out
+    }
+
+    /** قطرة مطر ناعمة: نقرة ضجيج مصفّى سريعة الخفوت + نغمة عالية خافتة. */
+    private fun drop(sec: Double, f: Double, amp: Double): ShortArray {
+        val n = (SR * sec).toInt()
+        val out = ShortArray(n)
+        val rnd = java.util.Random(7L + (f * 10).toLong())
+        var lp = 0.0
+        for (i in 0 until n) {
+            val t = i.toDouble() / SR
+            val env = (t / 0.0015).coerceAtMost(1.0) * exp(-t * (7.0 / sec))
+            lp += 0.35 * ((rnd.nextDouble() * 2 - 1) - lp) // مرشح تمرير منخفض بسيط يليّن الضجيج
+            val v = 0.55 * lp * 2.2 + 0.45 * sin(2 * PI * f * t) * exp(-t * 60.0)
+            out[i] = (v * env * amp * 32767).toInt().coerceIn(-32767, 32767).toShort()
+        }
+        return out
+    }
 
     // ---- توليد الصوت ----
     private const val SR = 44100
