@@ -132,6 +132,9 @@ fun TvHome(
             Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(g.copy(alpha = 0.30f), Color.Transparent), center = Offset(0f, 0f), radius = 1100f)))
             Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(C.primary.copy(alpha = 0.30f), Color.Transparent), center = Offset(2600f, 1500f), radius = 1300f)))
         }
+        if (ThemeState.id == Themes.GTA6) {
+            Box(Modifier.align(Alignment.TopEnd).padding(top = if (small) 80.dp else 96.dp, end = 44.dp)) { Gta6Card(vm, small) }
+        }
         if (ThemeState.id == Themes.BARCELONA || vm.matchCard) {
             Box(Modifier.align(Alignment.TopEnd).padding(top = if (small) 80.dp else 96.dp, end = 44.dp)) { NextMatchCard(vm, small) }
         }

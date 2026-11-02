@@ -911,6 +911,7 @@ fun SettingsTab(vm: AppViewModel) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Chip("Ayham Original", ThemeState.id == Themes.ORIGINAL) { vm.changeTheme(Themes.ORIGINAL) }
             Chip("FC Barcelona", ThemeState.id == Themes.BARCELONA) { vm.changeTheme(Themes.BARCELONA) }
+            Chip("GTA VI", ThemeState.id == Themes.GTA6) { vm.changeTheme(Themes.GTA6) }
         }
         ThemeState.palette.tagline?.let { tl ->
             RText(tl, 20, C.gold, bold = true)
