@@ -17,6 +17,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed as gridItemsIndexed
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.nativeKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -25,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -59,7 +67,18 @@ import java.util.Locale
 
 private fun hm(sec: Long) = SimpleDateFormat("HH:mm", Locale.ENGLISH).format(Date(sec * 1000))
 
-/** شاشة القنوات للتلفاز بأسلوب سينمائي: شعار كبير وبرنامج الآن/التالي مع تقدم، أقسام ثابتة، وصفوف قنوات عند النزول. */
+private fun qual(n: String): String? {
+    val u = n.uppercase(Locale.ROOT)
+    return when {
+        "4K" in u || "UHD" in u -> "4K"
+        "FHD" in u || "1080" in u -> "FHD"
+        Regex("\\bHD\\b").containsMatchIn(u) || "720" in u -> "HD"
+        Regex("\\bSD\\b").containsMatchIn(u) -> "SD"
+        else -> null
+    }
+}
+
+/** شاشة القنوات للتلفاز: قائمة تصنيفات جانبية + لوحة معلومات + شبكة قنوات. الكتابة برقم القناة تقفز إليها. */
 @Composable
 fun TvLive(vm: AppViewModel) {
     val sH = LocalConfiguration.current.screenHeightDp
@@ -98,6 +117,16 @@ fun TvLive(vm: AppViewModel) {
         if (mini != null && mini.id != ch.id) vm.playMini(ch, source) else vm.playLive(ch, source)
     }
 
+    // الانتقال برقم القناة (ترتيبها في القائمة الحالية)
+    var typed by remember { mutableStateOf("") }
+    LaunchedEffect(typed) {
+        if (typed.isEmpty()) return@LaunchedEffect
+        delay(1400)
+        val n = typed.toIntOrNull()
+        typed = ""
+        if (n != null && n in 1..list.size) pick(list[n - 1])
+    }
+
     // البرنامج الحالي والتالي للقناة المحددة
     var epg by remember { mutableStateOf<List<EpgEntry>>(emptyList()) }
     var nowS by remember { mutableLongStateOf(System.currentTimeMillis() / 1000) }
@@ -115,176 +144,159 @@ fun TvLive(vm: AppViewModel) {
     val allL = t("all"); val favL = t("favorite_channels"); val recL = t("recent_live")
     val catName = cats.firstOrNull { it.id == sel }?.name.orEmpty()
     val selLabel = when (sel) { "all" -> allL; "fav" -> favL; "recent" -> recL; else -> catName }
+    val sideW = if (small) 170.dp else 230.dp
+    val cardW = if (small) 130.dp else 170.dp
+    val cardH = if (small) 96.dp else 120.dp
 
-    Box(Modifier.fillMaxSize().background(Color(0xFF05020B))) {
-        Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(tc(0x558B5CF6), Color.Transparent), center = Offset(1500f, 300f), radius = 1300f)))
+    Box(
+        Modifier.fillMaxSize().background(Color(0xFF05020B)).onPreviewKeyEvent { e ->
+            if (e.type == KeyEventType.KeyDown) {
+                val kc = e.nativeKeyEvent.keyCode
+                val d = when (kc) { in 7..16 -> kc - 7; in 144..153 -> kc - 144; else -> -1 }
+                if (d >= 0 && !showSearch && typed.length < 4) { typed += d.toString(); true } else false
+            } else false
+        },
+    ) {
+        Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(tc(0x558B5CF6), Color.Transparent), center = Offset(1500f, 200f), radius = 1300f)))
         ThemeState.palette.glow?.let { g ->
-            Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(g.copy(alpha = 0.28f), Color.Transparent), center = Offset(0f, 0f), radius = 1100f)))
+            Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(g.copy(alpha = 0.25f), Color.Transparent), center = Offset(0f, 0f), radius = 1100f)))
         }
-        // الشعار الكبير يتبدل بتلاشٍ ناعم
-        Crossfade(targetState = item?.image.orEmpty(), modifier = Modifier.align(Alignment.TopEnd).padding(top = 40.dp, end = 70.dp).size(if (small) 150.dp else 230.dp), animationSpec = tween(400), label = "liveLogo") { url ->
-            Box(Modifier.fillMaxSize().clip(RoundedCornerShape(28.dp)).background(tc(0x22FFFFFF)).border(1.dp, tc(0x338B5CF6), RoundedCornerShape(28.dp)), contentAlignment = Alignment.Center) {
-                Img(url, Modifier.fillMaxSize().padding(18.dp), ContentScale.Fit, 300, 300)
+        Row(Modifier.fillMaxSize().padding(top = if (small) 14.dp else 24.dp)) {
+            // ---------- القائمة الجانبية ----------
+            LazyColumn(
+                Modifier.width(sideW).fillMaxHeight().background(tc(0x66000000)),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                item(key = "_search") { SideChip(t("search"), showSearch, Icons.Filled.Search) { showSearch = !showSearch; if (!showSearch) q = "" } }
+                item(key = "_fav") { SideChip(favL, sel == "fav" && !searching, Icons.Filled.Favorite) { sel = "fav"; q = ""; showSearch = false } }
+                item(key = "_recent") { SideChip(recL, sel == "recent" && !searching, Icons.Filled.History) { sel = "recent"; q = ""; showSearch = false } }
+                item(key = "_all") { SideChip(allL, sel == "all" && !searching, Icons.Filled.GridView) { sel = "all"; q = ""; showSearch = false } }
+                itemsIndexed(cats, key = { _, c -> c.id }) { _, c -> SideChip(c.name, sel == c.id && !searching, null) { sel = c.id; q = ""; showSearch = false } }
+            }
+
+            Column(Modifier.weight(1f).fillMaxHeight().padding(start = 22.dp, end = 30.dp)) {
+                // ---------- لوحة المعلومات ----------
+                Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                    Crossfade(targetState = item?.image.orEmpty(), modifier = Modifier.size(if (small) 84.dp else 124.dp), animationSpec = tween(300), label = "liveLogo") { url ->
+                        Box(Modifier.fillMaxSize().clip(RoundedCornerShape(22.dp)).background(tc(0x22FFFFFF)).border(1.dp, tc(0x558B5CF6), RoundedCornerShape(22.dp)), contentAlignment = Alignment.Center) {
+                            Img(url, Modifier.fillMaxSize().padding(12.dp), ContentScale.Fit, 240, 240)
+                        }
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(if (small) 3.dp else 6.dp)) {
+                        if (item == null) {
+                            RText(if (searching) t("no_results") else (if (ar) "لا توجد قنوات في هذا القسم" else "No channels here"), 22, C.textDim, bold = true)
+                        } else {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.clip(RoundedCornerShape(6.dp)).background(C.danger).padding(horizontal = 8.dp, vertical = 2.dp)) { RText(L_live, 12, Color.White, bold = true) }
+                                qual(item.name)?.let { Box(Modifier.clip(RoundedCornerShape(6.dp)).border(1.dp, tc(0xFFA78BFA), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 2.dp)) { RText(it, 12, tc(0xFFC4B5FD), bold = true) } }
+                                if (selLabel.isNotBlank()) BodyText(selLabel, 14, C.textDim, maxLines = 1)
+                            }
+                            RText(item.name, if (small) 24 else 34, Color.White, bold = true, maxLines = 1)
+                            if (cur != null) {
+                                RText((if (ar) "الآن: " else "Now: ") + cur.title, if (small) 14 else 17, tc(0xFFE5DEF5), bold = true, maxLines = 1)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth(0.7f)) {
+                                    BodyText(hm(cur.start), 13, C.textDim)
+                                    val frac = ((nowS - cur.start).toFloat() / (cur.end - cur.start).coerceAtLeast(1)).coerceIn(0f, 1f)
+                                    Box(Modifier.weight(1f).height(5.dp).clip(RoundedCornerShape(3.dp)).background(tc(0x33FFFFFF))) {
+                                        Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(Brush.horizontalGradient(listOf(C.primary, C.accent))))
+                                    }
+                                    BodyText(hm(cur.end), 13, C.textDim)
+                                }
+                                if (nxt != null && !small) BodyText((if (ar) "التالي: " else "Next: ") + nxt.title + "  (" + hm(nxt.start) + ")", 14, C.textDim, maxLines = 1)
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                                Focusable(shape = RoundedCornerShape(24.dp), focusScale = 1.06f, onClick = { pick(item) }) { f ->
+                                    Row(
+                                        Modifier.clip(RoundedCornerShape(24.dp))
+                                            .background(Brush.horizontalGradient(ThemeState.palette.stripe ?: if (f) listOf(tc(0xFFA855F7), tc(0xFF7C3AED)) else listOf(tc(0xFF8B1FD9), tc(0xFF6D28D9))))
+                                            .padding(horizontal = 22.dp, vertical = 7.dp),
+                                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        RText(t("watch_now"), 16, Color.White, bold = true, maxLines = 1)
+                                        Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                    }
+                                }
+                                val inFav = vm.isIn("fav", item)
+                                Focusable(shape = RoundedCornerShape(24.dp), focusScale = 1.06f, onClick = { vm.toggle("fav", item) }) { f ->
+                                    Row(Modifier.clip(RoundedCornerShape(24.dp)).background(if (f) tc(0x558B5CF6) else tc(0x33FFFFFF)).padding(horizontal = 14.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Icon(Icons.Filled.Favorite, null, tint = if (inFav) tc(0xFFD946EF) else Color.White, modifier = Modifier.size(17.dp))
+                                        RText(t("my_list"), 14, Color.White, bold = true, maxLines = 1)
+                                    }
+                                }
+                                Focusable(shape = RoundedCornerShape(24.dp), focusScale = 1.06f, onClick = { vm.openMulti(item) }) { f ->
+                                    Row(Modifier.clip(RoundedCornerShape(24.dp)).background(if (f) tc(0x558B5CF6) else tc(0x33FFFFFF)).padding(horizontal = 14.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Icon(Icons.Filled.GridView, null, tint = Color.White, modifier = Modifier.size(17.dp))
+                                        RText(if (ar) "عرض متعدد" else "Multi-view", 14, Color.White, bold = true, maxLines = 1)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (mini != null) MiniPlayer(vm, mini)
+                }
+
+                if (showSearch) {
+                    AyhamField(q, { q = it }, t("search_in_live"), Modifier.padding(bottom = 8.dp).fillMaxWidth(0.5f), imeAction = androidx.compose.ui.text.input.ImeAction.Search)
+                }
+
+                // ---------- شبكة القنوات ----------
+                var initFocus by remember { mutableStateOf(true) }
+                LaunchedEffect(Unit) { delay(700); initFocus = false }
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(cardW),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    gridItemsIndexed(list, key = { _, it -> it.key }) { i, ch ->
+                        if (!searching && i >= list.size - 16) LaunchedEffect(list.size) { pager.loadMore() }
+                        val shape = RoundedCornerShape(14.dp)
+                        val fav = vm.isIn("fav", ch)
+                        val ql = qual(ch.name)
+                        Focusable(
+                            Modifier.width(cardW).height(cardH).onFocusChanged { f -> if (f.hasFocus) focusItem = ch }.then(if (initFocus && i == 0 && !showSearch) Modifier.autoFocus() else Modifier),
+                            shape, 1.05f, onLongClick = { vm.toggle("fav", ch) }, onClick = { pick(ch) },
+                        ) { f ->
+                            Column(
+                                Modifier.fillMaxSize().clip(shape).background(if (f) C.surfaceHi else C.surface)
+                                    .border(if (f) 2.dp else 0.dp, if (f) tc(0xFFA78BFA) else Color.Transparent, shape).padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    if (ch.image.isBlank()) RText(ch.name.take(1), 26, C.primaryLight, bold = true)
+                                    Img(ch.image, Modifier.fillMaxSize().padding(2.dp), ContentScale.Fit, 160, 160)
+                                    Box(Modifier.align(Alignment.TopStart).clip(RoundedCornerShape(4.dp)).background(C.danger).padding(horizontal = 4.dp)) { RText("LIVE", 8, Color.White, bold = true) }
+                                    if (ql != null) Box(Modifier.align(Alignment.TopEnd).clip(RoundedCornerShape(4.dp)).background(tc(0xCC6D28D9)).padding(horizontal = 4.dp)) { RText(ql, 8, Color.White, bold = true) }
+                                    if (fav) Icon(Icons.Filled.Favorite, null, tint = C.accent, modifier = Modifier.align(Alignment.BottomEnd).size(13.dp))
+                                    if (mini?.id == ch.id) Box(Modifier.align(Alignment.BottomStart).size(9.dp).clip(CircleShape).background(C.danger))
+                                }
+                                BodyText(ch.name, 12, if (f) Color.White else C.text, bold = f, maxLines = 1)
+                            }
+                        }
+                    }
+                }
             }
         }
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, 0.45f to tc(0x6605020B), 1f to tc(0xFF05020B))))
-        if (mini != null) Box(Modifier.align(Alignment.TopStart).padding(start = 44.dp, top = 24.dp)) { MiniPlayer(vm, mini) }
-
-        Column(Modifier.fillMaxSize().padding(top = if (small) 18.dp else 30.dp, bottom = 10.dp)) {
-            Column(
-                Modifier.weight(1f).fillMaxWidth().padding(horizontal = 44.dp),
-                verticalArrangement = Arrangement.spacedBy(if (small) 4.dp else 8.dp, Alignment.Bottom),
-            ) {
-                if (item == null) {
-                    RText(if (searching) t("no_results") else (if (ar) "لا توجد قنوات في هذا القسم" else "No channels here"), 24, C.textDim, bold = true)
-                } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(10.dp).clip(CircleShape).background(C.danger))
-                        RText(L_live, 14, C.danger, bold = true)
-                        if (selLabel.isNotBlank()) BodyText(selLabel, 14, C.textDim, maxLines = 1)
-                    }
-                    RText(item.name, if (small) 28 else 44, Color.White, bold = true, maxLines = 2, lineHeight = if (small) 34 else 52, modifier = Modifier.fillMaxWidth(0.6f))
-                    if (cur != null) {
-                        RText((if (ar) "الآن: " else "Now: ") + cur.title, if (small) 16 else 19, tc(0xFFE5DEF5), bold = true, maxLines = 1, modifier = Modifier.fillMaxWidth(0.6f))
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth(0.45f)) {
-                            BodyText(hm(cur.start), 13, C.textDim)
-                            val frac = ((nowS - cur.start).toFloat() / (cur.end - cur.start).coerceAtLeast(1)).coerceIn(0f, 1f)
-                            Box(Modifier.weight(1f).height(5.dp).clip(RoundedCornerShape(3.dp)).background(tc(0x33FFFFFF))) {
-                                Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(Brush.horizontalGradient(listOf(C.primary, C.accent))))
-                            }
-                            BodyText(hm(cur.end), 13, C.textDim)
-                        }
-                        if (nxt != null && !small) BodyText((if (ar) "التالي: " else "Next: ") + nxt.title + "  (" + hm(nxt.start) + ")", 15, C.textDim, maxLines = 1, modifier = Modifier.fillMaxWidth(0.6f))
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                        Focusable(shape = RoundedCornerShape(26.dp), focusScale = 1.07f, onClick = { pick(item) }) { f ->
-                            Row(
-                                Modifier.clip(RoundedCornerShape(26.dp))
-                                    .background(Brush.horizontalGradient(ThemeState.palette.stripe ?: if (f) listOf(tc(0xFFA855F7), tc(0xFF7C3AED)) else listOf(tc(0xFF8B1FD9), tc(0xFF6D28D9))))
-                                    .padding(horizontal = 24.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                RText(t("watch_now"), 17, Color.White, bold = true, maxLines = 1)
-                                Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(22.dp))
-                            }
-                        }
-                        val inFav = vm.isIn("fav", item)
-                        Focusable(shape = RoundedCornerShape(26.dp), focusScale = 1.07f, onClick = { vm.toggle("fav", item) }) { f ->
-                            Row(
-                                Modifier.clip(RoundedCornerShape(26.dp)).background(if (f) tc(0x558B5CF6) else tc(0x33FFFFFF)).padding(horizontal = 16.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                Icon(Icons.Filled.Favorite, null, tint = if (inFav) tc(0xFFD946EF) else Color.White, modifier = Modifier.size(18.dp))
-                                RText(t("my_list"), 15, Color.White, bold = true, maxLines = 1)
-                            }
-                        }
-                        Focusable(shape = RoundedCornerShape(26.dp), focusScale = 1.07f, onClick = { vm.openMulti(item) }) { f ->
-                            Row(
-                                Modifier.clip(RoundedCornerShape(26.dp)).background(if (f) tc(0x558B5CF6) else tc(0x33FFFFFF)).padding(horizontal = 16.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                Icon(Icons.Filled.GridView, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                                RText(if (ar) "عرض متعدد" else "Multi-view", 15, Color.White, bold = true, maxLines = 1)
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (showSearch) {
-                AyhamField(q, { q = it }, t("search_in_live"), Modifier.padding(horizontal = 44.dp, vertical = 4.dp).fillMaxWidth(0.45f), imeAction = androidx.compose.ui.text.input.ImeAction.Search)
-            }
-
-            // ---------- الأقسام (ثابتة) ----------
-            LazyRow(
-                Modifier.fillMaxWidth().padding(top = 6.dp),
-                contentPadding = PaddingValues(horizontal = 40.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                item(key = "_search") {
-                    Focusable(shape = RoundedCornerShape(20.dp), focusScale = 1.06f, onClick = { showSearch = !showSearch; if (!showSearch) q = "" }) { f ->
-                        Row(
-                            Modifier.clip(RoundedCornerShape(20.dp)).background(if (f) C.primary else if (showSearch) tc(0x887C3AED) else tc(0x44000000)).padding(horizontal = 14.dp, vertical = 5.dp),
-                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Icon(Icons.Filled.Search, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                            RText(t("search"), 14, Color.White, bold = f || showSearch, maxLines = 1)
-                        }
-                    }
-                }
-                item(key = "_fav") { LiveChip(favL, sel == "fav" && !searching) { sel = "fav"; q = ""; showSearch = false } }
-                item(key = "_recent") { LiveChip(recL, sel == "recent" && !searching) { sel = "recent"; q = ""; showSearch = false } }
-                item(key = "_all") { LiveChip(allL, sel == "all" && !searching) { sel = "all"; q = ""; showSearch = false } }
-                itemsIndexed(cats, key = { _, c -> c.id }) { _, c -> LiveChip(c.name, sel == c.id && !searching) { sel = c.id; q = ""; showSearch = false } }
-            }
-
-            // ---------- القنوات: الصف الأول للقسم المختار، وبالنزول بقية التصنيفات ----------
-            var initFocus by remember { mutableStateOf(true) }
-            LaunchedEffect(Unit) { delay(700); initFocus = false }
-            val cardH = (sH * (if (small) 0.19f else 0.21f)).coerceIn(80f, 150f).dp
-            val rowBlock = cardH + 22.dp + 30.dp
-            val others = remember(cats, sel, searching) { if (searching) emptyList() else cats.filter { it.id != sel } }
-            LazyColumn(Modifier.fillMaxWidth().height(rowBlock * 1.28f)) {
-                item(key = "row_main") {
-                    LiveRow(if (searching) t("search") else selLabel, list, cardH, vm, onFocus = { focusItem = it }, onOpen = pick, first = initFocus, playingId = mini?.id) { i ->
-                        if (!searching && i >= list.size - 12) pager.loadMore()
-                    }
-                }
-                items(others, key = { "row_" + it.id }) { c ->
-                    var rowItems by remember(c.id, vm.dataVersion) { mutableStateOf<List<Item>?>(null) }
-                    LaunchedEffect(c.id, vm.dataVersion) {
-                        delay(200)
-                        rowItems = runCatching { vm.inCategory(Kind.LIVE, c.id, 30, 0) }.getOrDefault(emptyList())
-                    }
-                    val ri = rowItems
-                    if (ri == null) Box(Modifier.fillMaxWidth().height(rowBlock).padding(start = 44.dp, top = 6.dp)) { RText(c.name, 17, C.textDim, bold = true, maxLines = 1) }
-                    else if (ri.isNotEmpty()) LiveRow(c.name, ri, cardH, vm, onFocus = { focusItem = it }, onOpen = pick, playingId = mini?.id)
-                }
+        if (typed.isNotEmpty()) {
+            Box(Modifier.align(Alignment.TopCenter).padding(top = 30.dp).clip(RoundedCornerShape(16.dp)).background(tc(0xDD1B0B3A)).border(1.dp, tc(0xFFA78BFA), RoundedCornerShape(16.dp)).padding(horizontal = 26.dp, vertical = 8.dp)) {
+                RText(typed, 38, Color.White, bold = true)
             }
         }
     }
 }
 
 @Composable
-private fun LiveChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    Focusable(shape = RoundedCornerShape(20.dp), focusScale = 1.06f, onClick = onClick) { f ->
-        Box(
-            Modifier.clip(RoundedCornerShape(20.dp)).background(if (f) C.primary else if (selected) tc(0x887C3AED) else tc(0x44000000)).padding(horizontal = 16.dp, vertical = 5.dp),
-        ) { RText(label, 14, Color.White, bold = selected || f, maxLines = 1) }
-    }
-}
-
-@Composable
-private fun LiveRow(
-    title: String, items: List<Item>, cardH: Dp, vm: AppViewModel,
-    onFocus: (Item) -> Unit, onOpen: (Item) -> Unit, first: Boolean = false, playingId: String? = null, onIndex: (Int) -> Unit = {},
-) {
-    Column(Modifier.fillMaxWidth()) {
-        RText(title, 17, C.text, bold = true, maxLines = 1, modifier = Modifier.padding(start = 44.dp, top = 6.dp, end = 44.dp))
-        LazyRow(
-            Modifier.fillMaxWidth().height(cardH + 22.dp),
-            contentPadding = PaddingValues(horizontal = 40.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+private fun SideChip(label: String, selected: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector?, onClick: () -> Unit) {
+    Focusable(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), focusScale = 1.03f, onClick = onClick) { f ->
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                .background(if (f) C.primary else if (selected) tc(0x887C3AED) else tc(0x22FFFFFF)).padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            itemsIndexed(items, key = { _, it -> it.key }) { i, ch ->
-                if (first && i >= items.size - 12) LaunchedEffect(items.size) { onIndex(i) }
-                val shape = RoundedCornerShape(14.dp)
-                val fav = vm.isIn("fav", ch)
-                Focusable(
-                    Modifier.width(cardH * 1.35f).height(cardH).onFocusChanged { f -> if (f.hasFocus) onFocus(ch) }.then(if (first && i == 0) Modifier.autoFocus() else Modifier),
-                    shape, 1.06f, onLongClick = { vm.toggle("fav", ch) }, onClick = { onOpen(ch) },
-                ) { f ->
-                    Column(Modifier.fillMaxSize().clip(shape).background(if (f) C.surfaceHi else C.surface).padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            if (ch.image.isBlank()) RText(ch.name.take(1), 26, C.primaryLight, bold = true)
-                            Img(ch.image, Modifier.fillMaxSize().padding(2.dp), ContentScale.Fit, 160, 160)
-                            if (fav) Icon(Icons.Filled.Favorite, null, tint = C.accent, modifier = Modifier.align(Alignment.TopEnd).size(14.dp))
-                            if (playingId == ch.id) Box(Modifier.align(Alignment.TopStart).size(9.dp).clip(CircleShape).background(C.danger))
-                        }
-                        BodyText(ch.name, 12, if (f) Color.White else C.text, bold = f, maxLines = 1)
-                    }
-                }
-            }
+            if (icon != null) Icon(icon, null, tint = Color.White, modifier = Modifier.size(16.dp))
+            RText(label, 14, Color.White, bold = selected || f, maxLines = 1)
         }
     }
 }
