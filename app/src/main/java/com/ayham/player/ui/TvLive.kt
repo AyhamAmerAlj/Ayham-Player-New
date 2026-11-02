@@ -88,7 +88,8 @@ fun TvLive(vm: AppViewModel) {
     val cats = vm.categories[Kind.LIVE].orEmpty()
     val favLive = remember(vm.favorites) { vm.favorites.filter { it.kind == Kind.LIVE } }
     val recentLive = remember(vm.history) { vm.historyOf(Kind.LIVE) }
-    var sel by rememberSaveable { mutableStateOf("all") }
+    var sel by remember { mutableStateOf(vm.liveSel) }
+    LaunchedEffect(sel) { if (vm.liveSel != sel) { vm.liveSel = sel; vm.liveFocusKey = null } }
     var q by rememberSaveable { mutableStateOf("") }
     var showSearch by remember { mutableStateOf(false) }
     var found by remember { mutableStateOf<List<Item>>(emptyList()) }
@@ -242,9 +243,20 @@ fun TvLive(vm: AppViewModel) {
                 }
 
                 // ---------- شبكة القنوات ----------
-                var initFocus by remember { mutableStateOf(true) }
+                var restoreKey by remember { mutableStateOf(vm.liveFocusKey) }
+                var initFocus by remember { mutableStateOf(restoreKey == null) }
                 LaunchedEffect(Unit) { delay(700); initFocus = false }
+                val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+                var tries by remember { mutableStateOf(0) }
+                LaunchedEffect(list.size, restoreKey) {
+                    val rk = restoreKey ?: return@LaunchedEffect
+                    val idx = list.indexOfFirst { it.key == rk }
+                    if (idx >= 0) gridState.scrollToItem(idx)
+                    else if (!searching && tries < 12) { tries++; pager.loadMore() }
+                    else restoreKey = null
+                }
                 LazyVerticalGrid(
+                    state = gridState,
                     columns = GridCells.Adaptive(cardW),
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp),
@@ -257,7 +269,7 @@ fun TvLive(vm: AppViewModel) {
                         val fav = vm.isIn("fav", ch)
                         val ql = qual(ch.name)
                         Focusable(
-                            Modifier.width(cardW).height(cardH).onFocusChanged { f -> if (f.hasFocus) focusItem = ch }.then(if (initFocus && i == 0 && !showSearch) Modifier.autoFocus() else Modifier),
+                            Modifier.width(cardW).height(cardH).onFocusChanged { f -> if (f.hasFocus) { focusItem = ch; vm.liveFocusKey = ch.key } }.then(if ((initFocus && i == 0 && !showSearch) || (restoreKey == ch.key)) Modifier.autoFocus().also { LaunchedEffect(Unit) { delay(300); restoreKey = null } } else Modifier),
                             shape, 1.05f, onLongClick = { vm.toggle("fav", ch) }, onClick = { pick(ch) },
                         ) { f ->
                             Column(

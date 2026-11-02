@@ -135,6 +135,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---- المشغّل المصغّر للقنوات ----
     var livePlayer: ExoPlayer? = null
         private set
+    // حفظ موضع قائمة القنوات للتلفاز: القسم المختار وآخر قناة عليها التركيز (للرجوع إليها بعد المشاهدة)
+    var liveSel by mutableStateOf("all")
+    var liveFocusKey: String? = null
     var miniItem by mutableStateOf<Item?>(null)
         private set
     var miniSource: LiveSource = LiveSource()
