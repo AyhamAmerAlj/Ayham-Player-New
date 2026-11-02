@@ -25,7 +25,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
@@ -92,7 +91,6 @@ private val sideItems = listOf(
     SideItem(7, "side_continue", Icons.Filled.PlayCircle),
     SideItem(8, "side_history", Icons.Filled.History),
     SideItem(9, "side_subs", Icons.Filled.Subtitles),
-    SideItem(10, "barca", Icons.Filled.SportsSoccer),
     SideItem(4, "search", Icons.Filled.Search),
     SideItem(6, "settings", Icons.Filled.Settings),
 )

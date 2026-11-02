@@ -39,7 +39,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Language
@@ -318,7 +317,6 @@ fun MainScreen(vm: AppViewModel) {
                     7 -> ItemsPage(vm, vm.recent, "continue_empty")
                     8 -> ItemsPage(vm, vm.history.distinctBy { it.key }, "history_empty")
                     9 -> SubsPage(vm)
-                    10 -> BarcaZone(vm)
                     else -> SettingsTab(vm)
                 }
                 }
@@ -380,7 +378,6 @@ private val navEntries = listOf(
     NavEntry(Icons.Filled.Tv, "series"),
     NavEntry(Icons.Filled.Search, "search"),
     NavEntry(Icons.Filled.VideoLibrary, "library"),
-    NavEntry(Icons.Filled.SportsSoccer, "barca", 10),
     NavEntry(Icons.Filled.Settings, "settings", 6),
 )
 
