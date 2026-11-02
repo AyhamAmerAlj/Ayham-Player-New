@@ -42,7 +42,9 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch { LicenseManager.start(); LicenseManager.heartbeat() }
         setContent {
             AyhamTheme(vm.lang) {
-                Root(vm)
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.ayham.player.ui.LocalProgress provides { k -> vm.progressOf(k)?.let { (p, d) -> if (d > 0) (p.toFloat() / d).coerceIn(0f, 1f) else null } },
+                ) { Root(vm) }
             }
         }
     }

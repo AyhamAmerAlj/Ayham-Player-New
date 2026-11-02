@@ -94,6 +94,9 @@ fun Modifier.autoFocus(): Modifier {
     return this.focusRequester(fr)
 }
 
+/** يعطي نسبة المشاهدة (0..1) لعنصر، أو null. تُوفَّر من الجذر. */
+val LocalProgress = androidx.compose.runtime.staticCompositionLocalOf<(String) -> Float?> { { null } }
+
 @Composable
 fun PosterCard(
     item: Item,
@@ -133,6 +136,14 @@ fun PosterCard(
                         RText("★", 11, tc(0xFFF5C518), bold = true)
                         RText(rating, 11, Color.White, bold = true)
                     }
+                }
+            }
+
+            // شريط تقدم المشاهدة أسفل الفيلم الذي بدأته
+            val prog = if (item.kind == Kind.MOVIE) LocalProgress.current(item.key) else null
+            if (prog != null && prog > 0.03f && prog < 0.92f) {
+                Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(tc(0x55000000))) {
+                    Box(Modifier.fillMaxWidth(prog).fillMaxHeight().background(Brush.horizontalGradient(listOf(tc(0xFF8B5CF6), tc(0xFFD946EF)))))
                 }
             }
 

@@ -58,6 +58,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -636,14 +637,15 @@ fun TvTopNav(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusReq
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 ProfileAvatar(vm, 34.dp)
-                RText(vm.profileName.ifBlank { "Ayham" }, 15, Color.White, bold = true, maxLines = 1)
+                // لو تفاصيل الساعة مفعّلة نخفي الاسم حتى لا يزاحم شريط الأيقونات (الإعدادات والبحث)
+                if (!vm.clockWeather && !vm.clockRegion) RText(vm.profileName.ifBlank { "Ayham" }, 15, Color.White, bold = true, maxLines = 1)
                 RText(time, 15, C.primaryLight, bold = true, maxLines = 1)
                 ClockExtras(vm)
             }
         }
-        // الوسط: أيقونات التنقل
+        // الوسط: أيقونات التنقل (تأخذ المساحة المتبقية فقط ولا تُقصّ)
         Row(
-            Modifier.height(56.dp).clip(RoundedCornerShape(32.dp)).background(barBg)
+            Modifier.weight(1f, fill = false).padding(horizontal = 10.dp).height(56.dp).clip(RoundedCornerShape(32.dp)).background(barBg)
                 .border(1.dp, tc(0x338B5CF6), RoundedCornerShape(32.dp)).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -696,7 +698,10 @@ fun TvHero(vm: AppViewModel, items: List<Item>, focusItem: Item? = null) {
         val bg = details?.backdrop.orEmpty().ifEmpty { item.image }
         // تبديل الخلفية بتلاشٍ ناعم عند تغيير العنوان
         Crossfade(targetState = bg, modifier = Modifier.fillMaxSize(), animationSpec = tween(450), label = "heroBg") { url ->
-            Img(url, Modifier.fillMaxSize(), w = 1280, h = 720)
+            // تقريب بطيء جدًا (Ken Burns) لإعطاء حياة للخلفية بدون تكلفة تُذكر
+            val kb = remember(url) { androidx.compose.animation.core.Animatable(1f) }
+            LaunchedEffect(url) { kb.animateTo(1.09f, tween(14_000, easing = androidx.compose.animation.core.LinearEasing)) }
+            Img(url, Modifier.fillMaxSize().graphicsLayer { scaleX = kb.value; scaleY = kb.value }, w = 1280, h = 720)
         }
         Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(tc(0x660B0614), tc(0x110B0614), tc(0xCC0B0614)))))
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to tc(0x990B0614), 0.22f to tc(0x000B0614), 0.7f to tc(0x000B0614), 1f to tc(0xFF05020B))))

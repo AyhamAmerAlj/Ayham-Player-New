@@ -68,6 +68,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -96,11 +97,30 @@ fun SplashScreen() {
         androidx.compose.animation.core.infiniteRepeatable(tween(1400, easing = androidx.compose.animation.core.LinearEasing)),
         label = "bar",
     )
+    // افتتاحية سينمائية: تقريب هادئ + نبضة توهج + لمعة تمر مرة واحدة + نغمة واحدة لكل تشغيل
+    val zoom = remember { Animatable(1.1f) }
+    val shine = remember { Animatable(-0.4f) }
+    LaunchedEffect(Unit) { zoom.animateTo(1f, tween(2400, easing = androidx.compose.animation.core.FastOutSlowInEasing)) }
+    LaunchedEffect(Unit) { delay(500); shine.animateTo(1.4f, tween(1300, easing = androidx.compose.animation.core.FastOutSlowInEasing)) }
+    LaunchedEffect(Unit) { delay(450); if (!UiSound.splashPlayed) { UiSound.splashPlayed = true; UiSound.click() } }
+    val glow by inf.animateFloat(
+        0.10f, 0.32f,
+        androidx.compose.animation.core.infiniteRepeatable(tween(1800, easing = androidx.compose.animation.core.FastOutSlowInEasing), androidx.compose.animation.core.RepeatMode.Reverse),
+        label = "glow",
+    )
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         Image(
             painterResource(R.drawable.splash), null,
-            Modifier.fillMaxSize().alpha(a.value),
+            Modifier.fillMaxSize().graphicsLayer { scaleX = zoom.value; scaleY = zoom.value }.alpha(a.value),
             contentScale = ContentScale.Crop,
+        )
+        Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(tc(0xFF8B5CF6).copy(alpha = glow), Color.Transparent))))
+        Box(
+            Modifier.fillMaxSize().drawBehind {
+                val w = size.width
+                val x = shine.value * w
+                drawRect(Brush.horizontalGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.10f), Color.Transparent), startX = x - 0.2f * w, endX = x + 0.2f * w))
+            },
         )
         ThemeState.palette.tagline?.let { tl ->
             Column(

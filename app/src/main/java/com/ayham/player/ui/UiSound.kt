@@ -15,6 +15,7 @@ import kotlin.math.sin
  */
 object UiSound {
     @Volatile var enabled = true
+    @Volatile var splashPlayed = false
     private var pool: SoundPool? = null
     private val idMove = IntArray(3)
     private val idClick = IntArray(3)
