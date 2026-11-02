@@ -169,6 +169,7 @@ fun TvBrowse(vm: AppViewModel, kind: Kind) {
             }
 
             // ---------- الأقسام ----------
+            val fixed = listOf("recent" to t(if (kind == Kind.SERIES) "recent_series" else "recent_movies").substringBefore("(").trim(), "top" to (kindLabel + " ★"), "all" to t("all"))
             LazyRow(
                 Modifier.fillMaxWidth().padding(top = 6.dp),
                 contentPadding = PaddingValues(horizontal = 40.dp, vertical = 6.dp),
@@ -185,7 +186,6 @@ fun TvBrowse(vm: AppViewModel, kind: Kind) {
                         }
                     }
                 }
-                val fixed = listOf("recent" to t(if (kind == Kind.SERIES) "recent_series" else "recent_movies").substringBefore("(").trim(), "top" to (kindLabel + " ★"), "all" to t("all"))
                 items(fixed.size, key = { "_" + fixed[it].first }) { i ->
                     val (k, label) = fixed[i]
                     BrowseChip(label, sel == k && !searching) { sel = k; q = ""; showSearch = false }
