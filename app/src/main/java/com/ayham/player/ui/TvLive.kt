@@ -234,7 +234,7 @@ fun TvLive(vm: AppViewModel) {
                             }
                         }
                     }
-                    if (mini != null) MiniPlayer(vm, mini)
+                    if (mini != null) CinemaMini(vm, mini, if (small) 190.dp else 290.dp)
                 }
 
                 if (showSearch) {

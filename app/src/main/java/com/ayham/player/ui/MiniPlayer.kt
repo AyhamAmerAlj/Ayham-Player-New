@@ -3,6 +3,8 @@
 package com.ayham.player.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -86,3 +88,73 @@ fun MiniPlayer(vm: AppViewModel, item: Item) {
         }
     }
 }
+
+/** معاينة سينمائية مصغّرة لشاشة القنوات للتلفاز: بحجم ثابت (لا تأخذ مساحة القنوات) مع توهج بنفسجي وظهور ناعم. */
+@Composable
+fun CinemaMini(vm: AppViewModel, item: Item, w: androidx.compose.ui.unit.Dp) {
+    val exo = vm.livePlayer ?: return
+    val owner = LocalLifecycleOwner.current
+    DisposableEffect(owner) {
+        val obs = LifecycleEventObserver { _, e ->
+            if (e == Lifecycle.Event.ON_STOP) exo.pause()
+            if (e == Lifecycle.Event.ON_START) exo.playWhenReady = true
+        }
+        owner.lifecycle.addObserver(obs)
+        onDispose { owner.lifecycle.removeObserver(obs) }
+    }
+    val shape = RoundedCornerShape(18.dp)
+    val vis = androidx.compose.runtime.remember { androidx.compose.animation.core.MutableTransitionState(false).apply { targetState = true } }
+    androidx.compose.animation.AnimatedVisibility(
+        visibleState = vis,
+        enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(450)) + androidx.compose.animation.scaleIn(androidx.compose.animation.core.tween(450), initialScale = 0.85f),
+    ) {
+        Column(Modifier.width(w), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Focusable(
+                Modifier.fillMaxWidth().aspectRatio(16f / 9f).androidx_shadow(shape),
+                shape, 1.04f, onClick = { vm.playLive(item, vm.miniSource) },
+            ) { f ->
+                Box(
+                    Modifier.fillMaxSize().clip(shape).background(Color.Black)
+                        .androidx_border(if (f) 2.dp else 1.dp, if (f) tc(0xFFC4B5FD) else tc(0x778B5CF6), shape),
+                ) {
+                    AndroidView(
+                        modifier = Modifier.fillMaxSize(),
+                        factory = { c ->
+                            PlayerView(c).apply {
+                                useController = false
+                                player = exo
+                                isFocusable = false
+                                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                setShutterBackgroundColor(android.graphics.Color.BLACK)
+                            }
+                        },
+                        onRelease = { it.player = null },
+                    )
+                    Box(
+                        Modifier.fillMaxWidth().align(androidx.compose.ui.Alignment.BottomCenter)
+                            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.Transparent, Color(0xDD05020B))))
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    ) { RText(item.name, 13, Color.White, bold = true, maxLines = 1) }
+                    Box(
+                        Modifier.align(androidx.compose.ui.Alignment.TopStart).padding(8.dp).clip(RoundedCornerShape(5.dp)).background(C.danger).padding(horizontal = 6.dp),
+                    ) { RText("LIVE", 9, Color.White, bold = true) }
+                }
+            }
+            Focusable(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp), 1.04f, onClick = { vm.stopMini() }) { f ->
+                androidx.compose.foundation.layout.Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (f) tc(0x558B5CF6) else tc(0x33FFFFFF)).padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.Center, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.Close, null, tint = Color.White, modifier = Modifier.width(14.dp))
+                    RText(" " + t("close"), 13, Color.White, bold = true, maxLines = 1)
+                }
+            }
+        }
+    }
+}
+
+private fun Modifier.androidx_shadow(shape: androidx.compose.ui.graphics.Shape): Modifier =
+    this.shadow(18.dp, shape, clip = false, ambientColor = Color(0xFF8B5CF6), spotColor = Color(0xFF8B5CF6))
+
+private fun Modifier.androidx_border(w: androidx.compose.ui.unit.Dp, c: Color, shape: androidx.compose.ui.graphics.Shape): Modifier =
+    this.border(w, c, shape)
