@@ -21,7 +21,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed as gridItemsIndexed
 import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.nativeKeyEvent
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.lazy.LazyRow
@@ -151,7 +152,7 @@ fun TvLive(vm: AppViewModel) {
     Box(
         Modifier.fillMaxSize().background(Color(0xFF05020B)).onPreviewKeyEvent { e ->
             if (e.type == KeyEventType.KeyDown) {
-                val kc = e.nativeKeyEvent.keyCode
+                val kc = e.key.nativeKeyCode
                 val d = when (kc) { in 7..16 -> kc - 7; in 144..153 -> kc - 144; else -> -1 }
                 if (d >= 0 && !showSearch && typed.length < 4) { typed += d.toString(); true } else false
             } else false
