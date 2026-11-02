@@ -649,6 +649,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         livePlayer ?: PlayerFactory.create(getApplication(), maxRes, com.ayham.player.audio.ExtAudioSession.mainTap).also { livePlayer = it }
 
     /** تشغيل قناة بالشاشة المصغّرة داخل قائمة القنوات. */
+    // ---- العرض المتعدد للقنوات ----
+    var multiOpen by mutableStateOf(false)
+        private set
+    var multiStart: Item? = null
+    fun openMulti(item: Item?) { multiStart = item; multiOpen = true }
+    fun closeMulti() { multiOpen = false; multiStart = null }
+
     fun playMini(item: Item, source: LiveSource) {
         val url = urlForLive(item)
         if (url.isEmpty()) return

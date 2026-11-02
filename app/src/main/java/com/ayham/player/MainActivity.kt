@@ -101,7 +101,7 @@ private fun Ready(vm: AppViewModel) {
     }
     Box(Modifier.fillMaxSize()) {
         when (top) {
-            null -> holder.SaveableStateProvider("main") { MainScreen(vm) }
+            null -> if (vm.multiOpen) com.ayham.player.ui.MultiView(vm) else holder.SaveableStateProvider("main") { MainScreen(vm) }
             is Screen.Detail -> holder.SaveableStateProvider("detail-${vm.stack.size}-${top.item.key}") {
                 DetailScreen(vm, top.item)
             }

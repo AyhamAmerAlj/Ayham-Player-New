@@ -565,6 +565,7 @@ fun LiveTab(vm: AppViewModel) {
         SectionLoader(vm, Kind.LIVE)
         return
     }
+    if (!isCompact()) { TvLive(vm); return }
     var sel by rememberSaveable { mutableStateOf("all") }
     val cats = vm.categories[Kind.LIVE].orEmpty()
     val favLive = remember(vm.favorites) { vm.favorites.filter { it.kind == Kind.LIVE } }

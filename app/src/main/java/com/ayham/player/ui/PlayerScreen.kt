@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -177,6 +178,9 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     var subUrl by remember { mutableStateOf("") }
     var subsLoaded by remember { mutableStateOf(false) }
     var barVisible by remember { mutableStateOf(false) }
+    var zapTick by remember { mutableIntStateOf(0) }
+    var zapShow by remember { mutableStateOf(false) }
+    LaunchedEffect(zapTick) { if (zapTick > 0) { zapShow = true; delay(3000); zapShow = false } }
     var epgList by remember { mutableStateOf<List<com.ayham.player.data.EpgEntry>>(emptyList()) }
     var epgFull by remember { mutableStateOf<List<com.ayham.player.data.EpgEntry>>(emptyList()) }
     val okSwallow = remember { booleanArrayOf(false) }
@@ -358,7 +362,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         val n = index + delta
         if (n in queue.indices) {
             index = n
-            if (queue[n].isLive) showToast(queue[n].title)
+            if (queue[n].isLive) zapTick++
         }
     }
 
@@ -1066,6 +1070,33 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     Box(
                         Modifier.clip(RoundedCornerShape(10.dp)).background(tc(0x33FFFFFF)).clickable { nextOff = true }.padding(horizontal = 14.dp, vertical = 8.dp),
                     ) { BodyText(if (ar) "إلغاء" else "Cancel", 14, C.text) }
+                }
+            }
+        }
+
+        // شريط تبديل القناة: شعار + اسم + البرنامج الحالي والتالي، يظهر ثلاث ثوانٍ ثم يختفي
+        if (zapShow && !controls && panel == null && queue[index].isLive) {
+            val e = queue[index]
+            val nowS = System.currentTimeMillis() / 1000
+            val cur = epgList.firstOrNull { it.start <= nowS && it.end > nowS }
+            val nxt = cur?.let { c -> epgList.firstOrNull { it.start >= c.end } }
+            Row(
+                Modifier.align(Alignment.BottomStart).padding(start = if (compact) 14.dp else 36.dp, bottom = if (compact) 24.dp else 44.dp)
+                    .clip(RoundedCornerShape(18.dp)).background(tc(0xEE140A26))
+                    .border(1.2.dp, Brush.horizontalGradient(listOf(C.primary, C.accent)), RoundedCornerShape(18.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Box(Modifier.size(58.dp).clip(RoundedCornerShape(12.dp)).background(tc(0x22FFFFFF)), contentAlignment = Alignment.Center) {
+                    if (e.image.isBlank()) RText(e.title.take(1), 24, C.primaryLight, bold = true)
+                    Img(e.image, Modifier.fillMaxSize().padding(4.dp), ContentScale.Fit, 120, 120)
+                }
+                Column(Modifier.widthIn(max = if (compact) 220.dp else 380.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    BodyText(e.title, 17, Color.White, bold = true, maxLines = 1)
+                    if (cur != null) {
+                        BodyText(cur.title + "  (" + hm(cur.start) + " - " + hm(cur.end) + ")", 13, C.primaryLight, maxLines = 1)
+                        if (nxt != null) BodyText(nxt.title + "  (" + hm(nxt.start) + ")", 12, C.textDim, maxLines = 1)
+                    }
                 }
             }
         }
