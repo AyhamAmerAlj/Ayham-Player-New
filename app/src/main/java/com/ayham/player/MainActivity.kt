@@ -62,17 +62,19 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun Root(vm: AppViewModel) {
-    when (LicenseManager.state) {
-        LicState.CHECKING -> { SplashScreen(); return }
-        LicState.NEED_CODE -> { LicenseScreen(); return }
-        LicState.OK -> {}
+    val lic = LicenseManager.state
+    if (lic == LicState.NEED_CODE) { LicenseScreen(); return }
+    LaunchedEffect(lic) { if (lic == LicState.OK) vm.start() }
+    // موضع استدعاء واحد للافتتاحية حتى لا تُعاد الحركة عند تبدّل الحالات
+    if (lic == LicState.CHECKING || vm.phase == Phase.SPLASH || (vm.phase == Phase.LOADING && vm.bootSplash)) {
+        SplashScreen()
+        return
     }
-    LaunchedEffect(Unit) { vm.start() }
     when (vm.phase) {
-        Phase.SPLASH -> SplashScreen()
         Phase.LOGIN -> LoginScreen(vm)
         Phase.LOADING -> LoadingScreen(vm)
         Phase.READY -> Ready(vm)
+        else -> {}
     }
 }
 

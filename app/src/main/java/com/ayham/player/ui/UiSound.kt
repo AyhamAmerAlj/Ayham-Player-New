@@ -21,6 +21,8 @@ object UiSound {
     private val idClick = IntArray(3)
     @Volatile var pack = 0
     private var ready = 0
+    private var idSplash = 0
+    private const val TOTAL = 7
     private var last = 0L
 
     fun init(ctx: Context) {
@@ -39,6 +41,8 @@ object UiSound {
                 idMove[k] = p.load(fm.path, 1)
                 idClick[k] = p.load(fc.path, 1)
             }
+            val fs = File(dir, "splash_v1.wav").also { if (!it.exists()) it.writeBytes(wav(splashSound())) }
+            idSplash = p.load(fs.path, 1)
             pool = p
         }
     }
@@ -50,8 +54,37 @@ object UiSound {
         return true
     }
 
-    fun move() { if (enabled && ready >= 6 && gate(55)) pool?.play(idMove[pack.coerceIn(0, 2)], 0.5f, 0.5f, 1, 0, 1f) }
-    fun click() { if (enabled && ready >= 6 && gate(90)) pool?.play(idClick[pack.coerceIn(0, 2)], 0.7f, 0.7f, 1, 0, 1f) }
+    fun isReady() = ready >= TOTAL
+    /** نغمة الافتتاحية: حفيف حرير ناعم ثم رنين هادئ عند ظهور الشعار. */
+    fun splash() { if (enabled && ready >= TOTAL) pool?.play(idSplash, 0.6f, 0.6f, 1, 0, 1f) }
+
+    private fun splashSound(): ShortArray {
+        val n = (SR * 2.4).toInt()
+        val out = DoubleArray(n)
+        val rnd = java.util.Random(11L)
+        var lp = 0.0
+        // حفيف: ضجيج مصفّى يفتح ثم يغلق (0 - 0.9 ث)
+        for (i in 0 until (SR * 0.9).toInt()) {
+            val t = i.toDouble() / SR
+            val x = t / 0.9
+            val env = sin(PI * x).let { it * it }
+            val k = 0.04 + 0.22 * sin(PI * x)
+            lp += k * ((rnd.nextDouble() * 2 - 1) - lp)
+            out[i] += lp * env * 0.55
+        }
+        // رنين ناعم (ثلاث نغمات متناسقة) عند 1.05 ث
+        val start = (SR * 1.05).toInt()
+        for (i in start until n) {
+            val t = (i - start).toDouble() / SR
+            val env = (t / 0.015).coerceAtMost(1.0) * exp(-t * 3.2)
+            val v = sin(2 * PI * 523.25 * t) + 0.7 * sin(2 * PI * 784.0 * t) + 0.45 * sin(2 * PI * 1046.5 * t) + 0.12 * sin(2 * PI * 2093.0 * t) * exp(-t * 6)
+            out[i] += v / 2.3 * env * 0.42
+        }
+        return ShortArray(n) { (out[it].coerceIn(-1.0, 1.0) * 32767).toInt().toShort() }
+    }
+
+    fun move() { if (enabled && ready >= TOTAL && gate(55)) pool?.play(idMove[pack.coerceIn(0, 2)], 0.5f, 0.5f, 1, 0, 1f) }
+    fun click() { if (enabled && ready >= TOTAL && gate(90)) pool?.play(idClick[pack.coerceIn(0, 2)], 0.7f, 0.7f, 1, 0, 1f) }
 
     /** الحزم: 0 الافتراضي (ماريمبا/زجاج)، 1 غَيم (زجاج + قطرة ماء)، 2 مطر (قطرات خفيفة). */
     private fun packs(k: Int): Pair<ShortArray, ShortArray> = when (k) {

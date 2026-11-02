@@ -242,10 +242,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun tr(key: String) = Strings.get(lang, key)
 
     // ---------------- بدء التشغيل ----------------
+    /** عند التشغيل التلقائي ببيانات محفوظة نبقي الافتتاحية حتى تفتح الرئيسية مباشرة بدون شاشة تحميل وسيطة. */
+    var bootSplash by mutableStateOf(false)
+        private set
+
     fun start() {
         if (phase != Phase.SPLASH) return
         viewModelScope.launch {
-            delay(2000)
+            val acc0 = savedAccount
+            if (acc0 != null) {
+                val key = XtreamApi.normalizeServer(acc0.server) + "|" + acc0.user
+                bootSplash = withContext(Dispatchers.IO) { db.meta("acc") == key && Kind.values().any { db.count(it) > 0 } }
+            }
+            delay(1800)
             val acc = savedAccount
             if (acc == null) phase = Phase.LOGIN else connect(acc.server, acc.user, acc.pass)
         }
@@ -287,9 +296,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 stack.clear()
                 tab = 0
+                bootSplash = false
                 phase = Phase.READY
             } catch (e: Throwable) {
                 error = e.message ?: e.javaClass.simpleName
+                bootSplash = false
                 phase = Phase.LOGIN
             }
         }
