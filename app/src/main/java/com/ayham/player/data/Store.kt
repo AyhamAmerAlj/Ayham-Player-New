@@ -46,6 +46,10 @@ class Store(ctx: Context) {
         get() = sp.getBoolean("match_card", false)
         set(v) { sp.edit().putBoolean("match_card", v).apply() }
 
+    var gtaCard: Boolean
+        get() = sp.getBoolean("gta_card", true)
+        set(v) { sp.edit().putBoolean("gta_card", v).apply() }
+
     var liveFormat: String
         get() = sp.getString("live_fmt", "m3u8") ?: "m3u8"
         set(v) { sp.edit().putString("live_fmt", v).apply() }

@@ -924,6 +924,13 @@ fun SettingsTab(vm: AppViewModel) {
         }
         if (ThemeState.id == Themes.BARCELONA) BodyText(if (ar) "تظهر دائمًا مع ثيم برشلونة" else "Always shown with the Barcelona theme", 13, C.textDim)
 
+        if (ThemeState.id == Themes.GTA6) {
+            RText(if (ar) "عداد GTA VI" else "GTA VI countdown", 22, C.primaryLight, bold = true)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Chip(if (ar) "إظهار في الرئيسية" else "Show on Home", vm.gtaCard) { vm.changeGtaCard(!vm.gtaCard) }
+            }
+        }
+
         RText(t("live_layout"), 22, C.primaryLight, bold = true)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Chip(t("layout_grid"), vm.liveLayout == "grid") { vm.changeLiveLayout("grid") }

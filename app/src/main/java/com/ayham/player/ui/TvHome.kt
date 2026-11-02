@@ -76,7 +76,8 @@ fun TvHome(
     val L10 = t("trend_movies")
     val L11 = t("trend_series")
     val L12 = t("watch_later")
-    val cats = remember(vm.recent, vm.favorites, vm.later, recMovies, recSeries, newMovies, newSeries, trendMovies, trendSeries, topMovies, topSeries, horrorMovies, horrorSeries) {
+    val gtaOn = ThemeState.id == Themes.GTA6 && vm.gtaCard
+    val cats = remember(gtaOn, vm.recent, vm.favorites, vm.later, recMovies, recSeries, newMovies, newSeries, trendMovies, trendSeries, topMovies, topSeries, horrorMovies, horrorSeries) {
         val l = ArrayList<HomeCat>()
         fun add(k: String, label: String, items: List<Item>, min: Int = 1) {
             val d = items.filter { it.kind != Kind.LIVE }.distinctBy { it.key }
@@ -95,10 +96,11 @@ fun TvHome(
         add("tops", L9 + " ★", topSeries, 3)
         add("fav", L4, vm.favorites)
         add("later", L12, vm.later)
+        if (gtaOn) l.add(HomeCat("gta", "GTA VI", emptyList()))
         l
     }
 
-    if (cats.isEmpty()) {
+    if (cats.none { it.items.isNotEmpty() }) {
         Box(Modifier.fillMaxSize().padding(top = 96.dp).verticalScroll(rememberScrollState()), contentAlignment = Alignment.Center) { SetupCard(vm) }
         return
     }
@@ -106,7 +108,9 @@ fun TvHome(
     var catIdx by remember { mutableIntStateOf(0) }
     val cat = cats[catIdx.coerceIn(0, cats.lastIndex)]
     var selKey by remember(cat.key) { mutableStateOf<String?>(null) }
-    val item = cat.items.firstOrNull { it.key == selKey } ?: cat.items.first()
+    // قسم GTA ليس فيه عناصر، فيبقى البانر على أول قسم فيه عناصر
+    val heroCat = if (cat.items.isNotEmpty()) cat else cats.first { it.items.isNotEmpty() }
+    val item = heroCat.items.firstOrNull { it.key == selKey } ?: heroCat.items.first()
 
     var details by remember { mutableStateOf<Details?>(null) }
     var imdb by remember { mutableStateOf<String?>(null) }
@@ -131,9 +135,6 @@ fun TvHome(
         ThemeState.palette.glow?.let { g ->
             Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(g.copy(alpha = 0.30f), Color.Transparent), center = Offset(0f, 0f), radius = 1100f)))
             Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(C.primary.copy(alpha = 0.30f), Color.Transparent), center = Offset(2600f, 1500f), radius = 1300f)))
-        }
-        if (ThemeState.id == Themes.GTA6) {
-            Box(Modifier.align(Alignment.TopEnd).padding(top = if (small) 80.dp else 96.dp, end = 44.dp)) { Gta6Card(vm, small) }
         }
         if (ThemeState.id == Themes.BARCELONA || vm.matchCard) {
             Box(Modifier.align(Alignment.TopEnd).padding(top = if (small) 80.dp else 96.dp, end = 44.dp)) { NextMatchCard(vm, small) }
@@ -215,7 +216,11 @@ fun TvHome(
 
             // ---------- البوسترات ----------
             val posterH = (sH * (if (small) 0.27f else 0.31f)).coerceIn(110f, 230f).dp
-            LazyRow(
+            if (cat.key == "gta") {
+                Row(Modifier.fillMaxWidth().height(posterH + 22.dp).padding(horizontal = 40.dp, vertical = 10.dp)) {
+                    Gta6Poster(vm, w = posterH * 0.68f, h = posterH)
+                }
+            } else LazyRow(
                 Modifier.fillMaxWidth().height(posterH + 22.dp),
                 contentPadding = PaddingValues(horizontal = 40.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
