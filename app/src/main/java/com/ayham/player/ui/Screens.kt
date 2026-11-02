@@ -637,6 +637,8 @@ fun BrowseTab(vm: AppViewModel, kind: Kind) {
         SectionLoader(vm, kind)
         return
     }
+    // التلفاز: نفس أسلوب الرئيسية (خلفية كبيرة تتبع التركيز)
+    if (!isCompact()) { TvBrowse(vm, kind); return }
     val cats = vm.categories[kind].orEmpty()
     var sel by rememberSaveable(kind.name) { mutableStateOf<String?>(null) }
     var q by rememberSaveable(kind.name + "_q") { mutableStateOf("") }
