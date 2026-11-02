@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -74,8 +76,8 @@ fun TvBrowse(vm: AppViewModel, kind: Kind) {
         }
     }
     val list: List<Item> = if (searching) found else pager.items
-    var selKey by remember(sel, searching) { mutableStateOf<String?>(null) }
-    val item = list.firstOrNull { it.key == selKey } ?: list.firstOrNull()
+    var focusItem by remember(sel, searching) { mutableStateOf<Item?>(null) }
+    val item = focusItem ?: list.firstOrNull()
 
     var details by remember { mutableStateOf<Details?>(null) }
     var imdb by remember { mutableStateOf<String?>(null) }
@@ -129,7 +131,7 @@ fun TvBrowse(vm: AppViewModel, kind: Kind) {
                     ).joinToString("  •  ")
                     if (meta.isNotEmpty() && !small) BodyText(meta, 15, tc(0xFFD9CCF5), bold = true, maxLines = 1)
                     val plot = details?.plot.orEmpty()
-                    if (plot.isNotBlank() && sH >= 500) BodyText(plot, 15, tc(0xFFE5DEF5), maxLines = 3, modifier = Modifier.fillMaxWidth(0.5f))
+                    if (plot.isNotBlank() && sH >= 540) BodyText(plot, 15, tc(0xFFE5DEF5), maxLines = 2, modifier = Modifier.fillMaxWidth(0.5f))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                         Focusable(shape = RoundedCornerShape(26.dp), focusScale = 1.07f, onClick = {
                             if (item.kind == Kind.MOVIE) vm.playMovie(item) else vm.openDetail(item)
@@ -195,20 +197,59 @@ fun TvBrowse(vm: AppViewModel, kind: Kind) {
                 }
             }
 
-            // ---------- البوسترات ----------
-            val posterH = (sH * (if (small) 0.27f else 0.31f)).coerceIn(110f, 230f).dp
-            LazyRow(
-                Modifier.fillMaxWidth().height(posterH + 22.dp),
-                contentPadding = PaddingValues(horizontal = 40.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                itemsIndexed(list, key = { _, it -> it.key }) { i, it ->
-                    if (!searching && i >= list.size - 12) LaunchedEffect(list.size) { pager.loadMore() }
-                    PosterCard(
-                        it, Modifier.onFocusChanged { f -> if (f.hasFocus) selKey = it.key }.then(if (i == 0) Modifier.autoFocus() else Modifier),
-                        w = posterH * 0.68f, h = posterH,
-                    ) { vm.openDetail(it) }
+            // ---------- البوسترات: الصف الأول للقسم المختار، وبالنزول للأسفل تظهر بقية الأقسام ويمكن الاختيار منها ----------
+            // الأقسام (الشريط أعلاه) والتفاصيل ثابتة في مكانها، والمنطقة السفلية فقط هي التي تتحرك عموديًا
+            var initFocus by remember { mutableStateOf(true) }
+            LaunchedEffect(Unit) { delay(700); initFocus = false }
+            val posterH = (sH * (if (small) 0.24f else 0.26f)).coerceIn(100f, 200f).dp
+            val rowBlock = posterH + 22.dp + 30.dp
+            val others = remember(cats, sel, searching) { if (searching) emptyList() else cats.filter { it.id != sel } }
+            val selLabel = when (sel) {
+                "recent" -> t(if (kind == Kind.SERIES) "recent_series" else "recent_movies").substringBefore("(").trim()
+                "top" -> kindLabel + " ★"
+                "all" -> t("all")
+                else -> cats.firstOrNull { it.id == sel }?.name.orEmpty()
+            }
+            LazyColumn(Modifier.fillMaxWidth().height(rowBlock * 1.28f)) {
+                item(key = "row_main") {
+                    BrowseRow(if (searching) t("search") else selLabel, list, posterH, onFocus = { focusItem = it }, onOpen = { vm.openDetail(it) }, first = initFocus) { i ->
+                        if (!searching && i >= list.size - 12) pager.loadMore()
+                    }
                 }
+                items(others, key = { "row_" + it.id }) { c ->
+                    var rowItems by remember(c.id, vm.dataVersion) { mutableStateOf<List<Item>?>(null) }
+                    LaunchedEffect(c.id, vm.dataVersion) {
+                        delay(200)
+                        rowItems = runCatching { vm.inCategory(kind, c.id, 24, 0) }.getOrDefault(emptyList())
+                    }
+                    val ri = rowItems
+                    if (ri == null) Box(Modifier.fillMaxWidth().height(rowBlock).padding(start = 44.dp, top = 6.dp)) { RText(c.name, 17, C.textDim, bold = true, maxLines = 1) }
+                    else if (ri.isNotEmpty()) BrowseRow(c.name, ri, posterH, onFocus = { focusItem = it }, onOpen = { vm.openDetail(it) })
+                }
+            }
+        }
+    }
+}
+
+/** صف بوسترات بعنوان؛ التركيز على أي بوستر يحدّث الخلفية الكبيرة. */
+@Composable
+private fun BrowseRow(
+    title: String, items: List<Item>, posterH: androidx.compose.ui.unit.Dp,
+    onFocus: (Item) -> Unit, onOpen: (Item) -> Unit, first: Boolean = false, onIndex: (Int) -> Unit = {},
+) {
+    Column(Modifier.fillMaxWidth()) {
+        RText(title, 17, C.text, bold = true, maxLines = 1, modifier = Modifier.padding(start = 44.dp, top = 6.dp, end = 44.dp))
+        LazyRow(
+            Modifier.fillMaxWidth().height(posterH + 22.dp),
+            contentPadding = PaddingValues(horizontal = 40.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            itemsIndexed(items, key = { _, it -> it.key }) { i, it ->
+                if (first && i >= items.size - 12) LaunchedEffect(items.size) { onIndex(i) }
+                PosterCard(
+                    it, Modifier.onFocusChanged { f -> if (f.hasFocus) onFocus(it) }.then(if (first && i == 0) Modifier.autoFocus() else Modifier),
+                    w = posterH * 0.68f, h = posterH,
+                ) { onOpen(it) }
             }
         }
     }
