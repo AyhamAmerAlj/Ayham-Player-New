@@ -76,8 +76,7 @@ fun TvHome(
     val L10 = t("trend_movies")
     val L11 = t("trend_series")
     val L12 = t("watch_later")
-    val gtaOn = ThemeState.id == Themes.GTA6 && vm.gtaCard
-    val cats = remember(gtaOn, vm.recent, vm.favorites, vm.later, recMovies, recSeries, newMovies, newSeries, trendMovies, trendSeries, topMovies, topSeries, horrorMovies, horrorSeries) {
+    val cats = remember(vm.recent, vm.favorites, vm.later, recMovies, recSeries, newMovies, newSeries, trendMovies, trendSeries, topMovies, topSeries, horrorMovies, horrorSeries) {
         val l = ArrayList<HomeCat>()
         fun add(k: String, label: String, items: List<Item>, min: Int = 1) {
             val d = items.filter { it.kind != Kind.LIVE }.distinctBy { it.key }
@@ -96,7 +95,6 @@ fun TvHome(
         add("tops", L9 + " ★", topSeries, 3)
         add("fav", L4, vm.favorites)
         add("later", L12, vm.later)
-        if (gtaOn) l.add(HomeCat("gta", "GTA VI", emptyList()))
         l
     }
 
@@ -138,6 +136,9 @@ fun TvHome(
         }
         if (ThemeState.id == Themes.BARCELONA || vm.matchCard) {
             Box(Modifier.align(Alignment.TopEnd).padding(top = if (small) 80.dp else 96.dp, end = 44.dp)) { NextMatchCard(vm, small) }
+        }
+        if (ThemeState.id == Themes.GTA6 && vm.gtaCard) {
+            Box(Modifier.align(Alignment.TopEnd).padding(top = if (small) 124.dp else 146.dp, end = 44.dp)) { Gta6Home(vm, small) }
         }
         AnnBanner(vm, Modifier.align(Alignment.TopStart).padding(start = 44.dp, top = if (small) 74.dp else 86.dp).fillMaxWidth(0.5f))
         Column(Modifier.fillMaxSize().padding(top = if (small) 76.dp else 88.dp, bottom = 10.dp)) {
@@ -216,11 +217,7 @@ fun TvHome(
 
             // ---------- البوسترات ----------
             val posterH = (sH * (if (small) 0.27f else 0.31f)).coerceIn(110f, 230f).dp
-            if (cat.key == "gta") {
-                Row(Modifier.fillMaxWidth().height(posterH + 22.dp).padding(horizontal = 40.dp, vertical = 10.dp)) {
-                    Gta6Poster(vm, w = posterH * 0.68f, h = posterH)
-                }
-            } else LazyRow(
+            LazyRow(
                 Modifier.fillMaxWidth().height(posterH + 22.dp),
                 contentPadding = PaddingValues(horizontal = 40.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -235,3 +232,4 @@ fun TvHome(
         }
     }
 }
+

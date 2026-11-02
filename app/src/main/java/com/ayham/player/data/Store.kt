@@ -50,6 +50,14 @@ class Store(ctx: Context) {
         get() = sp.getBoolean("gta_card", true)
         set(v) { sp.edit().putBoolean("gta_card", v).apply() }
 
+    var gtaPoster: Boolean
+        get() = sp.getBoolean("gta_poster", true)
+        set(v) { sp.edit().putBoolean("gta_poster", v).apply() }
+
+    var gtaCountdown: Boolean
+        get() = sp.getBoolean("gta_countdown", true)
+        set(v) { sp.edit().putBoolean("gta_countdown", v).apply() }
+
     var liveFormat: String
         get() = sp.getString("live_fmt", "m3u8") ?: "m3u8"
         set(v) { sp.edit().putString("live_fmt", v).apply() }
@@ -208,3 +216,4 @@ class Store(ctx: Context) {
         sp.edit().putString("trend_$kind", System.currentTimeMillis().toString() + "|" + json).apply()
     }
 }
+

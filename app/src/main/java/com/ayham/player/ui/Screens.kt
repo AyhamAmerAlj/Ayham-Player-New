@@ -925,9 +925,11 @@ fun SettingsTab(vm: AppViewModel) {
         if (ThemeState.id == Themes.BARCELONA) BodyText(if (ar) "تظهر دائمًا مع ثيم برشلونة" else "Always shown with the Barcelona theme", 13, C.textDim)
 
         if (ThemeState.id == Themes.GTA6) {
-            RText(if (ar) "عداد GTA VI" else "GTA VI countdown", 22, C.primaryLight, bold = true)
+            RText(if (ar) "بطاقة GTA VI في الرئيسية" else "GTA VI card on Home", 22, C.primaryLight, bold = true)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Chip(if (ar) "إظهار في الرئيسية" else "Show on Home", vm.gtaCard) { vm.changeGtaCard(!vm.gtaCard) }
+                Chip((if (ar) "البطاقة: " else "Card: ") + (if (vm.gtaCard) (if (ar) "ظاهرة" else "On") else (if (ar) "مخفية" else "Off")), vm.gtaCard) { vm.changeGtaCard(!vm.gtaCard) }
+                Chip((if (ar) "الصورة: " else "Poster: ") + (if (vm.gtaPoster) (if (ar) "ظاهرة" else "On") else (if (ar) "مخفية" else "Off")), vm.gtaPoster) { vm.changeGtaPoster(!vm.gtaPoster) }
+                Chip((if (ar) "العداد: " else "Countdown: ") + (if (vm.gtaCountdown) (if (ar) "ظاهر" else "On") else (if (ar) "مخفي" else "Off")), vm.gtaCountdown) { vm.changeGtaCountdown(!vm.gtaCountdown) }
             }
         }
 
@@ -1062,3 +1064,4 @@ fun SettingsTab(vm: AppViewModel) {
       }
     }
 }
+
