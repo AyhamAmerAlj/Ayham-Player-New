@@ -22,6 +22,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.ayham.player.AppViewModel
 import com.ayham.player.data.WhatsNew
+import coil.imageLoader
+
+/** لون متوسط لصورة (للإضاءة المحيطية). يرجع null إن تعذّر. */
+suspend fun avgColor(ctx: android.content.Context, url: String): Color? = runCatching {
+    val req = coil.request.ImageRequest.Builder(ctx).data(url).size(24, 24).allowHardware(false).build()
+    val res = ctx.imageLoader.execute(req) as? coil.request.SuccessResult ?: return@runCatching null
+    val bmp = (res.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap ?: return@runCatching null
+    Color(android.graphics.Bitmap.createScaledBitmap(bmp, 1, 1, true).getPixel(0, 0))
+}.getOrNull()
 
 /** بانرات الرئيسية: تذكير انتهاء الاشتراك، وما الجديد في التحديث. */
 @Composable

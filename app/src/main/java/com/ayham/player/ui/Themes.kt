@@ -43,6 +43,7 @@ object Themes {
     const val DARK = "dark"
     const val LIGHT = "light"
     const val AYHAM = "ayham"
+    const val ROYAL = "royal"
 
     val original = Palette(
         id = ORIGINAL,
@@ -161,7 +162,28 @@ object Themes {
         remap = ayhamRemap,
     )
 
-    val all: List<Palette> = listOf(original, barcelona, dark, light, ayham)
+    /** الأبيض الملكي: خلفية كحلية عميقة، نصوص بيضاء، ذهبي للتمييز. البوسترات صور لا تتغير. */
+    private val royalRemap: Map<Long, Long> = mapOf(
+        0x05020BL to 0x060B16L, 0x0B0614L to 0x0A1220L, 0x0A0518L to 0x0A1220L, 0x140A26L to 0x0F1A2DL,
+        0x120A26L to 0x0F1A2DL, 0x1C1033L to 0x16233AL, 0x2A1850L to 0x21345AL, 0x3B1A7AL to 0x2A4577L,
+        0x8B5CF6L to 0x1E3A6EL, 0x6D28D9L to 0x1A3363L, 0x7C3AEDL to 0x24457EL, 0xA855F7L to 0x2E5496L,
+        0x8B1FD9L to 0x1A3363L, 0x9F67FFL to 0x3A66A8L, 0xA78BFAL to 0xD4AF37L, 0xC4A1FFL to 0xE8D08AL,
+        0xD946EFL to 0xD4AF37L, 0xE879F9L to 0xE8C25AL,
+        0xF5F0FFL to 0xFFFFFFL, 0xE5DEF5L to 0xFFFFFFL, 0xD9CCF5L to 0xF5F7FAL, 0xBDB2D6L to 0xE2E8F0L, 0xA99BC4L to 0xD0D8E6L,
+    )
+
+    val royal = Palette(
+        id = ROYAL,
+        bg = Color(0xFF0A1220), bg2 = Color(0xFF0F1A2D), surface = Color(0xFF16233A), surfaceHi = Color(0xFF21345A),
+        primary = Color(0xFF1E3A6E), primaryLight = Color(0xFFE8D08A), accent = Color(0xFFD4AF37),
+        text = Color(0xFFFFFFFF), textDim = Color(0xFFD0D8E6), danger = Color(0xFFFF6B8B), ok = Color(0xFF5EEAD4),
+        remap = royalRemap,
+        stripe = listOf(Color(0xFF1E3A6E), Color(0xFFD4AF37)),
+        gold = Color(0xFFD4AF37),
+        glow = Color(0xFF1E3A6E),
+    )
+
+    val all: List<Palette> = listOf(original, barcelona, dark, light, ayham, royal)
 
     fun byId(id: String): Palette = all.firstOrNull { it.id == id } ?: original
 }

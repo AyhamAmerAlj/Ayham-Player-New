@@ -114,6 +114,9 @@ fun TvLive(vm: AppViewModel) {
     val list: List<Item> = if (searching) found else pager.items
     var focusItem by remember(sel, searching) { mutableStateOf<Item?>(null) }
     val item = focusItem ?: list.firstOrNull()
+    val appCtx = androidx.compose.ui.platform.LocalContext.current
+    var ambient by remember { mutableStateOf<Color?>(null) }
+    LaunchedEffect(item?.image) { ambient = item?.image?.takeIf { it.isNotBlank() }?.let { avgColor(appCtx, it) } }
     val mini = vm.miniItem
     val pick: (Item) -> Unit = { ch ->
         if (mini != null && mini.id != ch.id) vm.playMini(ch, source) else vm.playLive(ch, source)
@@ -160,6 +163,7 @@ fun TvLive(vm: AppViewModel) {
         },
     ) {
         Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(tc(0x558B5CF6), Color.Transparent), center = Offset(1500f, 200f), radius = 1300f)))
+        ambient?.let { a -> Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(a.copy(alpha = 0.35f), Color.Transparent), center = Offset(1500f, 500f), radius = 1200f))) }
         ThemeState.palette.glow?.let { g ->
             Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(g.copy(alpha = 0.25f), Color.Transparent), center = Offset(0f, 0f), radius = 1100f)))
         }
