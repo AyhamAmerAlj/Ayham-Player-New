@@ -75,7 +75,9 @@ fun MultiView(vm: AppViewModel) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val ar = vm.lang == "ar"
     val maxConn = vm.maxConnectionsInt()
-    val n = if (maxConn in 1..3) maxConn.coerceAtLeast(1) else 4
+    val cap = if (maxConn in 1..3) maxConn.coerceAtLeast(1) else 4
+    var slots by remember { mutableIntStateOf(minOf(2, cap)) }
+    val n = minOf(slots, cap)
     val cells = remember { androidx.compose.runtime.mutableStateListOf<Item?>(*arrayOfNulls<Item>(4)) }
     val players = remember { arrayOfNulls<ExoPlayer>(4) }
     var audio by remember { mutableIntStateOf(0) }
@@ -101,7 +103,7 @@ fun MultiView(vm: AppViewModel) {
     }
     LaunchedEffect(Unit) {
         vm.stopMini()
-        vm.multiStart?.let { assign(0, it) }
+        vm.multiStart?.let { assign(0, it); if (cap > 1) picking = 1 }
         if (maxConn == 1) note = if (ar) "اشتراكك يسمح باتصال واحد فقط، فلا يمكن عرض أكثر من قناة." else "Your plan allows a single connection."
     }
     val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -123,6 +125,12 @@ fun MultiView(vm: AppViewModel) {
                     note ?: if (ar) "OK: صوت ثم ملء الشاشة  ·  ضغطة مطوّلة: تغيير القناة  ·  رجوع: خروج (كل خانة تستهلك اتصالًا)" else "OK: audio, then fullscreen · Long press: change · Back: exit (each cell uses a connection)",
                     12, if (note != null) C.danger else C.textDim, maxLines = 1,
                 )
+                if (slots < cap) Focusable(shape = RoundedCornerShape(20.dp), focusScale = 1.05f, onClick = { slots = slots + 1; picking = slots - 1 }) { f ->
+                    Row(Modifier.clip(RoundedCornerShape(20.dp)).background(if (f) tc(0x558B5CF6) else tc(0x33FFFFFF)).padding(horizontal = 12.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(Icons.Filled.Add, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        RText(if (ar) "إضافة قناة" else "Add channel", 13, Color.White, bold = true, maxLines = 1)
+                    }
+                }
             }
             val rows = if (n <= 2) 1 else 2
             val perRow = if (n <= 2) n else 2
