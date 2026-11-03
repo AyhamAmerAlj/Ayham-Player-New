@@ -915,6 +915,7 @@ fun SettingsTab(vm: AppViewModel) {
             Chip("FC Barcelona", ThemeState.id == Themes.BARCELONA) { vm.changeTheme(Themes.BARCELONA) }
             Chip("Dark Mode", ThemeState.id == Themes.DARK) { vm.changeTheme(Themes.DARK) }
             Chip("Light Mode", ThemeState.id == Themes.LIGHT) { vm.changeTheme(Themes.LIGHT) }
+            Chip("Ayham", ThemeState.id == Themes.AYHAM) { vm.changeTheme(Themes.AYHAM) }
         }
         ThemeState.palette.tagline?.let { tl ->
             RText(tl, 20, C.gold, bold = true)

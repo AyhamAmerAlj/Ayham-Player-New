@@ -42,6 +42,7 @@ object Themes {
     const val BARCELONA = "barcelona"
     const val DARK = "dark"
     const val LIGHT = "light"
+    const val AYHAM = "ayham"
 
     val original = Palette(
         id = ORIGINAL,
@@ -142,7 +143,25 @@ object Themes {
         remap = lightRemap,
     )
 
-    val all: List<Palette> = listOf(original, barcelona, dark, light)
+    /** Ayham: ألوان غروب (وردي وبرتقالي على خلفية بنفسجية داكنة) من تصميم Ayham نفسه. */
+    private val ayhamRemap: Map<Long, Long> = mapOf(
+        0x05020BL to 0x0E0616L, 0x0B0614L to 0x140A1FL, 0x0A0518L to 0x140A1FL, 0x0E0820L to 0x1A0D28L,
+        0x120A26L to 0x1E0F2EL, 0x140A26L to 0x1E0F2EL, 0x1C1033L to 0x2A1538L, 0x2A1260L to 0x3A1A4AL,
+        0x2A1850L to 0x3D1F4DL, 0x3B1A7AL to 0x4A2360L,
+        0x8B5CF6L to 0xE0508AL, 0x6D28D9L to 0xB83A6EL, 0x7C3AEDL to 0xC8457AL, 0xA855F7L to 0xE8649AL,
+        0x8B1FD9L to 0xB83A6EL, 0x9F67FFL to 0xF07A8EL, 0xA78BFAL to 0xFFB38AL, 0xC4A1FFL to 0xFFC9A8L,
+        0xD946EFL to 0xFF9F5AL, 0xE879F9L to 0xFF9F5AL,
+    )
+
+    val ayham = Palette(
+        id = AYHAM,
+        bg = Color(0xFF140A1F), bg2 = Color(0xFF1E0F2E), surface = Color(0xFF2A1538), surfaceHi = Color(0xFF3D1F4D),
+        primary = Color(0xFFE0508A), primaryLight = Color(0xFFFFB38A), accent = Color(0xFFFF9F5A),
+        text = Color(0xFFFFF4EE), textDim = Color(0xFFC9A8B8), danger = Color(0xFFFF6B8B), ok = Color(0xFF5EEAD4),
+        remap = ayhamRemap,
+    )
+
+    val all: List<Palette> = listOf(original, barcelona, dark, light, ayham)
 
     fun byId(id: String): Palette = all.firstOrNull { it.id == id } ?: original
 }
