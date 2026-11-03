@@ -129,12 +129,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var matchCard by mutableStateOf(store.matchCard)
         private set
     fun changeMatchCard(v: Boolean) { matchCard = v; store.matchCard = v }
-    var gtaCard by mutableStateOf(store.gtaCard)
-    fun changeGtaCard(v: Boolean) { gtaCard = v; store.gtaCard = v }
-    var gtaPoster by mutableStateOf(store.gtaPoster)
-    fun changeGtaPoster(v: Boolean) { gtaPoster = v; store.gtaPoster = v }
-    var gtaCountdown by mutableStateOf(store.gtaCountdown)
-    fun changeGtaCountdown(v: Boolean) { gtaCountdown = v; store.gtaCountdown = v }
     var vodLayout by mutableStateOf(store.vodLayout)
         private set
 

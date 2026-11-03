@@ -911,7 +911,6 @@ fun SettingsTab(vm: AppViewModel) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Chip("Ayham Original", ThemeState.id == Themes.ORIGINAL) { vm.changeTheme(Themes.ORIGINAL) }
             Chip("FC Barcelona", ThemeState.id == Themes.BARCELONA) { vm.changeTheme(Themes.BARCELONA) }
-            Chip("GTA VI", ThemeState.id == Themes.GTA6) { vm.changeTheme(Themes.GTA6) }
             Chip("Game of Thrones", ThemeState.id == Themes.GOT) { vm.changeTheme(Themes.GOT) }
         }
         ThemeState.palette.tagline?.let { tl ->
@@ -924,15 +923,6 @@ fun SettingsTab(vm: AppViewModel) {
             Chip(if (ar) "إظهار في الرئيسية" else "Show on Home", vm.matchCard || ThemeState.id == Themes.BARCELONA) { vm.changeMatchCard(!vm.matchCard) }
         }
         if (ThemeState.id == Themes.BARCELONA) BodyText(if (ar) "تظهر دائمًا مع ثيم برشلونة" else "Always shown with the Barcelona theme", 13, C.textDim)
-
-        if (ThemeState.id == Themes.GTA6) {
-            RText(if (ar) "بطاقة GTA VI في الرئيسية" else "GTA VI card on Home", 22, C.primaryLight, bold = true)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Chip((if (ar) "البطاقة: " else "Card: ") + (if (vm.gtaCard) (if (ar) "ظاهرة" else "On") else (if (ar) "مخفية" else "Off")), vm.gtaCard) { vm.changeGtaCard(!vm.gtaCard) }
-                Chip((if (ar) "الصورة: " else "Poster: ") + (if (vm.gtaPoster) (if (ar) "ظاهرة" else "On") else (if (ar) "مخفية" else "Off")), vm.gtaPoster) { vm.changeGtaPoster(!vm.gtaPoster) }
-                Chip((if (ar) "العداد: " else "Countdown: ") + (if (vm.gtaCountdown) (if (ar) "ظاهر" else "On") else (if (ar) "مخفي" else "Off")), vm.gtaCountdown) { vm.changeGtaCountdown(!vm.gtaCountdown) }
-            }
-        }
 
         RText(t("live_layout"), 22, C.primaryLight, bold = true)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

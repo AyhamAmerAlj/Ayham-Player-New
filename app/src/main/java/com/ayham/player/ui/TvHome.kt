@@ -138,9 +138,6 @@ fun TvHome(
         if (ThemeState.id == Themes.BARCELONA || vm.matchCard) {
             Box(Modifier.align(Alignment.TopEnd).padding(top = if (small) 80.dp else 96.dp, end = 44.dp)) { NextMatchCard(vm, small) }
         }
-        if (ThemeState.id == Themes.GTA6 && vm.gtaCard) {
-            Box(Modifier.align(Alignment.TopEnd).padding(top = if (small) 124.dp else 146.dp, end = 44.dp)) { Gta6Home(vm, small) }
-        }
         if (ThemeState.id == Themes.GOT) {
             Box(Modifier.align(Alignment.TopEnd).padding(top = if (small) 124.dp else 146.dp, end = 44.dp)) { GotHome(vm, small) { gotQuiz = true } }
         }

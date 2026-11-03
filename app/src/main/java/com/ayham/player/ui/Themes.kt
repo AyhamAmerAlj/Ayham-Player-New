@@ -42,7 +42,6 @@ class Palette(
 object Themes {
     const val ORIGINAL = "original"
     const val BARCELONA = "barcelona"
-    const val GTA6 = "gta6"
     const val GOT = "got"
 
     val original = Palette(
@@ -104,28 +103,6 @@ object Themes {
         glow = Color(0xFFA50044),
     )
 
-    /** ثيم مستوحى من ملصق GTA VI: ليل كحلي، وردي، برتقالي غروب، كريمي. */
-    val gta6 = Palette(
-        id = GTA6,
-        bg = Color(0xFF0A0A24),
-        bg2 = Color(0xFF140F38),
-        surface = Color(0xFF1A1450),
-        surfaceHi = Color(0xFF2B2070),
-        primary = Color(0xFFE0457F),
-        primaryLight = Color(0xFFFFB3C7),
-        accent = Color(0xFFFF8A5B),
-        text = Color(0xFFFFF4EA),
-        textDim = Color(0xFFB9B0D6),
-        danger = Color(0xFFFF6B8B),
-        ok = Color(0xFF5EEAD4),
-        recolor = ::viceRecolor,
-        tagline = "Welcome to Vice City",
-        taglineSub = "GTA VI  ·  19 Nov 2026",
-        stripe = listOf(Color(0xFF3ED6C8), Color(0xFFFF5FA2), Color(0xFFFF8A5B)),
-        gold = Color(0xFFFFB36B),
-        glow = Color(0xFFC2407F),
-    )
-
     /** ثيم Game of Thrones: فولاذي وأسود مع لمسات ذهبية، مستوحى من شعار آل ستارك وبوسترات المسلسل. */
     val got = Palette(
         id = GOT,
@@ -148,7 +125,7 @@ object Themes {
         glow = Color(0xFF3E4C5A),
     )
 
-    val all: List<Palette> = listOf(original, barcelona, gta6, got)
+    val all: List<Palette> = listOf(original, barcelona, got)
 
     fun byId(id: String): Palette = all.firstOrNull { it.id == id } ?: original
 }
@@ -178,44 +155,6 @@ fun tc(argb: Long): Color {
     }
     val to = remap[argb and 0xFFFFFFL] ?: return Color(argb)
     return Color((argb and 0xFF000000L) or to)
-}
-
-/** تدرج غروب فيسي سيتي حسب السطوع: من الليل الكحلي إلى الوردي والبرتقالي والكريمي. */
-private val viceStops: List<Pair<Float, Long>> = listOf(
-    0.00f to 0xFF0A0A24L, 0.20f to 0xFF1E1A4FL, 0.40f to 0xFF5A2A7AL,
-    0.60f to 0xFFC2407FL, 0.80f to 0xFFFF8A6BL, 1.00f to 0xFFFFF1E0L,
-)
-
-/** يحوّل الألوان البنفسجية/الوردية (الثابتة في الكود) إلى تدرج الغروب، ويترك الباقي كما هو. */
-private fun viceRecolor(argb: Long): Long {
-    val r = ((argb shr 16) and 0xFFL) / 255f
-    val g = ((argb shr 8) and 0xFFL) / 255f
-    val b = (argb and 0xFFL) / 255f
-    val mx = maxOf(r, maxOf(g, b))
-    val mn = minOf(r, minOf(g, b))
-    val d = mx - mn
-    if (d < 0.02f) return argb
-    val l = (mx + mn) / 2f
-    val s = d / (1f - kotlin.math.abs(2f * l - 1f))
-    if (s < 0.35f) return argb
-    var h = when (mx) {
-        r -> (g - b) / d
-        g -> (b - r) / d + 2f
-        else -> (r - g) / d + 4f
-    } * 60f
-    if (h < 0f) h += 360f
-    if (h < 220f || h > 335f) return argb
-    var i = 0
-    while (i < viceStops.size - 2 && l > viceStops[i + 1].first) i++
-    val (t0, c0) = viceStops[i]
-    val (t1, c1) = viceStops[i + 1]
-    val f = ((l - t0) / (t1 - t0)).coerceIn(0f, 1f)
-    fun mix(shift: Int): Long {
-        val a = ((c0 shr shift) and 0xFFL).toFloat()
-        val c = ((c1 shr shift) and 0xFFL).toFloat()
-        return (a + (c - a) * f).toLong().coerceIn(0L, 255L)
-    }
-    return (argb and 0xFF000000L) or (mix(16) shl 16) or (mix(8) shl 8) or mix(0)
 }
 
 /** تدرج فولاذي وأسود: الألوان البنفسجية الثابتة في الكود تتحول إليه حسب السطوع. */
