@@ -334,6 +334,7 @@ fun MainScreen(vm: AppViewModel) {
         // القنوات والأفلام والمسلسلات تُفتح بالشاشة الكاملة بدون الشريط الجانبي، والرجوع يعيد للرئيسية والشريط
         val full = vm.tab in 1..3
         var focusSideNext by remember { mutableStateOf(false) }
+        AnnPopup(vm)
         androidx.activity.compose.BackHandler(enabled = vm.miniItem == null && (full || vm.tab != 0)) {
             focusSideNext = true
             vm.selectTab(0)
@@ -866,6 +867,7 @@ fun SettingsTab(vm: AppViewModel) {
       ) {
 
         if (cat == 0) WatchStatsCard(vm)
+        if (cat == 0 && vm.ann != null) GlowButton(if (ar) "عرض الإعلان" else "Show announcement") { vm.openAnn() }
 
         // ---- الملف الشخصي ----
         val ctx = androidx.compose.ui.platform.LocalContext.current
