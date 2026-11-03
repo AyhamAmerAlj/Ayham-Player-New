@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.ayham.player.AppViewModel
@@ -73,7 +74,13 @@ fun AnnPopup(vm: AppViewModel) {
                 RText(if (ar) "إعلان" else "Announcement", 22, Color.White, bold = true)
             }
             if (a.image.isNotBlank()) {
-                Img(a.image, Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(16.dp)), ContentScale.Fit, 900, 500)
+                val bmp = remember(a.id, a.image) {
+                    runCatching {
+                        val bytes = android.util.Base64.decode(a.image, android.util.Base64.DEFAULT)
+                        android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+                    }.getOrNull()
+                }
+                if (bmp != null) androidx.compose.foundation.Image(bmp, null, Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Fit)
             }
             // النص قابل للتمرير: زر الريموت للأعلى والأسفل يحرّك النص عندما يكون التركيز عليه
             Box(
