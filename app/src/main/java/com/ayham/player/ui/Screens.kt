@@ -865,6 +865,8 @@ fun SettingsTab(vm: AppViewModel) {
         verticalArrangement = Arrangement.spacedBy(18.dp),
       ) {
 
+        if (cat == 0) WatchStatsCard(vm)
+
         // ---- الملف الشخصي ----
         val ctx = androidx.compose.ui.platform.LocalContext.current
         val tvDevice = remember { isTvDevice(ctx) }

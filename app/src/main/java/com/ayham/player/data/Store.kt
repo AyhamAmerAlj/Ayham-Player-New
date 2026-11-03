@@ -182,6 +182,35 @@ class Store(ctx: Context) {
     fun newsSeen(): Set<String> = (sp.getString("news_seen", "") ?: "").split(",").filter { it.isNotBlank() }.toSet()
     fun markNewsSeen(id: String) { sp.edit().putString("news_seen", (newsSeen() + id).toList().takeLast(100).joinToString(",")).apply() }
 
+    var whatsNewSeen: String
+        get() = sp.getString("whatsnew_seen", "") ?: ""
+        set(v) { sp.edit().putString("whatsnew_seen", v).apply() }
+
+    /** يضيف ثواني مشاهدة للأسبوع الحالي لقناة أو فيلم، ويحفظ أعلى 30 فقط. */
+    fun addWatch(key: String, name: String, sec: Long) {
+        if (sec <= 0L) return
+        val wk = System.currentTimeMillis() / 604_800_000L
+        val total = sp.getLong("wt_$wk", 0L) + sec
+        val rows = (sp.getString("wr_$wk", "") ?: "").lines().filter { it.isNotBlank() }
+            .map { it.split("\t") }
+            .associate { it[0] to Pair(it.getOrElse(1) { "" }, it.getOrElse(2) { "0" }.toLongOrNull() ?: 0L) }
+            .toMutableMap()
+        val prev = rows[key]
+        rows[key] = Pair(name.replace("\t", " ").replace("\n", " "), (prev?.second ?: 0L) + sec)
+        val text = rows.entries.sortedByDescending { it.value.second }.take(30)
+            .joinToString("\n") { "${it.key}\t${it.value.first}\t${it.value.second}" }
+        sp.edit().putLong("wt_$wk", total).putString("wr_$wk", text).apply()
+    }
+
+    fun watchWeek(): WatchWeek {
+        val wk = System.currentTimeMillis() / 604_800_000L
+        val total = sp.getLong("wt_$wk", 0L)
+        val top = (sp.getString("wr_$wk", "") ?: "").lines().filter { it.isNotBlank() }
+            .map { it.split("\t") }
+            .maxByOrNull { it.getOrElse(2) { "0" }.toLongOrNull() ?: 0L }
+        return WatchWeek(total, top?.getOrElse(1) { "" }.orEmpty(), top?.getOrElse(2) { "0" }?.toLongOrNull() ?: 0L)
+    }
+
     fun removeProgress(key: String) { sp.edit().remove("p_$key").remove("pt_$key").apply() }
 
     /** وقت آخر مسح لسجل التقدم (حتى لا تعيده المزامنة). */

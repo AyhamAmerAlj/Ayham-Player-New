@@ -664,6 +664,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         r.onSuccess { ann = it }
     }
 
+    // ---- ما الجديد في التحديث ----
+    var whatsNewSeen by mutableStateOf(store.whatsNewSeen)
+        private set
+    fun dismissWhatsNew() { whatsNewSeen = com.ayham.player.data.WhatsNew.id; store.whatsNewSeen = com.ayham.player.data.WhatsNew.id }
+
     // ---- العرض المتعدد للقنوات ----
     var multiOpen by mutableStateOf(false)
         private set
