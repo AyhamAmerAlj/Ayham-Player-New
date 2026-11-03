@@ -5,6 +5,21 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,7 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.ayham.player.AppViewModel
 
-/** نافذة إعلان من لوحة الإدارة في وسط الشاشة. تظهر مرة لكل إعلان جديد، وتُعاد من الإعدادات. */
+/** نافذة إعلان من لوحة الإدارة في وسط الشاشة: صورة اختيارية ونص كامل قابل للتمرير بالريموت. */
 @Composable
 fun AnnPopup(vm: AppViewModel) {
     if (!vm.annShowNow) return
@@ -40,20 +55,42 @@ fun AnnPopup(vm: AppViewModel) {
     }
     val text = if (!ar && a.textEn.isNotBlank()) a.textEn else a.text
     val shape = RoundedCornerShape(26.dp)
+    val scroll = rememberScrollState()
+    val scope = rememberCoroutineScope()
     Dialog(onDismissRequest = { vm.dismissAnn() }) {
         Column(
-            Modifier.fillMaxWidth(0.8f).clip(shape)
+            Modifier.fillMaxWidth(0.8f).fillMaxHeight(0.9f).clip(shape)
                 .background(Brush.verticalGradient(listOf(c1.copy(alpha = 0.35f), tc(0xFF0B0616))))
                 .border(1.5.dp, Brush.horizontalGradient(listOf(c1, c2)), shape)
-                .padding(28.dp),
+                .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(Modifier.size(64.dp).clip(CircleShape).background(Brush.linearGradient(listOf(c1, c2))), contentAlignment = Alignment.Center) {
-                Icon(ic, null, tint = Color.White, modifier = Modifier.size(34.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.size(48.dp).clip(CircleShape).background(Brush.linearGradient(listOf(c1, c2))), contentAlignment = Alignment.Center) {
+                    Icon(ic, null, tint = Color.White, modifier = Modifier.size(26.dp))
+                }
+                RText(if (ar) "إعلان" else "Announcement", 22, Color.White, bold = true)
             }
-            RText(if (ar) "إعلان" else "Announcement", 22, Color.White, bold = true)
-            BodyText(text, 18, Color.White, maxLines = 6)
+            if (a.image.isNotBlank()) {
+                Img(a.image, Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(16.dp)), ContentScale.Fit, 900, 500)
+            }
+            // النص قابل للتمرير: زر الريموت للأعلى والأسفل يحرّك النص عندما يكون التركيز عليه
+            Box(
+                Modifier.weight(1f).fillMaxWidth()
+                    .verticalScroll(scroll)
+                    .focusable()
+                    .onPreviewKeyEvent { e ->
+                        if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                        when (e.key) {
+                            Key.DirectionDown -> { scope.launch { scroll.animateScrollBy(140f) }; true }
+                            Key.DirectionUp -> { scope.launch { scroll.animateScrollBy(-140f) }; true }
+                            else -> false
+                        }
+                    },
+            ) {
+                BodyText(text, 18, Color.White)
+            }
             Focusable(Modifier.autoFocus(), RoundedCornerShape(24.dp), 1.06f, onClick = { vm.dismissAnn() }) { f ->
                 Box(Modifier.clip(RoundedCornerShape(24.dp)).background(if (f) c2 else c1).padding(horizontal = 28.dp, vertical = 10.dp)) {
                     RText(if (ar) "حسنًا" else "OK", 17, Color.White, bold = true)
