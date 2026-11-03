@@ -103,6 +103,7 @@ fun TvHome(
         return
     }
 
+    var gotQuiz by remember { mutableStateOf(false) }
     var catIdx by remember { mutableIntStateOf(0) }
     val cat = cats[catIdx.coerceIn(0, cats.lastIndex)]
     var selKey by remember(cat.key) { mutableStateOf<String?>(null) }
@@ -139,6 +140,9 @@ fun TvHome(
         }
         if (ThemeState.id == Themes.GTA6 && vm.gtaCard) {
             Box(Modifier.align(Alignment.TopEnd).padding(top = if (small) 124.dp else 146.dp, end = 44.dp)) { Gta6Home(vm, small) }
+        }
+        if (ThemeState.id == Themes.GOT) {
+            Box(Modifier.align(Alignment.TopEnd).padding(top = if (small) 124.dp else 146.dp, end = 44.dp)) { GotHome(vm, small) { gotQuiz = true } }
         }
         AnnBanner(vm, Modifier.align(Alignment.TopStart).padding(start = 44.dp, top = if (small) 74.dp else 86.dp).fillMaxWidth(0.5f))
         Column(Modifier.fillMaxSize().padding(top = if (small) 76.dp else 88.dp, bottom = 10.dp)) {
@@ -230,6 +234,7 @@ fun TvHome(
                 }
             }
         }
+        if (gotQuiz) GotQuiz(vm) { gotQuiz = false }
     }
 }
 

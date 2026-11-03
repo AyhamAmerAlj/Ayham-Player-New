@@ -912,6 +912,7 @@ fun SettingsTab(vm: AppViewModel) {
             Chip("Ayham Original", ThemeState.id == Themes.ORIGINAL) { vm.changeTheme(Themes.ORIGINAL) }
             Chip("FC Barcelona", ThemeState.id == Themes.BARCELONA) { vm.changeTheme(Themes.BARCELONA) }
             Chip("GTA VI", ThemeState.id == Themes.GTA6) { vm.changeTheme(Themes.GTA6) }
+            Chip("Game of Thrones", ThemeState.id == Themes.GOT) { vm.changeTheme(Themes.GOT) }
         }
         ThemeState.palette.tagline?.let { tl ->
             RText(tl, 20, C.gold, bold = true)
