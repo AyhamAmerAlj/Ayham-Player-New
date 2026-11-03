@@ -562,10 +562,19 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         isPlaying = exo.isPlaying
         buffering = exo.playbackState == Player.STATE_BUFFERING
         tracks = exo.currentTracks
+        var playFrom = 0L
+        fun flushWatch() {
+            if (playFrom <= 0L) return
+            val now = System.currentTimeMillis()
+            val c = queue.getOrNull(index)
+            if (c != null) vm.store.addWatch(c.key, c.title, (now - playFrom) / 1000)
+            playFrom = 0L
+        }
         val l = object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
                 extSession.setPlaying(playing)
+                if (playing) playFrom = System.currentTimeMillis() else flushWatch()
             }
 
             override fun onPlaybackStateChanged(state: Int) {
@@ -632,7 +641,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             }
         }
         exo.addListener(l)
-        onDispose { exo.removeListener(l) }
+        onDispose { flushWatch(); exo.removeListener(l) }
     }
 
     // ---------- تحميل المقطع عند تغيير القناة/الحلقة ----------

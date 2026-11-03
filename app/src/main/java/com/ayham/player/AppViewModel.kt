@@ -653,16 +653,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** تشغيل قناة بالشاشة المصغّرة داخل قائمة القنوات. */
     // ---- إعلان الرئيسية ----
+    /** هل نعرض نافذة الإعلان الآن (تظهر مرة واحدة لكل إعلان جديد، وتُعاد من الإعدادات). */
+    var annShowNow by mutableStateOf(false)
     var ann by mutableStateOf<com.ayham.player.data.Ann?>(null)
         private set
     private var annDismissedId by mutableStateOf(store.annDismissed)
     val annVisible: com.ayham.player.data.Ann?
         get() = ann?.takeIf { it.id != annDismissedId && (it.expires == 0L || it.expires * 1000 > System.currentTimeMillis()) }
-    fun dismissAnn() { ann?.let { annDismissedId = it.id; store.annDismissed = it.id } }
+    fun dismissAnn() { ann?.let { annDismissedId = it.id; store.annDismissed = it.id }; annShowNow = false }
+    fun openAnn() { if (ann != null) annShowNow = true }
     suspend fun loadAnn() {
         val r = withContext(Dispatchers.IO) { com.ayham.player.data.AnnApi.fetch() }
-        r.onSuccess { ann = it }
+        r.onSuccess { ann = it; if (annVisible != null) annShowNow = true }
     }
+
+    // ---- ما الجديد في التحديث ----
+    var whatsNewSeen by mutableStateOf(store.whatsNewSeen)
+        private set
+    fun dismissWhatsNew() { whatsNewSeen = com.ayham.player.data.WhatsNew.id; store.whatsNewSeen = com.ayham.player.data.WhatsNew.id }
 
     // ---- العرض المتعدد للقنوات ----
     var multiOpen by mutableStateOf(false)

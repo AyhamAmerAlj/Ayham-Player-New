@@ -4,18 +4,32 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CardGiftcard
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,13 +37,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.ayham.player.AppViewModel
 
-/** بانر إعلان من لوحة الإدارة، بلون وأيقونة حسب النوع، ويمكن إغلاقه (لا يعود لنفس الإعلان). */
+/** نافذة إعلان من لوحة الإدارة في وسط الشاشة: إعلان صورة يملأ النافذة، أو إعلان كتابي قابل للتمرير بالريموت. */
 @Composable
-fun AnnBanner(vm: AppViewModel, modifier: Modifier = Modifier) {
-    val a = vm.annVisible ?: return
+fun AnnPopup(vm: AppViewModel) {
+    if (!vm.annShowNow) return
+    val a = vm.ann ?: return
     val ar = vm.lang == "ar"
     val (ic, c1, c2) = when (a.kind) {
         "offer" -> Triple(Icons.Filled.CardGiftcard, Color(0xFFEDBB00), Color(0xFFD946EF))
@@ -38,19 +55,63 @@ fun AnnBanner(vm: AppViewModel, modifier: Modifier = Modifier) {
         else -> Triple(Icons.Filled.Info, Color(0xFF38BDF8), Color(0xFF8B5CF6))
     }
     val text = if (!ar && a.textEn.isNotBlank()) a.textEn else a.text
-    val shape = RoundedCornerShape(18.dp)
-    Row(
-        modifier.clip(shape).background(Brush.horizontalGradient(listOf(c1.copy(alpha = 0.28f), c2.copy(alpha = 0.28f), tc(0xDD0B0616))))
-            .border(1.2.dp, Brush.horizontalGradient(listOf(c1, c2)), shape).padding(horizontal = 14.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(Modifier.size(34.dp).clip(CircleShape).background(Brush.linearGradient(listOf(c1, c2))), contentAlignment = Alignment.Center) {
-            Icon(ic, null, tint = Color.White, modifier = Modifier.size(20.dp))
-        }
-        BodyText(text, 15, Color.White, bold = true, maxLines = 2, modifier = Modifier.weight(1f, fill = false))
-        Focusable(shape = CircleShape, focusScale = 1.15f, onClick = { vm.dismissAnn() }) { f ->
-            Box(Modifier.size(28.dp).clip(CircleShape).background(if (f) tc(0x88FFFFFF) else tc(0x33FFFFFF)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Filled.Close, null, tint = Color.White, modifier = Modifier.size(16.dp))
+    val bmp = remember(a.id, a.image) {
+        if (a.image.isBlank()) null else runCatching {
+            val bytes = android.util.Base64.decode(a.image, android.util.Base64.DEFAULT)
+            android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+        }.getOrNull()
+    }
+    val hasImg = bmp != null
+    val hasText = text.isNotBlank()
+    val shape = RoundedCornerShape(26.dp)
+    val scroll = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    Dialog(onDismissRequest = { vm.dismissAnn() }) {
+        Column(
+            Modifier.fillMaxWidth(if (hasImg) 0.94f else 0.8f).fillMaxHeight(0.94f).clip(shape)
+                .background(Brush.verticalGradient(listOf(c1.copy(alpha = 0.35f), tc(0xFF0B0616))))
+                .border(1.5.dp, Brush.horizontalGradient(listOf(c1, c2)), shape)
+                .padding(if (hasImg) 14.dp else 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (!hasImg) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(Modifier.size(48.dp).clip(CircleShape).background(Brush.linearGradient(listOf(c1, c2))), contentAlignment = Alignment.Center) {
+                        Icon(ic, null, tint = Color.White, modifier = Modifier.size(26.dp))
+                    }
+                    RText(if (ar) "إعلان" else "Announcement", 22, Color.White, bold = true)
+                }
+            }
+            if (bmp != null) {
+                androidx.compose.foundation.Image(
+                    bmp, null,
+                    Modifier.weight(if (hasText) 0.7f else 1f).fillMaxWidth().clip(RoundedCornerShape(18.dp)),
+                    contentScale = ContentScale.Fit,
+                )
+            }
+            if (hasText) {
+                // النص قابل للتمرير: زر الريموت للأعلى والأسفل يحرّك النص عند التركيز عليه
+                Box(
+                    Modifier.weight(if (hasImg) 0.3f else 1f).fillMaxWidth()
+                        .verticalScroll(scroll)
+                        .focusable()
+                        .onPreviewKeyEvent { e ->
+                            if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                            when (e.key) {
+                                Key.DirectionDown -> { scope.launch { scroll.scrollTo(scroll.value + 140) }; true }
+                                Key.DirectionUp -> { scope.launch { scroll.scrollTo((scroll.value - 140).coerceAtLeast(0)) }; true }
+                                else -> false
+                            }
+                        },
+                ) {
+                    BodyText(text, if (hasImg) 16 else 18, Color.White)
+                }
+            }
+            Focusable(Modifier.autoFocus(), RoundedCornerShape(24.dp), 1.06f, onClick = { vm.dismissAnn() }) { f ->
+                Box(Modifier.clip(RoundedCornerShape(24.dp)).background(if (f) c2 else c1).padding(horizontal = 28.dp, vertical = 10.dp)) {
+                    RText(if (ar) "حسنًا" else "OK", 17, Color.White, bold = true)
+                }
             }
         }
     }

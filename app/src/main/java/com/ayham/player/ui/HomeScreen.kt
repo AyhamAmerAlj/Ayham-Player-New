@@ -519,10 +519,11 @@ fun HomeTab(vm: AppViewModel) {
         if (tvUi) {
             if (featured.isNotEmpty() || heroFocus != null) item { TvHero(vm, featured, heroFocus) } else item { Spacer(Modifier.height(96.dp)) }
             if (vm.recent.isNotEmpty()) item { FocusRow(t("continue_watching"), vm.recent, vm, open) }
+            item { ExtraBanners(vm, Modifier.fillMaxWidth().padding(horizontal = 44.dp, vertical = 6.dp)) }
+            item { ExtraBanners(vm, Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp)) }
             if (Season.halloween) item { HalloweenBanner() }
             item { SetupCard(vm) }
         } else {
-            item { AnnBanner(vm, Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp)) }
             if (Season.halloween) item { HalloweenBanner() }
             item { SetupCard(vm) }
             item { FeaturedBanner(vm, featured) }

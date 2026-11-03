@@ -53,7 +53,7 @@ object NewsApi {
 }
 
 /** إعلان الرئيسية من لوحة الإدارة (بانر واحد): عرض، صيانة، جديد، معلومة. */
-data class Ann(val id: String, val text: String, val textEn: String, val kind: String, val expires: Long)
+data class Ann(val id: String, val text: String, val textEn: String, val kind: String, val expires: Long, val image: String = "")
 
 object AnnApi {
     private val client = OkHttpClient.Builder().callTimeout(8, TimeUnit.SECONDS).build()
@@ -68,7 +68,7 @@ object AnnApi {
             val o = JsonParser.parseString(r.body?.string().orEmpty()).asJsonObject
             val a = o.get("ann")?.takeIf { it.isJsonObject }?.asJsonObject ?: return@use null
             fun s(k: String) = a.get(k)?.takeIf { !it.isJsonNull }?.asString.orEmpty()
-            Ann(s("id"), s("text"), s("text_en"), s("kind"), a.get("expires")?.takeIf { !it.isJsonNull }?.asLong ?: 0L)
+            Ann(s("id"), s("text"), s("text_en"), s("kind"), a.get("expires")?.takeIf { !it.isJsonNull }?.asLong ?: 0L, s("image"))
         }
     }
 }

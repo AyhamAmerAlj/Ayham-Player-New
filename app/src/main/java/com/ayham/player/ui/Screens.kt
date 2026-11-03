@@ -306,7 +306,7 @@ fun MainScreen(vm: AppViewModel) {
             androidx.compose.runtime.key(vm.tab) {
                 val fade = remember { androidx.compose.animation.core.Animatable(0f) }
                 LaunchedEffect(Unit) { fade.animateTo(1f, androidx.compose.animation.core.tween(240)) }
-                Box(Modifier.fillMaxSize().graphicsLayer { alpha = fade.value }) {
+                Box(Modifier.fillMaxSize().graphicsLayer { alpha = fade.value; translationY = (1f - fade.value) * 18f }) {
                 when (vm.tab) {
                     0 -> HomeTab(vm)
                     1 -> LiveTab(vm)
@@ -334,6 +334,7 @@ fun MainScreen(vm: AppViewModel) {
         // القنوات والأفلام والمسلسلات تُفتح بالشاشة الكاملة بدون الشريط الجانبي، والرجوع يعيد للرئيسية والشريط
         val full = vm.tab in 1..3
         var focusSideNext by remember { mutableStateOf(false) }
+        AnnPopup(vm)
         androidx.activity.compose.BackHandler(enabled = vm.miniItem == null && (full || vm.tab != 0)) {
             focusSideNext = true
             vm.selectTab(0)
@@ -454,7 +455,12 @@ fun SectionLoader(vm: AppViewModel, kind: Kind) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
             when (st) {
                 LoadState.LOADING -> {
-                    CircularProgressIndicator(color = C.accent, strokeWidth = 4.dp, modifier = Modifier.size(50.dp))
+                    val inf = androidx.compose.animation.core.rememberInfiniteTransition(label = "loadGlow")
+                    val gA by inf.animateFloat(0.2f, 0.75f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1300), androidx.compose.animation.core.RepeatMode.Reverse), label = "gA")
+                    Box(Modifier.size(120.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(120.dp).background(androidx.compose.ui.graphics.Brush.radialGradient(listOf(C.primary.copy(alpha = gA), androidx.compose.ui.graphics.Color.Transparent)), androidx.compose.foundation.shape.CircleShape))
+                        CircularProgressIndicator(color = C.accent, strokeWidth = 4.dp, modifier = Modifier.size(50.dp))
+                    }
                     RText(t(loadKey(kind)) + "...", 26, C.text, bold = true)
                     val n = vm.sectionCount[kind] ?: 0
                     if (n > 0) RText("${t("loaded_count")}  $n", 22, C.primaryLight)
@@ -865,6 +871,9 @@ fun SettingsTab(vm: AppViewModel) {
         verticalArrangement = Arrangement.spacedBy(18.dp),
       ) {
 
+        if (cat == 0) WatchStatsCard(vm)
+        if (cat == 0 && vm.ann != null) GlowButton(if (ar) "عرض الإعلان" else "Show announcement") { vm.openAnn() }
+
         // ---- الملف الشخصي ----
         val ctx = androidx.compose.ui.platform.LocalContext.current
         val tvDevice = remember { isTvDevice(ctx) }
@@ -912,6 +921,10 @@ fun SettingsTab(vm: AppViewModel) {
             Chip("Ayham Original", ThemeState.id == Themes.ORIGINAL) { vm.changeTheme(Themes.ORIGINAL) }
             Chip("FC Barcelona", ThemeState.id == Themes.BARCELONA) { vm.changeTheme(Themes.BARCELONA) }
             Chip("Game of Thrones", ThemeState.id == Themes.GOT) { vm.changeTheme(Themes.GOT) }
+            Chip("Dark Mode", ThemeState.id == Themes.DARK) { vm.changeTheme(Themes.DARK) }
+            Chip("Light Mode", ThemeState.id == Themes.LIGHT) { vm.changeTheme(Themes.LIGHT) }
+            Chip("Ayham", ThemeState.id == Themes.AYHAM) { vm.changeTheme(Themes.AYHAM) }
+            Chip("Royal White", ThemeState.id == Themes.ROYAL) { vm.changeTheme(Themes.ROYAL) }
         }
         ThemeState.palette.tagline?.let { tl ->
             RText(tl, 20, C.gold, bold = true)
