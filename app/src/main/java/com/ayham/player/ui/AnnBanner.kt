@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.ayham.player.AppViewModel
 
-/** نافذة إعلان من لوحة الإدارة في وسط الشاشة: صورة اختيارية ونص كامل قابل للتمرير بالريموت. */
+/** نافذة إعلان من لوحة الإدارة في وسط الشاشة: إعلان صورة يملأ النافذة، أو إعلان كتابي قابل للتمرير بالريموت. */
 @Composable
 fun AnnPopup(vm: AppViewModel) {
     if (!vm.annShowNow) return
@@ -55,48 +55,58 @@ fun AnnPopup(vm: AppViewModel) {
         else -> Triple(Icons.Filled.Info, Color(0xFF38BDF8), Color(0xFF8B5CF6))
     }
     val text = if (!ar && a.textEn.isNotBlank()) a.textEn else a.text
+    val bmp = remember(a.id, a.image) {
+        if (a.image.isBlank()) null else runCatching {
+            val bytes = android.util.Base64.decode(a.image, android.util.Base64.DEFAULT)
+            android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+        }.getOrNull()
+    }
+    val hasImg = bmp != null
+    val hasText = text.isNotBlank()
     val shape = RoundedCornerShape(26.dp)
     val scroll = rememberScrollState()
     val scope = rememberCoroutineScope()
     Dialog(onDismissRequest = { vm.dismissAnn() }) {
         Column(
-            Modifier.fillMaxWidth(0.8f).fillMaxHeight(0.9f).clip(shape)
+            Modifier.fillMaxWidth(if (hasImg) 0.94f else 0.8f).fillMaxHeight(0.94f).clip(shape)
                 .background(Brush.verticalGradient(listOf(c1.copy(alpha = 0.35f), tc(0xFF0B0616))))
                 .border(1.5.dp, Brush.horizontalGradient(listOf(c1, c2)), shape)
-                .padding(24.dp),
+                .padding(if (hasImg) 14.dp else 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.size(48.dp).clip(CircleShape).background(Brush.linearGradient(listOf(c1, c2))), contentAlignment = Alignment.Center) {
-                    Icon(ic, null, tint = Color.White, modifier = Modifier.size(26.dp))
+            if (!hasImg) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(Modifier.size(48.dp).clip(CircleShape).background(Brush.linearGradient(listOf(c1, c2))), contentAlignment = Alignment.Center) {
+                        Icon(ic, null, tint = Color.White, modifier = Modifier.size(26.dp))
+                    }
+                    RText(if (ar) "إعلان" else "Announcement", 22, Color.White, bold = true)
                 }
-                RText(if (ar) "إعلان" else "Announcement", 22, Color.White, bold = true)
             }
-            if (a.image.isNotBlank()) {
-                val bmp = remember(a.id, a.image) {
-                    runCatching {
-                        val bytes = android.util.Base64.decode(a.image, android.util.Base64.DEFAULT)
-                        android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
-                    }.getOrNull()
+            if (bmp != null) {
+                androidx.compose.foundation.Image(
+                    bmp, null,
+                    Modifier.weight(if (hasText) 0.7f else 1f).fillMaxWidth().clip(RoundedCornerShape(18.dp)),
+                    contentScale = ContentScale.Fit,
+                )
+            }
+            if (hasText) {
+                // النص قابل للتمرير: زر الريموت للأعلى والأسفل يحرّك النص عند التركيز عليه
+                Box(
+                    Modifier.weight(if (hasImg) 0.3f else 1f).fillMaxWidth()
+                        .verticalScroll(scroll)
+                        .focusable()
+                        .onPreviewKeyEvent { e ->
+                            if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                            when (e.key) {
+                                Key.DirectionDown -> { scope.launch { scroll.scrollTo(scroll.value + 140) }; true }
+                                Key.DirectionUp -> { scope.launch { scroll.scrollTo((scroll.value - 140).coerceAtLeast(0)) }; true }
+                                else -> false
+                            }
+                        },
+                ) {
+                    BodyText(text, if (hasImg) 16 else 18, Color.White)
                 }
-                if (bmp != null) androidx.compose.foundation.Image(bmp, null, Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Fit)
-            }
-            // النص قابل للتمرير: زر الريموت للأعلى والأسفل يحرّك النص عندما يكون التركيز عليه
-            Box(
-                Modifier.weight(1f).fillMaxWidth()
-                    .verticalScroll(scroll)
-                    .focusable()
-                    .onPreviewKeyEvent { e ->
-                        if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                        when (e.key) {
-                            Key.DirectionDown -> { scope.launch { scroll.scrollTo(scroll.value + 140) }; true }
-                            Key.DirectionUp -> { scope.launch { scroll.scrollTo((scroll.value - 140).coerceAtLeast(0)) }; true }
-                            else -> false
-                        }
-                    },
-            ) {
-                BodyText(text, 18, Color.White)
             }
             Focusable(Modifier.autoFocus(), RoundedCornerShape(24.dp), 1.06f, onClick = { vm.dismissAnn() }) { f ->
                 Box(Modifier.clip(RoundedCornerShape(24.dp)).background(if (f) c2 else c1).padding(horizontal = 28.dp, vertical = 10.dp)) {
