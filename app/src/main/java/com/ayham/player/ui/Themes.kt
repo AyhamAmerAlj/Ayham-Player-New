@@ -42,7 +42,6 @@ class Palette(
 object Themes {
     const val ORIGINAL = "original"
     const val BARCELONA = "barcelona"
-    const val GOT = "got"
     const val DARK = "dark"
     const val LIGHT = "light"
     const val AYHAM = "ayham"
@@ -105,28 +104,6 @@ object Themes {
         stripe = listOf(Color(0xFF004D98), Color(0xFFA50044)),
         gold = Color(0xFFEDBB00),
         glow = Color(0xFFA50044),
-    )
-
-    /** ثيم Game of Thrones: فولاذي وأسود مع لمسات ذهبية، مستوحى من شعار آل ستارك وبوسترات المسلسل. */
-    val got = Palette(
-        id = GOT,
-        bg = Color(0xFF07090C),
-        bg2 = Color(0xFF12161B),
-        surface = Color(0xFF12161B),
-        surfaceHi = Color(0xFF1E252D),
-        primary = Color(0xFF3E4C5A),
-        primaryLight = Color(0xFFC9D3DD),
-        accent = Color(0xFFC9A227),
-        text = Color(0xFFF2F4F7),
-        textDim = Color(0xFF9AA5B1),
-        danger = Color(0xFFFF6B8B),
-        ok = Color(0xFF5EEAD4),
-        recolor = ::gotRecolor,
-        tagline = "Winter is Coming",
-        taglineSub = "Game of Thrones  ·  House Stark",
-        stripe = listOf(Color(0xFF3E4C5A), Color(0xFFC9A227)),
-        gold = Color(0xFFC9A227),
-        glow = Color(0xFF3E4C5A),
     )
 
     /** Dark Mode: أسود محايد بدل البنفسجي، والتمييز بالرمادي الفضي. */
@@ -208,7 +185,7 @@ object Themes {
         glow = Color(0xFF1E3A6E),
     )
 
-    val all: List<Palette> = listOf(original, barcelona, got, dark, light, ayham, royal)
+    val all: List<Palette> = listOf(original, barcelona, dark, light, ayham, royal)
 
     fun byId(id: String): Palette = all.firstOrNull { it.id == id } ?: original
 }
@@ -240,40 +217,3 @@ fun tc(argb: Long): Color {
     return Color((argb and 0xFF000000L) or to)
 }
 
-/** تدرج فولاذي وأسود: الألوان البنفسجية الثابتة في الكود تتحول إليه حسب السطوع. */
-private val gotStops: List<Pair<Float, Long>> = listOf(
-    0.00f to 0xFF07090CL, 0.25f to 0xFF1A2129L, 0.50f to 0xFF3E4C5AL,
-    0.75f to 0xFF8FA0B0L, 1.00f to 0xFFE8EEF4L,
-)
-
-/** يحوّل الألوان البنفسجية/الوردية إلى تدرج فولاذي للثيم، ويترك الباقي كما هو. */
-private fun gotRecolor(argb: Long): Long {
-    val r = ((argb shr 16) and 0xFFL) / 255f
-    val g = ((argb shr 8) and 0xFFL) / 255f
-    val b = (argb and 0xFFL) / 255f
-    val mx = maxOf(r, maxOf(g, b))
-    val mn = minOf(r, minOf(g, b))
-    val d = mx - mn
-    if (d < 0.02f) return argb
-    val l = (mx + mn) / 2f
-    val s = d / (1f - kotlin.math.abs(2f * l - 1f))
-    if (s < 0.35f) return argb
-    var h = when (mx) {
-        r -> (g - b) / d
-        g -> (b - r) / d + 2f
-        else -> (r - g) / d + 4f
-    } * 60f
-    if (h < 0f) h += 360f
-    if (h < 220f || h > 335f) return argb
-    var i = 0
-    while (i < gotStops.size - 2 && l > gotStops[i + 1].first) i++
-    val (t0, c0) = gotStops[i]
-    val (t1, c1) = gotStops[i + 1]
-    val f = ((l - t0) / (t1 - t0)).coerceIn(0f, 1f)
-    fun mix(shift: Int): Long {
-        val a = ((c0 shr shift) and 0xFFL).toFloat()
-        val c = ((c1 shr shift) and 0xFFL).toFloat()
-        return (a + (c - a) * f).toLong().coerceIn(0L, 255L)
-    }
-    return (argb and 0xFF000000L) or (mix(16) shl 16) or (mix(8) shl 8) or mix(0)
-}

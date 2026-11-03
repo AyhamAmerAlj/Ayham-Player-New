@@ -103,7 +103,6 @@ fun TvHome(
         return
     }
 
-    var gotQuiz by remember { mutableStateOf(false) }
     var catIdx by remember { mutableIntStateOf(0) }
     val cat = cats[catIdx.coerceIn(0, cats.lastIndex)]
     var selKey by remember(cat.key) { mutableStateOf<String?>(null) }
@@ -137,9 +136,6 @@ fun TvHome(
         }
         if (ThemeState.id == Themes.BARCELONA || vm.matchCard) {
             Box(Modifier.align(Alignment.TopEnd).padding(top = if (small) 80.dp else 96.dp, end = 44.dp)) { NextMatchCard(vm, small) }
-        }
-        if (ThemeState.id == Themes.GOT) {
-            Box(Modifier.align(Alignment.TopEnd).padding(top = if (small) 124.dp else 146.dp, end = 44.dp)) { GotHome(vm, small) { gotQuiz = true } }
         }
         Column(Modifier.fillMaxSize().padding(top = if (small) 76.dp else 88.dp, bottom = 10.dp)) {
             // ---------- التفاصيل ----------
@@ -230,7 +226,6 @@ fun TvHome(
                 }
             }
         }
-        if (gotQuiz) GotQuiz(vm) { gotQuiz = false }
     }
 }
 

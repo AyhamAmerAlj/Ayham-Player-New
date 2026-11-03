@@ -920,7 +920,6 @@ fun SettingsTab(vm: AppViewModel) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Chip("Ayham Original", ThemeState.id == Themes.ORIGINAL) { vm.changeTheme(Themes.ORIGINAL) }
             Chip("FC Barcelona", ThemeState.id == Themes.BARCELONA) { vm.changeTheme(Themes.BARCELONA) }
-            Chip("Game of Thrones", ThemeState.id == Themes.GOT) { vm.changeTheme(Themes.GOT) }
             Chip("Dark Mode", ThemeState.id == Themes.DARK) { vm.changeTheme(Themes.DARK) }
             Chip("Light Mode", ThemeState.id == Themes.LIGHT) { vm.changeTheme(Themes.LIGHT) }
             Chip("Ayham", ThemeState.id == Themes.AYHAM) { vm.changeTheme(Themes.AYHAM) }
