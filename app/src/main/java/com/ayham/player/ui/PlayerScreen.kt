@@ -63,6 +63,7 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -196,6 +197,11 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     // ---- الحلقة التالية تلقائيًا ----
     var remainMs by remember { mutableLongStateOf(Long.MAX_VALUE) }
     var nextOff by remember { mutableStateOf(false) }
+    fun openMultiFromPlayer() {
+        val cur = queue[index]
+        vm.openMulti(com.ayham.player.data.Item(com.ayham.player.data.Kind.LIVE, cur.key.substringAfter(':'), cur.title))
+        onExit()
+    }
     val nextCardOn = !queue[index].isLive && index + 1 < queue.size && !nextOff && remainMs in 1L..12_000L && errorMsg == null && !controls && panel == null
 
     // الصوت الخارجي
@@ -1047,6 +1053,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                 IconBtn(Icons.Filled.PictureInPictureAlt, active = extSession.pip) { extSession.changePip(!extSession.pip); touch() }
                             }
                             IconBtn(Icons.Filled.Audiotrack, active = extName != null) { panel = Panel.AUDIO; controls = false }
+                            if (queue[index].isLive) IconBtn(Icons.Filled.GridView) { openMultiFromPlayer() }
                             IconBtn(Icons.Filled.Tune) { panel = Panel.MENU; controls = false }
                         }
                     }
@@ -1172,6 +1179,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             aspect = (aspect + 1) % 3
                             showToast(toastAspect + ": " + aspectLabels[aspect])
                         }
+                        if (queue[index].isLive) PanelItem(if (vm.lang == "ar") "عرض متعدد" else "Multi Screen", sub = if (vm.lang == "ar") "شاشتان، والصوت للقناة المحددة" else "Split screen, audio on the selected one") { openMultiFromPlayer() }
                         if (queue[index].isLive) {
                             PanelItem(t("epg")) {
                                 epgFull = emptyList()
