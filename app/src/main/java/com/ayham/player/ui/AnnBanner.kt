@@ -83,8 +83,8 @@ fun AnnPopup(vm: AppViewModel) {
                     .onPreviewKeyEvent { e ->
                         if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                         when (e.key) {
-                            Key.DirectionDown -> { scope.launch { scroll.animateScrollBy(140f) }; true }
-                            Key.DirectionUp -> { scope.launch { scroll.animateScrollBy(-140f) }; true }
+                            Key.DirectionDown -> { scope.launch { scroll.scrollTo(scroll.value + 140) }; true }
+                            Key.DirectionUp -> { scope.launch { scroll.scrollTo((scroll.value - 140).coerceAtLeast(0)) }; true }
                             else -> false
                         }
                     },
