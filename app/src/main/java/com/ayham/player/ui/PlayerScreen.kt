@@ -80,6 +80,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -167,6 +169,8 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     var index by remember { mutableIntStateOf(req.index.coerceIn(0, queue.lastIndex)) }
     var isPlaying by remember { mutableStateOf(false) }
     var buffering by remember { mutableStateOf(true) }
+    var introShow by remember { mutableStateOf(false) }
+    var introResume by remember { mutableLongStateOf(0L) }
     var tracks by remember { mutableStateOf(Tracks.EMPTY) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var controls by remember { mutableStateOf(true) }
@@ -644,6 +648,8 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         onDispose { flushWatch(); exo.removeListener(l) }
     }
 
+    LaunchedEffect(index, introShow) { if (introShow) { delay(if (introResume > 0) 3600 else 2600); introShow = false } }
+
     // ---------- تحميل المقطع عند تغيير القناة/الحلقة ----------
     LaunchedEffect(index) {
         nextOff = false
@@ -656,6 +662,8 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             val p = vm.progressOf(e.key)
             if (p != null && p.first > 10_000 && p.first < p.second * 0.92) start = p.first
         }
+        introResume = start
+        introShow = !e.isLive
         val cur = exo.currentMediaItem?.localConfiguration?.uri?.toString()
         val st = exo.playbackState
         if (e.isLive && cur == e.url && st != Player.STATE_IDLE && st != Player.STATE_ENDED) {
@@ -892,6 +900,29 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     )
                 },
         )
+
+        val curE = queue[index]
+        val showCover = !curE.isLive && errorMsg == null && (introShow || (buffering && introResume == 0L))
+        AnimatedVisibility(showCover, enter = fadeIn(), exit = fadeOut(androidx.compose.animation.core.tween(900))) {
+            Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+                if (curE.image.isNotBlank()) {
+                    Img(curE.image, Modifier.fillMaxSize().blur(28.dp).alpha(0.35f), w = 400, h = 600)
+                }
+                Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Color.Transparent, Color.Black))))
+                Column(Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    RText(curE.title, 40, Color.White, bold = true, maxLines = 3)
+                    val meta = listOfNotNull(
+                        req.item?.rating?.takeIf { it.isNotBlank() && it != "0" }?.let { "★ $it" },
+                        if (isSeries) "${index + 1} / ${queue.size}" else null,
+                    ).joinToString("   ·   ")
+                    if (meta.isNotBlank()) RText(meta, 20, C.accent, bold = true)
+                    if (introResume > 0) {
+                        Spacer(Modifier.height(8.dp))
+                        RText((if (vm.lang == "ar") "تابع من " else "Resuming at ") + fmt(introResume), 22, C.primaryLight, bold = true)
+                    }
+                }
+            }
+        }
 
         if (buffering && errorMsg == null) {
             CircularProgressIndicator(
