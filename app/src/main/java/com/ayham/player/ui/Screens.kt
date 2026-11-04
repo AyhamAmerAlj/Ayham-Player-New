@@ -820,8 +820,8 @@ fun SearchTab(vm: AppViewModel) {
         )
         if (searching) {
             // فلاتر سريعة
+            val types = listOf(t("all"), t("live"), t("movies"), t("series"))
             LazyRow(contentPadding = PaddingValues(horizontal = hpad), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                val types = listOf(t("all"), t("live"), t("movies"), t("series"))
                 items(types.size) { i -> Chip(types[i], typeF == i) { typeF = i } }
                 item { Chip(if (ar) "كل التقييمات" else "Any rating", ratingF == 0) { ratingF = 0 } }
                 item { Chip("7+", ratingF == 7) { ratingF = 7 } }
