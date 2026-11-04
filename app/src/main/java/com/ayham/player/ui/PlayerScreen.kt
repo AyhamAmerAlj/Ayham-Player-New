@@ -830,6 +830,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             onRelease = { it.player = null },
             update = {
                 it.subtitleView?.setFractionalTextSize(when (vm.subSize) { 0 -> 0.042f; 1 -> 0.055f; else -> 0.075f })
+                it.subtitleView?.setStyle(subCaptionStyle(vm.subStyle))
                 it.resizeMode = when (aspect) {
                     0 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
                     1 -> AspectRatioFrameLayout.RESIZE_MODE_FILL
@@ -1031,7 +1032,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             extSession.goLive()
                             touch()
                         }
-                        if (!queue[index].isLive) ProgressRow(exo, barFocus, onVisible = { barVisible = it }, onToggle = { togglePlay() }) { touch() }
+                        if (!queue[index].isLive) ProgressRow(exo, barFocus, onVisible = { barVisible = it }, onToggle = { togglePlay() }, marks = remember(index) { vm.store.introProfile(queue[index].key)?.let { listOf(it.first, it.second) } ?: emptyList() }) { touch() }
                         Row(
                             Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -1198,6 +1199,10 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             val sizes = listOf(t("size_s"), t("size_m"), t("size_l"))
                             PanelItem(t("sub_size"), sub = sizes[vm.subSize.coerceIn(0, 2)]) {
                                 vm.changeSubSize((vm.subSize + 1) % 3)
+                            }
+                            val subStyles = listOf(if (vm.lang == "ar") "سينما" else "Cinema", if (vm.lang == "ar") "أصفر" else "Yellow", if (vm.lang == "ar") "خلفية" else "Box")
+                            PanelItem(if (vm.lang == "ar") "نمط الترجمة" else "Subtitle style", sub = subStyles[vm.subStyle.coerceIn(0, 2)]) {
+                                vm.changeSubStyle((vm.subStyle + 1) % 3)
                             }
                         }
                         PanelItem(t("close")) { closePanel() }
@@ -1629,7 +1634,7 @@ private fun trackLabel(f: Format, i: Int, lang: String): String {
  * لتقدّم أو ترجّع بكيفك، والضغط المستمر يسرّع الحركة، والتنفيذ بعد توقفك لحظة (أو بزر OK).
  */
 @Composable
-private fun ProgressRow(exo: ExoPlayer, barFocus: FocusRequester, onVisible: (Boolean) -> Unit, onToggle: () -> Unit, onTouch: () -> Unit) {
+private fun ProgressRow(exo: ExoPlayer, barFocus: FocusRequester, onVisible: (Boolean) -> Unit, onToggle: () -> Unit, marks: List<Long> = emptyList(), onTouch: () -> Unit) {
     var pos by remember { mutableLongStateOf(0L) }
     var dur by remember { mutableLongStateOf(0L) }
     var buffered by remember { mutableLongStateOf(0L) }
@@ -1728,8 +1733,20 @@ private fun ProgressRow(exo: ExoPlayer, barFocus: FocusRequester, onVisible: (Bo
                 Box(Modifier.fillMaxWidth(buf).fillMaxHeight().background(tc(0x44FFFFFF)))
                 Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(Brush.horizontalGradient(listOf(C.primary, C.accent))))
             }
+            // علامات المقدمة (بداية ونهاية) على الشريط
+            marks.forEach { m ->
+                if (m in 1 until dur) {
+                    val mx = with(density) { (m.toFloat() / dur * barW).toDp() }
+                    Box(Modifier.align(Alignment.BottomStart).padding(bottom = 13.dp).offset(x = mx - 1.5.dp).width(3.dp).height(trackH + 6.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = 0.9f)))
+                }
+            }
             val xPx = frac * barW
             val xDp = with(density) { xPx.toDp() }
+            // توهج يتبع المقبض
+            Box(
+                Modifier.align(Alignment.BottomStart).offset(x = xDp - thumb, y = -(16.dp + trackH / 2) + thumb)
+                    .size(thumb * 2).background(Brush.radialGradient(listOf((if (scrub != null) C.accent else C.primary).copy(alpha = 0.45f), Color.Transparent)), androidx.compose.foundation.shape.CircleShape),
+            )
             // المقبض الدائري المتوهج
             Box(
                 Modifier.align(Alignment.BottomStart)

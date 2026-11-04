@@ -65,6 +65,18 @@ class Store(ctx: Context) {
     fun setPrefSub(key: String, uri: String?) {
         if (uri == null) sp.edit().remove("subpref_$key").apply() else sp.edit().putString("subpref_$key", uri).apply()
     }
+    var subStyle: Int
+        get() = sp.getInt("sub_style", 0)
+        set(v) { sp.edit().putInt("sub_style", v).apply() }
+
+    fun recentQueries(): List<String> = (sp.getString("recent_q", "") ?: "").split("\n").filter { it.isNotBlank() }
+    fun addQuery(q: String) {
+        val t = q.trim()
+        val l = (listOf(t) + recentQueries().filter { !it.equals(t, true) }).take(8)
+        sp.edit().putString("recent_q", l.joinToString("\n")).apply()
+    }
+    fun clearQueries() { sp.edit().remove("recent_q").apply() }
+
     var subSize: Int
         get() = sp.getInt("sub_size", 1)
         set(v) { sp.edit().putInt("sub_size", v).apply() }

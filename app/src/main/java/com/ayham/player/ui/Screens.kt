@@ -788,28 +788,94 @@ fun BrowseTab(vm: AppViewModel, kind: Kind) {
 // ============================ Search ============================
 @Composable
 fun SearchTab(vm: AppViewModel) {
+    val ar = vm.lang == "ar"
     var q by rememberSaveable { mutableStateOf("") }
     var res by remember { mutableStateOf(Triple(emptyList<Item>(), emptyList<Item>(), emptyList<Item>())) }
+    var typeF by rememberSaveable { mutableIntStateOf(0) }
+    var ratingF by rememberSaveable { mutableIntStateOf(0) }
+    var recentQ by remember { mutableStateOf(vm.store.recentQueries()) }
     LaunchedEffect(q) {
         delay(450)
         res = vm.search(q)
     }
+    LaunchedEffect(q) {
+        delay(1800)
+        if (q.trim().length >= 3) { vm.store.addQuery(q); recentQ = vm.store.recentQueries() }
+    }
+    val searching = q.trim().length >= 2
+    val live = if (typeF == 0 || typeF == 1) res.first else emptyList()
+    val movies = (if (typeF == 0 || typeF == 2) res.second else emptyList()).filter { ratingF == 0 || (it.rating.toFloatOrNull() ?: 0f) >= ratingF }
+    val series = (if (typeF == 0 || typeF == 3) res.third else emptyList()).filter { ratingF == 0 || (it.rating.toFloatOrNull() ?: 0f) >= ratingF }
+    val open: (Item) -> Unit = { it -> if (it.kind == Kind.LIVE) vm.playLive(it, LiveSource(favs = live)) else vm.openDetail(it) }
+    val mostWatched = remember(vm.history) {
+        vm.history.groupingBy { it.key }.eachCount().entries.sortedByDescending { it.value }.take(10)
+            .mapNotNull { e -> vm.history.firstOrNull { it.key == e.key } }
+    }
+    val hpad = if (isCompact()) 14.dp else 28.dp
     Column(Modifier.fillMaxSize()) {
         AyhamField(
             q, { q = it }, t("search_hint"),
-            Modifier.padding(horizontal = if (isCompact()) 14.dp else 28.dp, vertical = if (isCompact()) 10.dp else 18.dp),
+            Modifier.padding(horizontal = hpad, vertical = if (isCompact()) 10.dp else 18.dp),
             imeAction = ImeAction.Search,
         )
-        val empty = res.first.isEmpty() && res.second.isEmpty() && res.third.isEmpty()
-        if (empty && q.trim().length >= 2) {
+        if (searching) {
+            // فلاتر سريعة
+            LazyRow(contentPadding = PaddingValues(horizontal = hpad), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val types = listOf(t("all"), t("live"), t("movies"), t("series"))
+                items(types.size) { i -> Chip(types[i], typeF == i) { typeF = i } }
+                item { Chip(if (ar) "كل التقييمات" else "Any rating", ratingF == 0) { ratingF = 0 } }
+                item { Chip("7+", ratingF == 7) { ratingF = 7 } }
+                item { Chip("8+", ratingF == 8) { ratingF = 8 } }
+            }
+        }
+        val empty = live.isEmpty() && movies.isEmpty() && series.isEmpty()
+        if (empty && searching) {
             Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
                 RText(t("no_results"), 24, C.textDim)
             }
         }
         LazyColumn(contentPadding = PaddingValues(bottom = 40.dp)) {
-            item { ContentRow(t("live"), res.first) { vm.playLive(it, LiveSource(favs = res.first)) } }
-            item { ContentRow(t("movies"), res.second) { vm.openDetail(it) } }
-            item { ContentRow(t("series"), res.third) { vm.openDetail(it) } }
+            if (!searching) {
+                if (recentQ.isNotEmpty()) {
+                    item {
+                        Column(Modifier.padding(horizontal = hpad, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            RText(if (ar) "آخر ما بحثت عنه" else "Recent searches", 18, C.text, bold = true)
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(recentQ.size) { i -> Chip(recentQ[i], false) { q = recentQ[i] } }
+                                item { Chip(if (ar) "مسح" else "Clear", false) { vm.store.clearQueries(); recentQ = emptyList() } }
+                            }
+                        }
+                    }
+                }
+                if (mostWatched.isNotEmpty()) {
+                    item { ContentRow(if (ar) "الأكثر مشاهدة" else "Most watched", mostWatched) { open(it) } }
+                }
+            } else {
+                // أفضل نتيجة بشكل كبير
+                val best = series.firstOrNull() ?: movies.firstOrNull() ?: live.firstOrNull()
+                if (best != null) {
+                    item {
+                        val shape = RoundedCornerShape(18.dp)
+                        Focusable(Modifier.padding(horizontal = hpad, vertical = 10.dp).fillMaxWidth(), shape, 1.02f, onClick = { open(best) }) { f ->
+                            Row(
+                                Modifier.fillMaxWidth().clip(shape).background(if (f) C.surfaceHi else C.surface).padding(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Img(best.image, Modifier.width(110.dp).height(160.dp).clip(RoundedCornerShape(12.dp)), w = 220, h = 320)
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    RText(if (ar) "أفضل نتيجة" else "Top result", 14, C.accent, bold = true)
+                                    RText(best.name, 26, Color.White, bold = true, maxLines = 2)
+                                    val kindL = when (best.kind) { Kind.LIVE -> t("live"); Kind.MOVIE -> t("movies"); else -> t("series") }
+                                    BodyText(kindL + (best.rating.takeIf { it.isNotBlank() && it != "0" }?.let { "  ·  ★ $it" } ?: ""), 15, C.textDim)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            item { ContentRow(t("live"), live) { vm.playLive(it, LiveSource(favs = live)) } }
+            item { ContentRow(t("movies"), movies) { vm.openDetail(it) } }
+            item { ContentRow(t("series"), series) { vm.openDetail(it) } }
         }
     }
 }
@@ -975,6 +1041,7 @@ fun SettingsTab(vm: AppViewModel) {
 
         }
         if (cat == 2) {
+            SubPreviewCard(vm)
         RText(t("live_format"), 22, C.primaryLight, bold = true)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Chip("m3u8 (HLS)", vm.liveFormat == "m3u8") { vm.changeLiveFormat("m3u8") }
