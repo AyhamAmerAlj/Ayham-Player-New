@@ -335,6 +335,7 @@ fun MainScreen(vm: AppViewModel) {
         val full = vm.tab in 1..3
         var focusSideNext by remember { mutableStateOf(false) }
         AnnPopup(vm)
+        WhatsNewPopup(vm)
         androidx.activity.compose.BackHandler(enabled = vm.miniItem == null && (full || vm.tab != 0)) {
             focusSideNext = true
             vm.selectTab(0)

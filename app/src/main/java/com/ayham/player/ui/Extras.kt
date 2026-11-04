@@ -15,6 +15,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,7 +40,6 @@ suspend fun avgColor(ctx: android.content.Context, url: String): Color? = runCat
 fun ExtraBanners(vm: AppViewModel, modifier: Modifier = Modifier) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ExpiryBanner(vm)
-        WhatsNewCard(vm)
     }
 }
 
@@ -65,23 +67,22 @@ private fun ExpiryBanner(vm: AppViewModel) {
 }
 
 @Composable
-private fun WhatsNewCard(vm: AppViewModel) {
-    if (vm.whatsNewSeen == WhatsNew.id) return
+fun WhatsNewPopup(vm: AppViewModel) {
+    if (vm.whatsNewSeen == WhatsNew.id || vm.annShowNow) return
     val ar = vm.lang == "ar"
-    val shape = RoundedCornerShape(18.dp)
-    Column(
-        Modifier.fillMaxWidth().clip(shape).background(tc(0xCC1B0B3A)).border(1.dp, tc(0xFFA78BFA), shape).padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            RText(if (ar) "جديد في هذا التحديث" else "New in this update", 17, Color.White, bold = true, modifier = Modifier.weight(1f))
-            Focusable(shape = CircleShape, focusScale = 1.15f, onClick = { vm.dismissWhatsNew() }) { f ->
-                Box(Modifier.size(28.dp).clip(CircleShape).background(if (f) tc(0x88FFFFFF) else tc(0x33FFFFFF)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Close, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                }
+    val shape = RoundedCornerShape(26.dp)
+    androidx.compose.ui.window.Dialog(onDismissRequest = { vm.dismissWhatsNew() }) {
+        Column(
+            Modifier.fillMaxWidth(0.85f).clip(shape).background(tc(0xFF0B0616)).border(1.5.dp, tc(0xFFA78BFA), shape).padding(22.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            RText(if (ar) "جديد في هذا التحديث" else "New in this update", 24, Color.White, bold = true)
+            Column(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                (if (ar) WhatsNew.ar else WhatsNew.en).forEach { BodyText("• $it", 16, C.text, maxLines = 4) }
             }
+            GlowButton(if (ar) "حسناً" else "Got it") { vm.dismissWhatsNew() }
         }
-        (if (ar) WhatsNew.ar else WhatsNew.en).forEach { BodyText("• $it", 14, C.text, maxLines = 2) }
     }
 }
 
