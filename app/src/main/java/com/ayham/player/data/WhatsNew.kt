@@ -19,4 +19,24 @@ object WhatsNew {
     )
 }
 
+/** سجل التحديثات: يُضاف إصدار جديد في أول القائمة مع كل تحديث. */
+data class Release(val id: String, val ar: List<String>, val en: List<String>)
+
+val releaseHistory = listOf(
+    Release("222", WhatsNew.ar, WhatsNew.en),
+    Release("206", listOf(
+        "شاشة قنوات جديدة للتلفاز: تصنيفات جانبية ولوحة معلومات",
+        "القفز لأي قناة برقمها من الريموت",
+        "شارات الجودة و LIVE على القنوات",
+        "معاينة مصغّرة سينمائية",
+        "تذكير انتهاء الاشتراك وإحصائية المشاهدة الأسبوعية",
+    ), listOf(
+        "New TV channels screen with side categories and info panel",
+        "Jump to any channel by number",
+        "Quality and LIVE badges",
+        "Cinematic mini preview",
+        "Expiry reminder and weekly watch stats",
+    )),
+)
+
 data class WatchWeek(val total: Long, val topName: String, val topSec: Long)

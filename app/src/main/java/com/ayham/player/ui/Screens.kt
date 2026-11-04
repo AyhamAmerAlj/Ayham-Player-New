@@ -938,6 +938,16 @@ fun SettingsTab(vm: AppViewModel) {
       ) {
 
         if (cat == 0) WatchStatsCard(vm)
+        if (cat == 0) {
+            var open by remember { mutableStateOf(false) }
+            GlowButton(if (ar) "سجل التحديثات" else "Update history") { open = !open }
+            if (open) com.ayham.player.data.releaseHistory.forEach { r ->
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.surface).padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    RText((if (ar) "إصدار " else "Build ") + r.id, 18, C.accent, bold = true)
+                    (if (ar) r.ar else r.en).forEach { BodyText("• $it", 14, C.text, maxLines = 3) }
+                }
+            }
+        }
         if (cat == 0 && vm.ann != null) GlowButton(if (ar) "عرض الإعلان" else "Show announcement") { vm.openAnn() }
 
         // ---- الملف الشخصي ----
