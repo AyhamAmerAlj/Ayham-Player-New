@@ -845,6 +845,10 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     useController = false
                     player = exo
                     keepScreenOn = true
+                    // TextureView يُظهر أحياناً صفاً من نقاط وامضة عند حافة الفيديو السفلية؛ نقصّ الحافة بمقدار ضئيل جداً غير مرئي
+                    (videoSurfaceView as? android.view.TextureView)?.addOnLayoutChangeListener { v, l, t, r, b, _, _, _, _ ->
+                        if (r - l > 0 && b - t > 0) v.clipBounds = android.graphics.Rect(0, 0, r - l, ((b - t) * 0.995f).toInt())
+                    }
                     isFocusable = false
                     setShutterBackgroundColor(android.graphics.Color.BLACK)
                     subtitleView?.apply {
