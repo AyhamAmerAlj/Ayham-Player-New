@@ -106,6 +106,9 @@ class Store(ctx: Context) {
     }
     fun setRatingsCache(k: String, json: String) { sp.edit().putString("rtg_$k", "${System.currentTimeMillis()}|$json").apply() }
 
+    fun raw(k: String): String? = sp.getString(k, null)
+    fun putRaw(k: String, v: String) { sp.edit().putString(k, v).apply() }
+
     fun imdb(key: String): String? = sp.getString("imdb_$key", null)
     fun setImdb(key: String, v: String) { sp.edit().putString("imdb_$key", v).apply() }
 

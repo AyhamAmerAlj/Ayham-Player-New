@@ -120,7 +120,7 @@ import com.ayham.player.data.PlayRequest
 import kotlinx.coroutines.delay
 import java.util.Locale
 
-private enum class Panel { MENU, SUBS, SUBURL, SUBPHONE, TRYSUB, AUDIO, EXT, SYNC, EPG }
+private enum class Panel { VISION, MENU, SUBS, SUBURL, SUBPHONE, TRYSUB, AUDIO, EXT, SYNC, EPG }
 
 private fun hm(sec: Long): String = java.text.SimpleDateFormat("HH:mm", Locale.US).format(java.util.Date(sec * 1000))
 
@@ -170,8 +170,19 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     var isPlaying by remember { mutableStateOf(false) }
     var buffering by remember { mutableStateOf(true) }
     var introShow by remember { mutableStateOf(false) }
+    var visionPick by remember(index) { mutableStateOf<String?>(null) }
     var introResume by remember { mutableLongStateOf(0L) }
     var tracks by remember { mutableStateOf(Tracks.EMPTY) }
+    val isHdr = remember(tracks) {
+        tracks.groups.any { g ->
+            g.type == MC.TRACK_TYPE_VIDEO && (0 until g.length).any { i ->
+                g.isTrackSelected(i) && g.getTrackFormat(i).colorInfo?.colorTransfer.let { it == MC.COLOR_TRANSFER_ST2084 || it == MC.COLOR_TRANSFER_HLG }
+            }
+        }
+    }
+    val vMode = visionPick ?: if (vm.vision.auto) vm.vision.autoModeFor(queue[index].isLive, req.item?.kind == com.ayham.player.data.Kind.SERIES, queue[index].title) else vm.vision.mode
+    val vVals = vm.vision.vals(vMode)
+    val visionOn = !isHdr && vMode != "hdr" && vMode != "std" && !vVals.neutral
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var controls by remember { mutableStateOf(true) }
     val lastTouch = remember { longArrayOf(0L) }
@@ -811,10 +822,10 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             .focusRequester(rootFocus)
             .focusable(),
     ) {
-        AndroidView(
+        androidx.compose.runtime.key(visionOn) { AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { c ->
-                PlayerView(c).apply {
+                (if (visionOn) android.view.LayoutInflater.from(c).inflate(com.ayham.player.R.layout.vision_player_texture, null) as PlayerView else PlayerView(c)).apply {
                     useController = false
                     player = exo
                     keepScreenOn = true
@@ -839,13 +850,17 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             update = {
                 it.subtitleView?.setFractionalTextSize(when (vm.subSize) { 0 -> 0.042f; 1 -> 0.055f; else -> 0.075f })
                 it.subtitleView?.setStyle(subCaptionStyle(vm.subStyle))
+                (it.videoSurfaceView as? android.view.TextureView)?.let { tv ->
+                    if (visionOn) tv.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, android.graphics.Paint().apply { colorFilter = android.graphics.ColorMatrixColorFilter(Vision.matrix(vVals)) })
+                    else tv.setLayerType(android.view.View.LAYER_TYPE_NONE, null)
+                }
                 it.resizeMode = when (aspect) {
                     0 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
                     1 -> AspectRatioFrameLayout.RESIZE_MODE_FILL
                     else -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                 }
             },
-        )
+        ) }
 
         // طبقة اللمس: نقرة = إظهار/إخفاء التحكم، نقرتين = تقديم/رجوع (أو تبديل قناة)، سحب عمودي = سطوع/صوت
         Box(
@@ -1193,6 +1208,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     Panel.MENU -> {
                         RText(t("settings"), 26, C.text, bold = true)
                         if (!queue[index].isLive) PanelItem(t("subtitles"), modifier = Modifier.autoFocus()) { panel = Panel.SUBS }
+                        PanelItem("Ayham Vision", sub = vm.vision.name(vMode, vm.lang == "ar") + (if (isHdr) " · HDR" else "")) { panel = Panel.VISION }
                         PanelItem(t("audio_tracks"), modifier = if (queue[index].isLive) Modifier.autoFocus() else Modifier) { panel = Panel.AUDIO }
                         if (!queue[index].isLive) {
                             PanelItem(t("speed"), sub = speedLabel(speed)) { cycleSpeed() }
@@ -1346,6 +1362,8 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             item { PanelItem(t("back"), modifier = if (list.isEmpty()) Modifier.autoFocus() else Modifier) { panel = Panel.MENU } }
                         }
                     }
+
+                    Panel.VISION -> VisionPanel(vm, vMode, isHdr, onPick = { visionPick = it; vm.vision.select(it) }, onBack = { panel = Panel.MENU })
 
                     Panel.AUDIO -> {
                         val ar = vm.lang == "ar"
