@@ -187,7 +187,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     val videoH = remember(tracks) {
         tracks.groups.filter { it.type == MC.TRACK_TYPE_VIDEO }.maxOfOrNull { g -> (0 until g.length).filter { g.isTrackSelected(it) }.maxOfOrNull { g.getTrackFormat(it).height } ?: 0 } ?: 0
     }
-    val visionOn = !isHdr && !visionBlocked && vMode != "hdr" && vMode != "std" && !vVals.neutral
+    val visionOn = queue[index].isLive && !isHdr && !visionBlocked && vMode != "hdr" && vMode != "std" && !vVals.neutral
     val visionOnState = rememberUpdatedState(visionOn)
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var controls by remember { mutableStateOf(true) }
@@ -1225,7 +1225,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     Panel.MENU -> {
                         RText(t("settings"), 26, C.text, bold = true)
                         if (!queue[index].isLive) PanelItem(t("subtitles"), modifier = Modifier.autoFocus()) { panel = Panel.SUBS }
-                        PanelItem("Ayham Vision", sub = vm.vision.name(vMode, vm.lang == "ar") + (if (isHdr) " · HDR" else "")) { panel = Panel.VISION }
+                        if (queue[index].isLive) PanelItem("Ayham Vision", sub = vm.vision.name(vMode, vm.lang == "ar") + (if (isHdr) " · HDR" else "")) { panel = Panel.VISION }
                         PanelItem(t("audio_tracks"), modifier = if (queue[index].isLive) Modifier.autoFocus() else Modifier) { panel = Panel.AUDIO }
                         if (!queue[index].isLive) {
                             PanelItem(t("speed"), sub = speedLabel(speed)) { cycleSpeed() }

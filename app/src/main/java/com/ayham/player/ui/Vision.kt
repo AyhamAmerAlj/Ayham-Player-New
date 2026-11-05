@@ -131,7 +131,7 @@ class VisionPrefs(private val st: Store) {
                 else -> "std"
             }
         }
-        return if (series) "series" else "cinema"
+        return "std"
     }
 }
 
