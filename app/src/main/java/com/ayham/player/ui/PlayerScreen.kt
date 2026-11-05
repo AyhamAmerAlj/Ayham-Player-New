@@ -182,7 +182,13 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     }
     val vMode = visionPick ?: if (vm.vision.auto) vm.vision.autoModeFor(queue[index].isLive, req.item?.kind == com.ayham.player.data.Kind.SERIES, queue[index].title) else vm.vision.mode
     val vVals = vm.vision.vals(vMode)
-    val visionOn = !isHdr && vMode != "hdr" && vMode != "std" && !vVals.neutral
+    var visionBlocked by remember(index) { mutableStateOf(false) }
+    // الدقة العالية (فوق 1080p) تثقل طبقة اللون على الأجهزة الضعيفة، فلا نفعّل الفلتر عليها
+    val videoH = remember(tracks) {
+        tracks.groups.filter { it.type == MC.TRACK_TYPE_VIDEO }.maxOfOrNull { g -> (0 until g.length).filter { g.isTrackSelected(it) }.maxOfOrNull { g.getTrackFormat(it).height } ?: 0 } ?: 0
+    }
+    val visionOn = !isHdr && !visionBlocked && videoH <= 1080 && vMode != "hdr" && vMode != "std" && !vVals.neutral
+    val visionOnState = rememberUpdatedState(visionOn)
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var controls by remember { mutableStateOf(true) }
     val lastTouch = remember { longArrayOf(0L) }
@@ -656,7 +662,17 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             }
         }
         exo.addListener(l)
-        onDispose { flushWatch(); exo.removeListener(l) }
+        // حماية السلاسة: إذا تقطّعت الصورة بسبب فلتر Ayham Vision نوقفه تلقائياً لهذا العنصر
+        val al = object : androidx.media3.exoplayer.analytics.AnalyticsListener {
+            override fun onDroppedVideoFrames(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, droppedFrames: Int, elapsedMs: Long) {
+                if (visionOnState.value && droppedFrames >= 6) {
+                    visionBlocked = true
+                    showToast(if (vm.lang == "ar") "أُوقف Ayham Vision تلقائياً لحماية سلاسة الصورة" else "Ayham Vision turned off to keep playback smooth")
+                }
+            }
+        }
+        exo.addAnalyticsListener(al)
+        onDispose { flushWatch(); exo.removeListener(l); exo.removeAnalyticsListener(al) }
     }
 
     LaunchedEffect(index, introShow) { if (introShow) { delay(if (introResume > 0) 3600 else 2600); introShow = false } }
