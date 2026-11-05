@@ -1,5 +1,6 @@
 package com.ayham.player
 
+import com.ayham.player.data.TmdbTitle
 import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -520,6 +521,68 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         out.values.toList()
+    }
+
+    private suspend fun matchTitles(kind: Kind, titles: List<TmdbTitle>, n: Int): List<Item> {
+        val out = LinkedHashMap<String, Item>()
+        for (t in titles) {
+            if (out.size >= n) break
+            for (cand in listOf(t.title, t.original).filter { it.isNotBlank() }.distinct()) {
+                val q = com.ayham.player.ui.normalizeForSearch(cand)
+                if (q.length < 3) continue
+                val res = runCatching { db.search(kind, q, 12) }.getOrDefault(emptyList())
+                val hit = res.firstOrNull { r ->
+                    val y = Regex("(19|20)\\d{2}").find(r.name)?.value?.toIntOrNull()
+                    y == null || t.year == 0 || kotlin.math.abs(y - t.year) <= 1
+                }
+                if (hit != null) { out.putIfAbsent(hit.key, hit); break }
+            }
+        }
+        return out.values.toList()
+    }
+
+    /** بحث ذكي: يفهم الطلب الطبيعي (تصنيف/تقييم/سنوات/مشابه لـ) أو وصف القصة، ويرجع فقط ما هو موجود في مكتبتك. */
+    suspend fun smartSearch(query: String): List<Item> = withContext(Dispatchers.IO) {
+        val q = com.ayham.player.data.Smart.parse(query)
+        if (!q.natural) return@withContext emptyList()
+        val out = LinkedHashMap<String, Item>()
+        val kinds = when (q.series) { true -> listOf(true); false -> listOf(false); null -> listOf(false, true) }
+        runCatching {
+            if (q.similarTo != null) {
+                for (s in kinds) {
+                    val base = com.ayham.player.data.Smart.recommendations(q.similarTo!!, "", s)
+                    matchTitles(if (s) Kind.SERIES else Kind.MOVIE, base, 12).forEach { out.putIfAbsent(it.key, it) }
+                }
+            } else if (q.hasFilters) {
+                for (s in kinds) {
+                    val d = com.ayham.player.data.Smart.discover(q, s)
+                    matchTitles(if (s) Kind.SERIES else Kind.MOVIE, d, 16).forEach { out.putIfAbsent(it.key, it) }
+                }
+            } else if (q.isStory) {
+                for (st in com.ayham.player.data.Smart.story(query)) {
+                    if (q.series != null && q.series != st.series) continue
+                    matchTitles(if (st.series) Kind.SERIES else Kind.MOVIE, listOf(st.t), 1).forEach { out.putIfAbsent(it.key, it) }
+                }
+            }
+        }
+        out.values.toList()
+    }
+
+    private val recCache = HashMap<String, List<Item>>()
+    /** أعمال مشابهة بالقصة والأجواء (توصيات TMDB) مطابقة مع مكتبتك. */
+    suspend fun recommendFor(item: Item, year: String): List<Item> = withContext(Dispatchers.IO) {
+        synchronized(recCache) { recCache[item.key] }?.let { return@withContext it }
+        val series = item.kind == Kind.SERIES
+        val title = com.ayham.player.data.Imdb.clean(item.name)
+        val r = runCatching {
+            matchTitles(item.kind, com.ayham.player.data.Smart.recommendations(title, year, series), 16).filter { it.key != item.key }
+        }.getOrDefault(emptyList())
+        synchronized(recCache) { recCache[item.key] = r }
+        r
+    }
+
+    suspend fun ratingsOf(item: Item, year: String): com.ayham.player.data.RatingsData? = withContext(Dispatchers.IO) {
+        com.ayham.player.data.Ratings.fetch(XtreamApi.client, store, item.key, item.name, year, item.kind == Kind.SERIES)
     }
 
     suspend fun similarTo(item: Item): List<Item> = withContext(Dispatchers.IO) {

@@ -65,6 +65,11 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
 
     var similarItems by remember(item.key) { mutableStateOf<List<Item>>(emptyList()) }
     LaunchedEffect(item.key) { similarItems = vm.similarTo(item).take(20) }
+    LaunchedEffect(item.key, details != null) {
+        if (details == null) return@LaunchedEffect
+        val rec = vm.recommendFor(item, details?.year.orEmpty())
+        if (rec.isNotEmpty()) similarItems = (rec + similarItems).distinctBy { it.key }.filter { it.key != item.key }.take(24)
+    }
     var imdb by remember(item.key) { mutableStateOf<String?>(null) }
     val yearKey = details?.year.orEmpty()
     LaunchedEffect(item.key, details != null, yearKey) {
@@ -170,6 +175,8 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
                     }
                 }
             }
+
+            item { RatingsPanel(vm, item, details?.year.orEmpty(), imdb) }
 
             if (similarItems.size >= 3) {
                 item { ContentRow(t("similar"), similarItems) { vm.openDetail(it) } }

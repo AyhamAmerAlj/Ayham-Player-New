@@ -10,7 +10,7 @@ import okhttp3.Request
 object Imdb {
     private const val BASE = "https://v3-cinemeta.strem.io"
 
-    private fun clean(raw: String): String {
+    fun clean(raw: String): String {
         var s = raw
         s = s.replace(Regex("\\[[^\\]]*\\]"), " ").replace(Regex("\\([^)]*\\)"), " ")
         s = s.replace(Regex("^\\s*[A-Za-z]{2,3}\\s*[-:|]\\s*"), "")

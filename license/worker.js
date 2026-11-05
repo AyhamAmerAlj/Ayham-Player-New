@@ -276,11 +276,88 @@ fillForm();if(K){NL();AL()}
 async function L2(){NL()}
 </script></html>`;
 
+// ---- تقييمات متعددة + بحث بالوصف (مفاتيح الخدمات تبقى هنا كأسرار، ولا تصل للتطبيق) ----
+const EJ = (o, s) => new Response(JSON.stringify(o), { status: s || 200, headers: { 'content-type': 'application/json' } });
+async function jget(url, headers) {
+  try {
+    const r = await fetch(url, { headers: Object.assign({ 'user-agent': 'AyhamPlayer/1.0' }, headers || {}) });
+    return r.ok ? await r.json() : null;
+  } catch (e) { return null; }
+}
+const nk = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9\u0600-\u06ff]/g, '');
+async function ratingsOf(b, env) {
+  const type = b.type === 'tv' ? 'tv' : 'movie';
+  const title = String(b.title || '').slice(0, 120), year = String(b.year || '').slice(0, 4);
+  let imdb = /^tt\d{5,10}$/.test(b.imdb || '') ? b.imdb : '';
+  const out = { ok: true };
+  if (env.TMDB_API_KEY && title) {
+    const q = 'https://api.themoviedb.org/3/search/' + type + '?api_key=' + env.TMDB_API_KEY + '&query=' + encodeURIComponent(title) + (year ? (type === 'tv' ? '&first_air_date_year=' : '&year=') + year : '');
+    const s = await jget(q);
+    const want = nk(title);
+    const hit = s && s.results && s.results.find((x) => {
+      const a = nk(x.title || x.name), o = nk(x.original_title || x.original_name);
+      return a === want || o === want || (want.length >= 5 && (a.startsWith(want) || want.startsWith(a)) && a.length >= 5);
+    });
+    if (hit) {
+      const d = await jget('https://api.themoviedb.org/3/' + type + '/' + hit.id + '?api_key=' + env.TMDB_API_KEY + '&append_to_response=external_ids');
+      const v = d || hit;
+      if (v.vote_count > 0) out.tmdb = { r: v.vote_average, v: v.vote_count };
+      out.tmdbId = hit.id;
+      if (!imdb && d) imdb = (d.external_ids && d.external_ids.imdb_id) || d.imdb_id || '';
+    }
+  }
+  if (imdb) out.imdbId = imdb;
+  const jobs = [];
+  if (imdb && env.OMDB_API_KEY) jobs.push(jget('https://www.omdbapi.com/?i=' + imdb + '&apikey=' + env.OMDB_API_KEY).then((o) => {
+    if (!o || o.Response === 'False') return;
+    const r = parseFloat(o.imdbRating);
+    if (r > 0) out.imdb = { r, v: parseInt(String(o.imdbVotes || '0').replace(/,/g, ''), 10) || 0 };
+    for (const x of o.Ratings || []) {
+      if (x.Source === 'Rotten Tomatoes') out.rt = parseInt(x.Value, 10) || undefined;
+      if (x.Source === 'Metacritic') out.mc = parseInt(x.Value, 10) || undefined;
+    }
+  }));
+  if (imdb && env.TRAKT_CLIENT_ID) jobs.push(jget('https://api.trakt.tv/' + (type === 'tv' ? 'shows' : 'movies') + '/' + imdb + '/ratings', { 'trakt-api-key': env.TRAKT_CLIENT_ID, 'trakt-api-version': '2' }).then((o) => {
+    if (o && o.votes > 0) out.trakt = { r: o.rating, v: o.votes };
+  }));
+  await Promise.all(jobs);
+  return out;
+}
+async function aiFind(b, env) {
+  const q = String(b.q || '').slice(0, 240);
+  if (q.length < 8 || !env.AI) return { ok: false };
+  try {
+    const r = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+      messages: [
+        { role: 'system', content: 'You identify real movies and TV series from a viewer description written in any language. Reply with ONLY a JSON array of up to 8 objects like {"t":"English title","y":2010,"k":"movie"} where k is movie or tv. Only real, well-known titles. If unsure, reply []. No other text.' },
+        { role: 'user', content: q },
+      ],
+      max_tokens: 350,
+    });
+    const m = String((r && r.response) || '').match(/\[[\s\S]*\]/);
+    const arr = m ? JSON.parse(m[0]) : [];
+    return { ok: true, list: arr.filter((x) => x && typeof x.t === 'string').slice(0, 8).map((x) => ({ t: x.t.slice(0, 100), y: Number(x.y) || 0, k: x.k === 'tv' ? 'tv' : 'movie' })) };
+  } catch (e) { return { ok: false }; }
+}
+async function edge(path, req, env) {
+  if (req.method !== 'POST') return EJ({ ok: false }, 405);
+  const t = await req.text();
+  if (t.length > 1000) return EJ({ ok: false }, 413);
+  let b; try { b = JSON.parse(t); } catch (e) { return EJ({ ok: false }, 400); }
+  const ck = new Request('https://edge.cache' + path + '/' + encodeURIComponent(t));
+  const hit = await caches.default.match(ck);
+  if (hit) return hit;
+  const out = path === '/v1/ai' ? await aiFind(b, env) : await ratingsOf(b, env);
+  if (out.ok) await caches.default.put(ck, new Response(JSON.stringify(out), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + (path === '/v1/ai' ? 86400 : 259200) } }));
+  return EJ(out);
+}
+
 export default {
   async fetch(req, env) {
     const u = new URL(req.url);
     try {
       if (u.pathname === '/admin') return new Response(PAGE, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
+      if (u.pathname === '/v1/ratings' || u.pathname === '/v1/ai') return await edge(u.pathname, req, env);
       if (req.method !== 'POST') return json({ ok: true });
       if (u.pathname === '/admin/api') {
         if (!env.ADMIN_KEY || !safeEq(req.headers.get('x-admin-key'), env.ADMIN_KEY)) return json({ ok: false }, 401);

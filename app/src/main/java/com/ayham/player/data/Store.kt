@@ -98,6 +98,14 @@ class Store(ctx: Context) {
     }
 
     /** تقييم IMDb محفوظ (فاضي = ما لقيناه) حتى ما نكرر الطلبات. */
+    fun ratingsCache(k: String): Pair<Long, String>? {
+        val v = sp.getString("rtg_$k", null) ?: return null
+        val i = v.indexOf('|')
+        if (i < 0) return null
+        return (v.substring(0, i).toLongOrNull() ?: return null) to v.substring(i + 1)
+    }
+    fun setRatingsCache(k: String, json: String) { sp.edit().putString("rtg_$k", "${System.currentTimeMillis()}|$json").apply() }
+
     fun imdb(key: String): String? = sp.getString("imdb_$key", null)
     fun setImdb(key: String, v: String) { sp.edit().putString("imdb_$key", v).apply() }
 

@@ -795,6 +795,13 @@ fun SearchTab(vm: AppViewModel) {
     var typeF by rememberSaveable { mutableIntStateOf(0) }
     var ratingF by rememberSaveable { mutableIntStateOf(0) }
     var recentQ by remember { mutableStateOf(vm.store.recentQueries()) }
+    var smart by remember { mutableStateOf<List<Item>>(emptyList()) }
+    LaunchedEffect(q) {
+        smart = emptyList()
+        if (q.trim().length < 6) return@LaunchedEffect
+        delay(800)
+        smart = vm.smartSearch(q)
+    }
     LaunchedEffect(q) {
         delay(450)
         res = vm.search(q)
@@ -829,7 +836,7 @@ fun SearchTab(vm: AppViewModel) {
                 item { Chip("8+", ratingF == 8) { ratingF = 8 } }
             }
         }
-        val empty = live.isEmpty() && movies.isEmpty() && series.isEmpty()
+        val empty = live.isEmpty() && movies.isEmpty() && series.isEmpty() && smart.isEmpty()
         if (empty && searching) {
             Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
                 RText(t("no_results"), 24, C.textDim)
@@ -874,6 +881,7 @@ fun SearchTab(vm: AppViewModel) {
                     }
                 }
             }
+            if (searching && smart.isNotEmpty()) item { ContentRow(if (ar) "اقتراحات ذكية من مكتبتك" else "Smart picks from your library", smart) { open(it) } }
             item { ContentRow(t("live"), live) { vm.playLive(it, LiveSource(favs = live)) } }
             item { ContentRow(t("movies"), movies) { vm.openDetail(it) } }
             item { ContentRow(t("series"), series) { vm.openDetail(it) } }
