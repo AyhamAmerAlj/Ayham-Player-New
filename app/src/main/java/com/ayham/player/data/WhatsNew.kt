@@ -2,18 +2,20 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "227"
+    const val id = "228"
     val ar = listOf(
-        "تقييمات متعددة في صفحة الفيلم والمسلسل: IMDb وRotten Tomatoes وMetacritic وTMDB وTrakt (تظهر \"غير متوفر\" عند غياب البيانات)",
-        "بحث ذكي بالجملة الطبيعية: \"أفلام رعب بتقييم أعلى من 8\"، \"مسلسلات تشبه ...\"، \"خيال علمي من 2020 إلى 2026\"",
-        "البحث بوصف القصة لمن نسي اسم الفيلم",
-        "أعمال مشابهة أدق بحسب القصة والأجواء",
+        "Ayham Vision: أوضاع صورة (سينما، مسلسلات، رياضة، كرة القدم، HDR، مخصص) من قائمة المشغّل",
+        "تأثير حقيقي على الصورة: سطوع، تباين، تشبّع، صبغة، حرارة اللون",
+        "تفعيل تلقائي حسب نوع المحتوى، وإنشاء أوضاع باسمك وحفظها",
+        "محتوى HDR يبقى بصورته الأصلية بلا فلاتر",
+        "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
-        "Multiple ratings on movie and series pages: IMDb, Rotten Tomatoes, Metacritic, TMDB and Trakt (\"N/A\" when unavailable)",
-        "Smart natural-language search: \"horror movies rated above 8\", \"series like ...\", \"sci-fi 2020 to 2026\"",
-        "Search by describing the plot when you forgot the title",
-        "More accurate similar titles by story and mood",
+        "Ayham Vision: picture modes (Cinema, Series, Sports, Football, HDR, Custom) from the player menu",
+        "Real picture effect: brightness, contrast, saturation, hue, color temperature",
+        "Auto mode by content type, plus your own named modes",
+        "HDR content keeps its native picture, no filters",
+        "Multiple ratings and smart natural-language and plot search",
     )
 }
 
@@ -21,7 +23,14 @@ object WhatsNew {
 data class Release(val id: String, val ar: List<String>, val en: List<String>)
 
 val releaseHistory = listOf(
-    Release("227", WhatsNew.ar, WhatsNew.en),
+    Release("228", WhatsNew.ar, WhatsNew.en),
+    Release("227", listOf(
+        "تقييمات متعددة (IMDb وRotten Tomatoes وMetacritic وTMDB وTrakt)",
+        "بحث ذكي بالجملة الطبيعية ووصف القصة، وأعمال مشابهة أدق",
+    ), listOf(
+        "Multiple ratings (IMDb, Rotten Tomatoes, Metacritic, TMDB, Trakt)",
+        "Smart natural-language and plot search, more accurate similar titles",
+    )),
     Release("223", listOf(
         "مقدمة سينمائية، خلفية تحميل مموّهة، أنماط ترجمة، بحث أذكى، توهج شريط التقدم، سجل التحديثات",
     ), listOf(

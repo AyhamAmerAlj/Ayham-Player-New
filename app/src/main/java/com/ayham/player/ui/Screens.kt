@@ -1061,7 +1061,7 @@ fun SettingsTab(vm: AppViewModel) {
         }
         if (cat == 2) {
             SubPreviewCard(vm)
-            Chip("Ayham Vision: " + (if (vm.vision.auto) (if (vm.lang == "ar") "تلقائي" else "Auto") else (if (vm.lang == "ar") "يدوي" else "Manual")), vm.vision.auto) { vm.vision.setAuto(!vm.vision.auto) }
+            Chip("Ayham Vision: " + (if (vm.vision.auto) (if (vm.lang == "ar") "تلقائي" else "Auto") else (if (vm.lang == "ar") "يدوي" else "Manual")), vm.vision.auto) { vm.vision.toggleAuto(!vm.vision.auto) }
         RText(t("live_format"), 22, C.primaryLight, bold = true)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Chip("m3u8 (HLS)", vm.liveFormat == "m3u8") { vm.changeLiveFormat("m3u8") }

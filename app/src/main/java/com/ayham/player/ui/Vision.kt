@@ -89,7 +89,7 @@ class VisionPrefs(private val st: Store) {
         }
     }
 
-    fun setAuto(v: Boolean) { auto = v; st.putRaw("v_auto", if (v) "1" else "0") }
+    fun toggleAuto(v: Boolean) { auto = v; st.putRaw("v_auto", if (v) "1" else "0") }
     fun select(id: String) { mode = id; st.putRaw("v_mode", id) }
     fun vals(id: String): VVals = vals[id] ?: VVals()
     fun set(id: String, v: VVals) { vals[id] = v; st.putRaw("v_ov_$id", v.ser()) }
@@ -135,7 +135,7 @@ fun VisionPanel(vm: AppViewModel, active: String, isHdr: Boolean, onPick: (Strin
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { RText("Ayham Vision", 26, C.text, bold = true) }
         if (isHdr) item { BodyText(if (ar) "هذا المحتوى HDR: تُحفظ الصورة الأصلية ولا تُطبَّق الفلاتر" else "HDR content: original picture is kept, filters are off", 13, C.accent) }
-        item { PanelItem(if (ar) "التفعيل التلقائي حسب المحتوى" else "Auto by content", sub = if (v.auto) (if (ar) "مفعّل" else "On") else (if (ar) "يدوي" else "Manual"), modifier = Modifier.autoFocus()) { v.setAuto(!v.auto) } }
+        item { PanelItem(if (ar) "التفعيل التلقائي حسب المحتوى" else "Auto by content", sub = if (v.auto) (if (ar) "مفعّل" else "On") else (if (ar) "يدوي" else "Manual"), modifier = Modifier.autoFocus()) { v.toggleAuto(!v.auto) } }
         items(Vision.builtin.size) { i ->
             val m = Vision.builtin[i]
             PanelItem((if (m.id == active) "● " else "") + m.icon + "  " + (if (ar) m.ar else m.en), selected = m.id == active, sub = if (ar) m.descAr else m.descEn) { onPick(m.id) }
