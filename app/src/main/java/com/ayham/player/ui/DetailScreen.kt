@@ -133,7 +133,7 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
                                 imdb?.let { ImdbBadge(it) }
                             }
                         } else imdb?.let { ImdbBadge(it) }
-                        val meta = if (!compact) emptyList() else listOfNotNull(
+                        val meta = if (!compact) "" else listOfNotNull(
                             d?.year?.takeIf { it.isNotBlank() },
                             d?.duration?.takeIf { it.isNotBlank() },
                             (d?.rating?.takeIf { it.isNotBlank() && it != "0" } ?: item.rating.takeIf { it.isNotBlank() && it != "0" })
