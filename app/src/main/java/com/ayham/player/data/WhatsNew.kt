@@ -4,17 +4,9 @@ package com.ayham.player.data
 object WhatsNew {
     const val id = "228"
     val ar = listOf(
-        "Ayham Vision للقنوات المباشرة والرياضة: أوضاع صورة (كرة القدم، رياضة، سينما، مسلسلات، HDR، مخصص) من قائمة المشغّل",
-        "تأثير حقيقي على الصورة: سطوع، تباين، تشبّع، صبغة، حرارة اللون",
-        "تفعيل تلقائي حسب نوع المحتوى، وإنشاء أوضاع باسمك وحفظها",
-        "محتوى HDR يبقى بصورته الأصلية بلا فلاتر",
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
-        "Ayham Vision for live channels and sports: picture modes (Football, Sports, Cinema, Series, HDR, Custom) from the player menu",
-        "Real picture effect: brightness, contrast, saturation, hue, color temperature",
-        "Auto mode by content type, plus your own named modes",
-        "HDR content keeps its native picture, no filters",
         "Multiple ratings and smart natural-language and plot search",
     )
 }

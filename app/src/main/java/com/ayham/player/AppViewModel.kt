@@ -222,7 +222,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         store.saveSubs(key, emptyList())
         store.setPrefSub(key, null)
     }
-    val vision = com.ayham.player.ui.VisionPrefs(store)
     var subStyle by mutableIntStateOf(store.subStyle)
     fun changeSubStyle(v: Int) { subStyle = v; store.subStyle = v }
     var subSize by mutableIntStateOf(store.subSize)

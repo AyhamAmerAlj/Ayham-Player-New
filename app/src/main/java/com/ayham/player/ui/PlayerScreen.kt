@@ -120,7 +120,7 @@ import com.ayham.player.data.PlayRequest
 import kotlinx.coroutines.delay
 import java.util.Locale
 
-private enum class Panel { VISION, MENU, SUBS, SUBURL, SUBPHONE, TRYSUB, AUDIO, EXT, SYNC, EPG }
+private enum class Panel { MENU, SUBS, SUBURL, SUBPHONE, TRYSUB, AUDIO, EXT, SYNC, EPG }
 
 private fun hm(sec: Long): String = java.text.SimpleDateFormat("HH:mm", Locale.US).format(java.util.Date(sec * 1000))
 
@@ -170,25 +170,8 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     var isPlaying by remember { mutableStateOf(false) }
     var buffering by remember { mutableStateOf(true) }
     var introShow by remember { mutableStateOf(false) }
-    var visionPick by remember(index) { mutableStateOf<String?>(null) }
     var introResume by remember { mutableLongStateOf(0L) }
     var tracks by remember { mutableStateOf(Tracks.EMPTY) }
-    val isHdr = remember(tracks) {
-        tracks.groups.any { g ->
-            g.type == MC.TRACK_TYPE_VIDEO && (0 until g.length).any { i ->
-                g.isTrackSelected(i) && g.getTrackFormat(i).colorInfo?.colorTransfer.let { it == MC.COLOR_TRANSFER_ST2084 || it == MC.COLOR_TRANSFER_HLG }
-            }
-        }
-    }
-    val vMode = visionPick ?: if (vm.vision.auto) vm.vision.autoModeFor(queue[index].isLive, req.item?.kind == com.ayham.player.data.Kind.SERIES, queue[index].title) else vm.vision.mode
-    val vVals = vm.vision.vals(vMode)
-    var visionBlocked by remember(index) { mutableStateOf(false) }
-    // الدقة العالية (فوق 1080p) تثقل طبقة اللون على الأجهزة الضعيفة، فلا نفعّل الفلتر عليها
-    val videoH = remember(tracks) {
-        tracks.groups.filter { it.type == MC.TRACK_TYPE_VIDEO }.maxOfOrNull { g -> (0 until g.length).filter { g.isTrackSelected(it) }.maxOfOrNull { g.getTrackFormat(it).height } ?: 0 } ?: 0
-    }
-    val visionOn = queue[index].isLive && !isHdr && !visionBlocked && vMode != "hdr" && vMode != "std" && !vVals.neutral
-    val visionOnState = rememberUpdatedState(visionOn)
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var controls by remember { mutableStateOf(true) }
     val lastTouch = remember { longArrayOf(0L) }
@@ -662,24 +645,9 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             }
         }
         exo.addListener(l)
-        // حماية السلاسة: إذا تقطّعت الصورة بسبب فلتر Ayham Vision نوقفه تلقائياً لهذا العنصر
-        val al = object : androidx.media3.exoplayer.analytics.AnalyticsListener {
-            override fun onDroppedVideoFrames(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, droppedFrames: Int, elapsedMs: Long) {
-                if (visionOnState.value && droppedFrames >= 20) {
-                    visionBlocked = true
-                    showToast(if (vm.lang == "ar") "أُوقف Ayham Vision تلقائياً لحماية سلاسة الصورة" else "Ayham Vision turned off to keep playback smooth")
-                }
-            }
-        }
-        exo.addAnalyticsListener(al)
-        onDispose { flushWatch(); exo.removeListener(l); exo.removeAnalyticsListener(al) }
+        onDispose { flushWatch(); exo.removeListener(l) }
     }
 
-    // فلاتر Ayham Vision عبر مسار المعالجة الرسمي في Media3 (على نفس سطح العرض، بدون TextureView)
-    LaunchedEffect(visionOn, vVals) {
-        val ok = runCatching { exo.setVideoEffects(if (visionOn) Vision.effects(vVals) else emptyList()) }.isSuccess
-        if (!ok) visionBlocked = true
-    }
     LaunchedEffect(index, introShow) { if (introShow) { delay(if (introResume > 0) 3600 else 2600); introShow = false } }
 
     // ---------- تحميل المقطع عند تغيير القناة/الحلقة ----------
@@ -1225,7 +1193,6 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     Panel.MENU -> {
                         RText(t("settings"), 26, C.text, bold = true)
                         if (!queue[index].isLive) PanelItem(t("subtitles"), modifier = Modifier.autoFocus()) { panel = Panel.SUBS }
-                        if (queue[index].isLive) PanelItem("Ayham Vision", sub = vm.vision.name(vMode, vm.lang == "ar") + (if (isHdr) " · HDR" else "")) { panel = Panel.VISION }
                         PanelItem(t("audio_tracks"), modifier = if (queue[index].isLive) Modifier.autoFocus() else Modifier) { panel = Panel.AUDIO }
                         if (!queue[index].isLive) {
                             PanelItem(t("speed"), sub = speedLabel(speed)) { cycleSpeed() }
@@ -1380,7 +1347,6 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                         }
                     }
 
-                    Panel.VISION -> VisionPanel(vm, vMode, isHdr, onPick = { visionPick = it; vm.vision.select(it) }, onBack = { panel = Panel.MENU })
 
                     Panel.AUDIO -> {
                         val ar = vm.lang == "ar"
