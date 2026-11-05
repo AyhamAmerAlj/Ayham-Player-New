@@ -88,9 +88,9 @@ import kotlinx.coroutines.delay
 // ============================ Splash ============================
 @Composable
 fun SplashScreen() {
-    // افتتاحية: خيوط حرير بنفسجية تنطلق من الزوايا وتنسج شبكة هادئة، ثم يظهر الشعار. أسود + بنفسجي، 2.2 ثانية.
+    // افتتاحية سينمائية: حلقة تُرسم ويظهر فيها زر التشغيل، يتحول إلى نقطة مضيئة، ثم ينفجر منها شعار Ayham ويظهر الاسم حرفاً حرفاً.
     val p = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { p.animateTo(1f, tween(2200, easing = androidx.compose.animation.core.LinearEasing)) }
+    LaunchedEffect(Unit) { p.animateTo(1f, tween(3200, easing = androidx.compose.animation.core.LinearEasing)) }
     LaunchedEffect(Unit) {
         if (!UiSound.splashPlayed) {
             var w = 0
@@ -107,72 +107,76 @@ fun SplashScreen() {
     )
     val violet = Color(0xFF8B5CF6)
     val magenta = Color(0xFFD946EF)
-    val logoSize = if (isCompact()) 96.dp else 132.dp
+    val compact = isCompact()
+    val box = if (compact) 150.dp else 200.dp
+    val fs = if (compact) 30 else 42
+    fun seg(t: Float, a: Float, b: Float) = ((t - a) / (b - a)).coerceIn(0f, 1f)
+    fun ease(x: Float) = 1f - (1f - x) * (1f - x) * (1f - x)
     Box(Modifier.fillMaxSize().background(Color(0xFF030106)), contentAlignment = Alignment.Center) {
         androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
             val t = p.value
-            fun seg(a: Float, b: Float) = ((t - a) / (b - a)).coerceIn(0f, 1f)
-            fun ease(x: Float) = 1f - (1f - x) * (1f - x) * (1f - x)
-            val w = size.width; val h = size.height
-            val c = androidx.compose.ui.geometry.Offset(w / 2f, h / 2f)
-            val diag = kotlin.math.hypot(w, h)
-            val r = diag * 0.52f
-            val thin = 1.2.dp.toPx()
-            // توهج مركزي
-            val g = 0.38f * ease(seg(0.45f, 0.9f)) * (if (t >= 0.95f) pulse else 1f)
-            drawRect(Brush.radialGradient(listOf(violet.copy(alpha = g), Color.Transparent), center = c, radius = diag * 0.38f))
-            // 1) أربعة خيوط تنطلق من الزوايا نحو المركز ثم تتلاشى
-            val shotFade = 1f - seg(0.40f, 0.62f)
-            if (shotFade > 0f) {
-                val k = ease(seg(0f, 0.30f))
-                listOf(
-                    androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Offset(w, 0f),
-                    androidx.compose.ui.geometry.Offset(0f, h), androidx.compose.ui.geometry.Offset(w, h),
-                ).forEach { o ->
-                    val end = androidx.compose.ui.geometry.Offset(o.x + (c.x - o.x) * k, o.y + (c.y - o.y) * k)
-                    drawLine(Brush.linearGradient(listOf(Color.Transparent, magenta.copy(alpha = 0.9f * shotFade)), start = o, end = end), o, end, strokeWidth = 2.dp.toPx())
+            val g = 0.34f * ease(seg(t, 0.05f, 0.7f)) * (if (t >= 0.95f) pulse else 1f)
+            drawRect(Brush.radialGradient(listOf(violet.copy(alpha = g), Color.Transparent), center = center, radius = size.maxDimension * 0.45f))
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(Modifier.size(box), contentAlignment = Alignment.Center) {
+                androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                    val t = p.value
+                    val c = center
+                    val r = size.minDimension * 0.40f
+                    val draw = ease(seg(t, 0.08f, 0.32f))
+                    val morph = ease(seg(t, 0.52f, 0.72f))
+                    val rr = r * (1f + 0.45f * morph)
+                    if (morph < 1f && draw > 0f) {
+                        drawArc(
+                            Brush.sweepGradient(listOf(violet, magenta, violet), center = c),
+                            startAngle = -90f, sweepAngle = 360f * draw, useCenter = false,
+                            topLeft = androidx.compose.ui.geometry.Offset(c.x - rr, c.y - rr),
+                            size = androidx.compose.ui.geometry.Size(rr * 2, rr * 2),
+                            alpha = 1f - morph,
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round),
+                        )
+                    }
+                    // زر التشغيل ثم يتقلص إلى نقطة
+                    val tri = seg(t, 0.22f, 0.34f) * (1f - seg(t, 0.40f, 0.50f))
+                    if (tri > 0f) {
+                        val s = r * 0.5f * (1f - 0.3f * seg(t, 0.40f, 0.50f))
+                        val path = androidx.compose.ui.graphics.Path().apply {
+                            moveTo(c.x - s * 0.5f, c.y - s * 0.65f); lineTo(c.x - s * 0.5f, c.y + s * 0.65f); lineTo(c.x + s * 0.75f, c.y); close()
+                        }
+                        drawPath(path, Color.White.copy(alpha = tri))
+                    }
+                    val dot = seg(t, 0.40f, 0.52f) * (1f - seg(t, 0.58f, 0.70f))
+                    if (dot > 0f) {
+                        drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = dot), magenta.copy(alpha = 0.7f * dot), Color.Transparent), center = c, radius = r * 0.35f), r * 0.35f, c)
+                    }
                 }
+                Image(
+                    painterResource(R.drawable.ic_launcher), null,
+                    Modifier.size(box * 0.78f).graphicsLayer {
+                        val x = seg(p.value, 0.58f, 0.82f)
+                        val back = 1f + 2.2f * Math.pow((x - 1f).toDouble(), 3.0).toFloat() + 1.2f * Math.pow((x - 1f).toDouble(), 2.0).toFloat()
+                        val sc = 0.15f + 0.85f * back
+                        scaleX = sc; scaleY = sc
+                        alpha = (x * 1.6f).coerceIn(0f, 1f)
+                    }.clip(RoundedCornerShape(26.dp)),
+                )
             }
-            // 2) خيوط شعاعية
-            val n = 12
-            val rad = r * ease(seg(0.22f, 0.62f))
-            if (rad > 0f) {
-                for (i in 0 until n) {
-                    val a = (2 * Math.PI * i / n).toFloat()
-                    val e = androidx.compose.ui.geometry.Offset(c.x + kotlin.math.cos(a) * rad, c.y + kotlin.math.sin(a) * rad)
-                    drawLine(Brush.linearGradient(listOf(violet.copy(alpha = 0.55f), violet.copy(alpha = 0.04f)), start = c, end = e), c, e, strokeWidth = thin)
+            Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                val text = "AYHAM  PLAYER"
+                text.forEachIndexed { i, ch ->
+                    if (ch == ' ') { Spacer(Modifier.width(6.dp)); return@forEachIndexed }
+                    RText(
+                        ch.toString(), fs, if (i < 5) Color.White else magenta, bold = true,
+                        modifier = Modifier.graphicsLayer {
+                            val x = seg(p.value, 0.74f + 0.012f * i, 0.88f + 0.012f * i)
+                            alpha = x
+                            translationY = (1f - ease(x)) * 18.dp.toPx()
+                        },
+                    )
                 }
-            }
-            // 3) حلقات الشبكة (منحنيات مترهلة قليلًا)
-            for (k in 1..6) {
-                val rk = r * k / 6.6f
-                val f = ease(seg(0.40f + 0.06f * k, 0.66f + 0.06f * k))
-                if (f <= 0f) continue
-                val segs = (n * f)
-                val path = androidx.compose.ui.graphics.Path()
-                for (i in 0 until n) {
-                    if (i >= segs) break
-                    val a0 = (2 * Math.PI * i / n).toFloat(); val a1 = (2 * Math.PI * (i + 1) / n).toFloat()
-                    val p0 = androidx.compose.ui.geometry.Offset(c.x + kotlin.math.cos(a0) * rk, c.y + kotlin.math.sin(a0) * rk)
-                    val p1 = androidx.compose.ui.geometry.Offset(c.x + kotlin.math.cos(a1) * rk, c.y + kotlin.math.sin(a1) * rk)
-                    val am = (a0 + a1) / 2f
-                    val q = androidx.compose.ui.geometry.Offset(c.x + kotlin.math.cos(am) * rk * 0.90f, c.y + kotlin.math.sin(am) * rk * 0.90f)
-                    path.moveTo(p0.x, p0.y); path.quadraticBezierTo(q.x, q.y, p1.x, p1.y)
-                }
-                drawPath(path, violet.copy(alpha = 0.30f - 0.03f * k), style = androidx.compose.ui.graphics.drawscope.Stroke(width = thin))
             }
         }
-        // الشعار: ظهور بتكبير ناعم
-        Image(
-            painterResource(R.drawable.ic_launcher), null,
-            Modifier.size(logoSize).graphicsLayer {
-                val x = ((p.value - 0.55f) / 0.40f).coerceIn(0f, 1f)
-                val back = 1f + 2.2f * Math.pow((x - 1f).toDouble(), 3.0).toFloat() + 1.2f * Math.pow((x - 1f).toDouble(), 2.0).toFloat()
-                val sc = 0.55f + 0.45f * back
-                scaleX = sc; scaleY = sc
-                alpha = ((p.value - 0.50f) / 0.25f).coerceIn(0f, 1f)
-            }.clip(RoundedCornerShape(26.dp)),
-        )
     }
 }
 

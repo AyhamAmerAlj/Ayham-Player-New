@@ -2,11 +2,13 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "228"
+    const val id = "237"
     val ar = listOf(
+        "افتتاحية سينمائية جديدة بشعار Ayham وألوانه عند فتح التطبيق",
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "New cinematic opening with the Ayham logo and colors when the app starts",
         "Multiple ratings and smart natural-language and plot search",
     )
 }
@@ -15,7 +17,7 @@ object WhatsNew {
 data class Release(val id: String, val ar: List<String>, val en: List<String>)
 
 val releaseHistory = listOf(
-    Release("228", WhatsNew.ar, WhatsNew.en),
+    Release("237", WhatsNew.ar, WhatsNew.en),
     Release("227", listOf(
         "تقييمات متعددة (IMDb وRotten Tomatoes وMetacritic وTMDB وTrakt)",
         "بحث ذكي بالجملة الطبيعية ووصف القصة، وأعمال مشابهة أدق",
