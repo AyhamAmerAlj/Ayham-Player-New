@@ -46,6 +46,17 @@ object Vision {
         else -> VVals()
     }
 
+    /** تأثيرات Media3 الرسمية: سطوع، تباين، تشبّع/صبغة، حرارة اللون. */
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+    fun effects(v: VVals): List<androidx.media3.common.Effect> {
+        val l = ArrayList<androidx.media3.common.Effect>()
+        if (v.b != 0) l.add(androidx.media3.effect.Brightness(v.b * 0.006f))
+        if (v.c != 0) l.add(androidx.media3.effect.Contrast(v.c / 100f))
+        if (v.s != 0 || v.h != 0) l.add(androidx.media3.effect.HslAdjustment.Builder().adjustHue(v.h.toFloat()).adjustSaturation(v.s * 1.2f).build())
+        if (v.t != 0) l.add(androidx.media3.effect.RgbAdjustment.Builder().setRedScale(1f + v.t / 250f).setBlueScale(1f - v.t / 250f).build())
+        return l
+    }
+
     /** مصفوفة لون حقيقية تُطبَّق على طبقة الفيديو بالمعالج الرسومي (بدون معالجة إطارات بالمعالج). */
     fun matrix(v: VVals): android.graphics.ColorMatrix {
         val m = android.graphics.ColorMatrix()

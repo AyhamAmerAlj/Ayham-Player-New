@@ -675,6 +675,11 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         onDispose { flushWatch(); exo.removeListener(l); exo.removeAnalyticsListener(al) }
     }
 
+    // فلاتر Ayham Vision عبر مسار المعالجة الرسمي في Media3 (على نفس سطح العرض، بدون TextureView)
+    LaunchedEffect(visionOn, vVals) {
+        val ok = runCatching { exo.setVideoEffects(if (visionOn) Vision.effects(vVals) else emptyList()) }.isSuccess
+        if (!ok) visionBlocked = true
+    }
     LaunchedEffect(index, introShow) { if (introShow) { delay(if (introResume > 0) 3600 else 2600); introShow = false } }
 
     // ---------- تحميل المقطع عند تغيير القناة/الحلقة ----------
@@ -838,17 +843,13 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             .focusRequester(rootFocus)
             .focusable(),
     ) {
-        androidx.compose.runtime.key(visionOn) { AndroidView(
+        AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { c ->
-                (if (visionOn) android.view.LayoutInflater.from(c).inflate(com.ayham.player.R.layout.vision_player_texture, null) as PlayerView else PlayerView(c)).apply {
+                PlayerView(c).apply {
                     useController = false
                     player = exo
                     keepScreenOn = true
-                    // TextureView يُظهر أحياناً صفاً من نقاط وامضة عند حافة الفيديو السفلية؛ نقصّ الحافة بمقدار ضئيل جداً غير مرئي
-                    (videoSurfaceView as? android.view.TextureView)?.addOnLayoutChangeListener { v, l, t, r, b, _, _, _, _ ->
-                        if (r - l > 0 && b - t > 0) v.clipBounds = android.graphics.Rect(0, 0, r - l, ((b - t) * 0.995f).toInt())
-                    }
                     isFocusable = false
                     setShutterBackgroundColor(android.graphics.Color.BLACK)
                     subtitleView?.apply {
@@ -870,22 +871,13 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             update = {
                 it.subtitleView?.setFractionalTextSize(when (vm.subSize) { 0 -> 0.042f; 1 -> 0.055f; else -> 0.075f })
                 it.subtitleView?.setStyle(subCaptionStyle(vm.subStyle))
-                (it.videoSurfaceView as? android.view.TextureView)?.let { tv ->
-                    // نطبّق الفلتر فقط عند تغيّر القيم؛ إعادة ضبط الطبقة مع كل إعادة رسم كانت تسبب الوميض وعدم الاستجابة
-                    val want: Any? = if (visionOn) vVals else null
-                    if (tv.tag != want) {
-                        tv.tag = want
-                        if (visionOn) tv.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, android.graphics.Paint().apply { colorFilter = android.graphics.ColorMatrixColorFilter(Vision.matrix(vVals)) })
-                        else tv.setLayerType(android.view.View.LAYER_TYPE_NONE, null)
-                    }
-                }
                 it.resizeMode = when (aspect) {
                     0 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
                     1 -> AspectRatioFrameLayout.RESIZE_MODE_FILL
                     else -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                 }
             },
-        ) }
+        )
 
         // طبقة اللمس: نقرة = إظهار/إخفاء التحكم، نقرتين = تقديم/رجوع (أو تبديل قناة)، سحب عمودي = سطوع/صوت
         Box(
