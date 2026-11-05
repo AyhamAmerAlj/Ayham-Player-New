@@ -187,7 +187,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     val videoH = remember(tracks) {
         tracks.groups.filter { it.type == MC.TRACK_TYPE_VIDEO }.maxOfOrNull { g -> (0 until g.length).filter { g.isTrackSelected(it) }.maxOfOrNull { g.getTrackFormat(it).height } ?: 0 } ?: 0
     }
-    val visionOn = !isHdr && !visionBlocked && videoH <= 1080 && vMode != "hdr" && vMode != "std" && !vVals.neutral
+    val visionOn = !isHdr && !visionBlocked && vMode != "hdr" && vMode != "std" && !vVals.neutral
     val visionOnState = rememberUpdatedState(visionOn)
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var controls by remember { mutableStateOf(true) }
@@ -665,7 +665,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         // حماية السلاسة: إذا تقطّعت الصورة بسبب فلتر Ayham Vision نوقفه تلقائياً لهذا العنصر
         val al = object : androidx.media3.exoplayer.analytics.AnalyticsListener {
             override fun onDroppedVideoFrames(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, droppedFrames: Int, elapsedMs: Long) {
-                if (visionOnState.value && droppedFrames >= 6) {
+                if (visionOnState.value && droppedFrames >= 20) {
                     visionBlocked = true
                     showToast(if (vm.lang == "ar") "أُوقف Ayham Vision تلقائياً لحماية سلاسة الصورة" else "Ayham Vision turned off to keep playback smooth")
                 }
@@ -867,8 +867,13 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                 it.subtitleView?.setFractionalTextSize(when (vm.subSize) { 0 -> 0.042f; 1 -> 0.055f; else -> 0.075f })
                 it.subtitleView?.setStyle(subCaptionStyle(vm.subStyle))
                 (it.videoSurfaceView as? android.view.TextureView)?.let { tv ->
-                    if (visionOn) tv.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, android.graphics.Paint().apply { colorFilter = android.graphics.ColorMatrixColorFilter(Vision.matrix(vVals)) })
-                    else tv.setLayerType(android.view.View.LAYER_TYPE_NONE, null)
+                    // نطبّق الفلتر فقط عند تغيّر القيم؛ إعادة ضبط الطبقة مع كل إعادة رسم كانت تسبب الوميض وعدم الاستجابة
+                    val want: Any? = if (visionOn) vVals else null
+                    if (tv.tag != want) {
+                        tv.tag = want
+                        if (visionOn) tv.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, android.graphics.Paint().apply { colorFilter = android.graphics.ColorMatrixColorFilter(Vision.matrix(vVals)) })
+                        else tv.setLayerType(android.view.View.LAYER_TYPE_NONE, null)
+                    }
                 }
                 it.resizeMode = when (aspect) {
                     0 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
