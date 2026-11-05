@@ -84,14 +84,15 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
 
     val compact = isCompact()
     Box(Modifier.fillMaxSize().background(C.bg)) {
-        Img(bg, Modifier.fillMaxSize(), w = 960, h = 540)
+        if (compact) Img(bg, Modifier.fillMaxSize(), w = 960, h = 540)
+        else Img(bg, Modifier.fillMaxWidth().fillMaxHeight(0.68f), w = 1280, h = 720)
         if (compact) Box(
             Modifier.fillMaxSize().background(
                 Brush.horizontalGradient(listOf(tc(0xF20B0614), tc(0xE60B0614), tc(0xAA0B0614))),
             ),
         ) else {
-            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(tc(0x990B0614), tc(0x330B0614), tc(0xB30B0614)))))
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.25f to tc(0x000B0614), 0.62f to tc(0xE60B0614), 1f to tc(0xFF0B0614))))
+            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(tc(0x800B0614), Color.Transparent, tc(0x800B0614)))))
+            Box(Modifier.fillMaxWidth().fillMaxHeight(0.68f).background(Brush.verticalGradient(0.30f to Color.Transparent, 0.95f to C.bg)))
         }
 
         LazyColumn(
@@ -111,9 +112,28 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
                 val info: @Composable (Modifier) -> Unit = { mod ->
                     Column(mod, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (compact) RText(item.name, 24, C.text, bold = true, maxLines = 3, lineHeight = 30)
-                        else RText(item.name, 44, C.text, bold = true, maxLines = 2, lineHeight = 52)
-                        imdb?.let { ImdbBadge(it) }
-                        val meta = listOfNotNull(
+                        else RText(item.name, 46, Color.White, bold = true, maxLines = 2, lineHeight = 54)
+                        if (!compact) {
+                            val arL = vm.lang == "ar"
+                            val total = seasons.values.sumOf { it.size }
+                            val parts = listOfNotNull(
+                                d?.genre?.split(",", "،", "/")?.firstOrNull()?.trim()?.takeIf { it.isNotBlank() },
+                                d?.year?.takeIf { it.isNotBlank() },
+                                if (isSeries && seasons.isNotEmpty()) "${seasons.size} " + (if (arL) "موسم" else "seasons") else null,
+                                if (isSeries && total > 0) "$total " + (if (arL) "حلقة" else "episodes") else d?.duration?.takeIf { it.isNotBlank() },
+                            )
+                            val plot0 = d?.plot.orEmpty()
+                            if (plot0.isNotBlank()) BodyText(plot0, 16, C.text, maxLines = 2)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                parts.forEachIndexed { i, x ->
+                                    if (i > 0) Box(Modifier.width(1.dp).height(16.dp).background(tc(0x55FFFFFF)))
+                                    BodyText(x, 15, C.text, bold = true)
+                                }
+                                if (parts.isNotEmpty() && imdb != null) Box(Modifier.width(1.dp).height(16.dp).background(tc(0x55FFFFFF)))
+                                imdb?.let { ImdbBadge(it) }
+                            }
+                        } else imdb?.let { ImdbBadge(it) }
+                        val meta = if (!compact) emptyList() else listOfNotNull(
                             d?.year?.takeIf { it.isNotBlank() },
                             d?.duration?.takeIf { it.isNotBlank() },
                             (d?.rating?.takeIf { it.isNotBlank() && it != "0" } ?: item.rating.takeIf { it.isNotBlank() && it != "0" })
@@ -121,9 +141,9 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
                         ).joinToString("  •  ")
                         if (meta.isNotEmpty()) BodyText(meta, 14, C.primaryLight, bold = true)
                         val genre = d?.genre.orEmpty()
-                        if (genre.isNotBlank()) BodyText("${t("genre")}: $genre", 13, C.textDim, maxLines = 1)
+                        if (genre.isNotBlank() && compact) BodyText("${t("genre")}: $genre", 13, C.textDim, maxLines = 1)
                         val plot = d?.plot.orEmpty()
-                        if (plot.isNotBlank()) BodyText(plot, 15, C.text, maxLines = if (compact) 8 else 3)
+                        if (plot.isNotBlank() && compact) BodyText(plot, 15, C.text, maxLines = 8)
                         val cast = d?.cast.orEmpty()
                         if (cast.isNotBlank() && compact) BodyText("${t("cast")}: $cast", 12, C.textDim, maxLines = 2)
                         Spacer(Modifier.height(4.dp))
@@ -139,14 +159,15 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
                         ActionButtons(vm, item, eps, curSeason, versions) { showVersions = true }
                     }
                 } else {
-                    // تلفاز: خلفية كاملة، والمعلومات أسفلها (بدون بوستر لو توفرت الخلفية)
+                    // تلفاز: خلفية عريضة بأعلى الشاشة، وبوستر صغير بجانب العنوان والتفاصيل والأزرار
+                    val heroH = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.72f).dp
                     Row(
-                        Modifier.fillMaxWidth().height(if (isSeries) 330.dp else 380.dp),
-                        horizontalArrangement = Arrangement.spacedBy(28.dp),
+                        Modifier.fillMaxWidth().height(heroH),
+                        horizontalArrangement = Arrangement.spacedBy(32.dp),
                         verticalAlignment = Alignment.Bottom,
                     ) {
-                        if (d?.backdrop.isNullOrBlank()) poster()
-                        info(Modifier.weight(1f).fillMaxWidth(0.62f))
+                        info(Modifier.weight(1f))
+                        poster()
                     }
                 }
             }
@@ -169,6 +190,7 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
                     EpisodeRow(vm, item, eps, i)
                 }
             } else if (isSeries) {
+                item { RText((if (vm.lang == "ar") "الموسم " else "Season ") + curSeason + " - " + eps.size + (if (vm.lang == "ar") " حلقة" else " episodes"), 20, C.text, bold = true) }
                 item {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(vertical = 6.dp)) {
                         items(eps.size) { i -> EpisodeCard(vm, item, eps, i) }
