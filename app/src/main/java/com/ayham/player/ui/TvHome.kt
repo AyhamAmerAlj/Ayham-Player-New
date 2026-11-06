@@ -190,6 +190,15 @@ fun TvHome(
                             RText(t("my_list"), 15, Color.White, bold = true, maxLines = 1)
                         }
                     }
+                    Focusable(shape = RoundedCornerShape(26.dp), focusScale = 1.07f, onClick = { vm.showTonight = true }) { f ->
+                        Row(
+                            Modifier.clip(RoundedCornerShape(26.dp)).background(if (f) tc(0x558B5CF6) else tc(0x33FFFFFF)).padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            RText("🎬", 15, Color.White)
+                            RText(if (vm.lang == "ar") "الليلة" else "Tonight", 15, Color.White, bold = true, maxLines = 1)
+                        }
+                    }
                 }
             }
 
