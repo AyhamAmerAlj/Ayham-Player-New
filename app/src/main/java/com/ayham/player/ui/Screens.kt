@@ -162,6 +162,7 @@ fun SplashScreen() {
                     }.clip(RoundedCornerShape(26.dp)),
                 )
             }
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
                 val text = "AYHAM  PLAYER"
                 text.forEachIndexed { i, ch ->
@@ -175,6 +176,7 @@ fun SplashScreen() {
                         },
                     )
                 }
+            }
             }
         }
     }
