@@ -76,6 +76,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.ayham.player.AppViewModel
 import com.ayham.player.LoadState
 import com.ayham.player.R
@@ -90,7 +91,7 @@ import kotlinx.coroutines.delay
 fun SplashScreen() {
     // افتتاحية سينمائية: حلقة تُرسم ويظهر فيها زر التشغيل، يتحول إلى نقطة مضيئة، ثم ينفجر منها شعار Ayham ويظهر الاسم حرفاً حرفاً.
     val p = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { p.animateTo(1f, tween(3200, easing = androidx.compose.animation.core.LinearEasing)) }
+    LaunchedEffect(Unit) { p.animateTo(1f, tween(2600, easing = androidx.compose.animation.core.LinearEasing)) }
     LaunchedEffect(Unit) {
         if (!UiSound.splashPlayed) {
             var w = 0
@@ -124,8 +125,8 @@ fun SplashScreen() {
                     val t = p.value
                     val c = center
                     val r = size.minDimension * 0.40f
-                    val draw = ease(seg(t, 0.08f, 0.32f))
-                    val morph = ease(seg(t, 0.52f, 0.72f))
+                    val draw = ease(seg(t, 0.05f, 0.26f))
+                    val morph = ease(seg(t, 0.42f, 0.60f))
                     val rr = r * (1f + 0.45f * morph)
                     if (morph < 1f && draw > 0f) {
                         drawArc(
@@ -138,15 +139,15 @@ fun SplashScreen() {
                         )
                     }
                     // زر التشغيل ثم يتقلص إلى نقطة
-                    val tri = seg(t, 0.22f, 0.34f) * (1f - seg(t, 0.40f, 0.50f))
+                    val tri = seg(t, 0.14f, 0.26f) * (1f - seg(t, 0.32f, 0.40f))
                     if (tri > 0f) {
-                        val s = r * 0.5f * (1f - 0.3f * seg(t, 0.40f, 0.50f))
+                        val s = r * 0.5f * (1f - 0.3f * seg(t, 0.32f, 0.40f))
                         val path = androidx.compose.ui.graphics.Path().apply {
                             moveTo(c.x - s * 0.5f, c.y - s * 0.65f); lineTo(c.x - s * 0.5f, c.y + s * 0.65f); lineTo(c.x + s * 0.75f, c.y); close()
                         }
                         drawPath(path, Color.White.copy(alpha = tri))
                     }
-                    val dot = seg(t, 0.40f, 0.52f) * (1f - seg(t, 0.58f, 0.70f))
+                    val dot = seg(t, 0.32f, 0.42f) * (1f - seg(t, 0.46f, 0.58f))
                     if (dot > 0f) {
                         drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = dot), magenta.copy(alpha = 0.7f * dot), Color.Transparent), center = c, radius = r * 0.35f), r * 0.35f, c)
                     }
@@ -154,7 +155,7 @@ fun SplashScreen() {
                 Image(
                     painterResource(R.drawable.ic_launcher), null,
                     Modifier.size(box * 0.78f).graphicsLayer {
-                        val x = seg(p.value, 0.58f, 0.82f)
+                        val x = seg(p.value, 0.46f, 0.70f)
                         val back = 1f + 2.2f * Math.pow((x - 1f).toDouble(), 3.0).toFloat() + 1.2f * Math.pow((x - 1f).toDouble(), 2.0).toFloat()
                         val sc = 0.15f + 0.85f * back
                         scaleX = sc; scaleY = sc
@@ -163,20 +164,27 @@ fun SplashScreen() {
                 )
             }
             androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
-                val text = "AYHAM  PLAYER"
-                text.forEachIndexed { i, ch ->
-                    if (ch == ' ') { Spacer(Modifier.width(6.dp)); return@forEachIndexed }
-                    RText(
-                        ch.toString(), fs, if (i < 5) Color.White else magenta, bold = true,
-                        modifier = Modifier.graphicsLayer {
-                            val x = seg(p.value, 0.74f + 0.012f * i, 0.88f + 0.012f * i)
-                            alpha = x
-                            translationY = (1f - ease(x)) * 18.dp.toPx()
-                        },
-                    )
+                // الاسم كنص واحد (أخف بكثير من حرف لكل عنصر) مع ظهور وتكبير ناعم
+                val name = remember {
+                    androidx.compose.ui.text.buildAnnotatedString {
+                        withStyle(androidx.compose.ui.text.SpanStyle(color = Color.White)) { append("AYHAM ") }
+                        withStyle(androidx.compose.ui.text.SpanStyle(color = Color(0xFFD946EF))) { append("PLAYER") }
+                    }
                 }
-            }
+                androidx.compose.foundation.text.BasicText(
+                    name,
+                    style = androidx.compose.ui.text.TextStyle(
+                        fontFamily = AppFont, fontSize = (fs + 6).sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        letterSpacing = 4.sp,
+                    ),
+                    modifier = Modifier.graphicsLayer {
+                        val x = seg(p.value, 0.58f, 0.80f)
+                        alpha = x
+                        val sc = 0.88f + 0.12f * ease(x)
+                        scaleX = sc; scaleY = sc
+                        translationY = (1f - ease(x)) * 14.dp.toPx()
+                    },
+                )
             }
         }
     }
