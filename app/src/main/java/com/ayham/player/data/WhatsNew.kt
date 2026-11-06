@@ -2,13 +2,15 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "238"
+    const val id = "239"
     val ar = listOf(
+        "خط جديد للترجمة (Cairo) أوضح وأجمل على الشاشة",
         "صفحة تفاصيل الفيلم والمسلسل بتصميم جديد: خلفية عريضة وبوستر وتفاصيل وأزرار مرتبة",
         "افتتاحية سينمائية جديدة بشعار Ayham وألوانه عند فتح التطبيق",
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "New subtitle font (Cairo): clearer and nicer on screen",
         "New movie and series details page: wide backdrop, poster, details and tidy buttons",
         "New cinematic opening with the Ayham logo and colors when the app starts",
         "Multiple ratings and smart natural-language and plot search",

@@ -22,10 +22,10 @@ import androidx.media3.ui.CaptionStyleCompat
 import com.ayham.player.AppViewModel
 
 /** أنماط الترجمة: 0 سينما (أبيض بظل ناعم)، 1 أصفر كلاسيكي، 2 خلفية شفافة. */
-fun subCaptionStyle(i: Int): CaptionStyleCompat = when (i) {
-    1 -> CaptionStyleCompat(0xFFFFE066.toInt(), android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT, CaptionStyleCompat.EDGE_TYPE_OUTLINE, android.graphics.Color.BLACK, null)
-    2 -> CaptionStyleCompat(android.graphics.Color.WHITE, 0xB3000000.toInt(), android.graphics.Color.TRANSPARENT, CaptionStyleCompat.EDGE_TYPE_NONE, android.graphics.Color.BLACK, null)
-    else -> CaptionStyleCompat(android.graphics.Color.WHITE, android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT, CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW, android.graphics.Color.BLACK, null)
+fun subCaptionStyle(i: Int, tf: android.graphics.Typeface? = null): CaptionStyleCompat = when (i) {
+    1 -> CaptionStyleCompat(0xFFFFE066.toInt(), android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT, CaptionStyleCompat.EDGE_TYPE_OUTLINE, android.graphics.Color.BLACK, tf)
+    2 -> CaptionStyleCompat(android.graphics.Color.WHITE, 0xB3000000.toInt(), android.graphics.Color.TRANSPARENT, CaptionStyleCompat.EDGE_TYPE_NONE, android.graphics.Color.BLACK, tf)
+    else -> CaptionStyleCompat(android.graphics.Color.WHITE, android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT, CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW, android.graphics.Color.BLACK, tf)
 }
 
 /** معاينة حية لشكل الترجمة في الإعدادات، مع تغيير الحجم والنمط. */

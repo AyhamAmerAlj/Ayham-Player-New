@@ -170,6 +170,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     var isPlaying by remember { mutableStateOf(false) }
     var buffering by remember { mutableStateOf(true) }
     var introShow by remember { mutableStateOf(false) }
+    val subTf = remember { androidx.core.content.res.ResourcesCompat.getFont(ctx, com.ayham.player.R.font.cairo_semibold) }
     var introResume by remember { mutableLongStateOf(0L) }
     var tracks by remember { mutableStateOf(Tracks.EMPTY) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
@@ -838,7 +839,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             onRelease = { it.player = null },
             update = {
                 it.subtitleView?.setFractionalTextSize(when (vm.subSize) { 0 -> 0.042f; 1 -> 0.055f; else -> 0.075f })
-                it.subtitleView?.setStyle(subCaptionStyle(vm.subStyle))
+                it.subtitleView?.setStyle(subCaptionStyle(vm.subStyle, subTf))
                 it.resizeMode = when (aspect) {
                     0 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
                     1 -> AspectRatioFrameLayout.RESIZE_MODE_FILL
