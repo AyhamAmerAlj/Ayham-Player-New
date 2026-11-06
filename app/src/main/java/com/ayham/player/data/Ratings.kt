@@ -15,10 +15,12 @@ data class RatingsData(
     val rt: Int? = null,
     val mc: Int? = null,
     val trakt: Pair<Double, Int>? = null,
+    val rta: Int? = null,
+    val lb: Pair<Double, Int>? = null,
     val imdbId: String = "",
     val tmdbId: Int = 0,
 ) {
-    val any get() = tmdb != null || imdb != null || rt != null || mc != null || trakt != null
+    val any get() = tmdb != null || imdb != null || rt != null || mc != null || trakt != null || rta != null || lb != null
 }
 
 object Ratings {
@@ -30,12 +32,12 @@ object Ratings {
             r to (it.get("v")?.takeIf { x -> !x.isJsonNull }?.asInt ?: 0)
         }
         fun int(k: String) = o.get(k)?.takeIf { !it.isJsonNull }?.asInt
-        return RatingsData(pair("tmdb"), pair("imdb"), int("rt"), int("mc"), pair("trakt"),
+        return RatingsData(pair("tmdb"), pair("imdb"), int("rt"), int("mc"), pair("trakt"), int("rta"), pair("lb"),
             o.get("imdbId")?.takeIf { !it.isJsonNull }?.asString.orEmpty(), int("tmdbId") ?: 0)
     }
 
     fun fetch(client: OkHttpClient, store: Store, key: String, title: String, year: String, series: Boolean): RatingsData? {
-        store.ratingsCache(key)?.let { (t, j) ->
+        store.ratingsCache(key + "_v2")?.let { (t, j) ->
             if (System.currentTimeMillis() - t < TTL) return runCatching { parse(JsonParser.parseString(j).asJsonObject) }.getOrNull()
         }
         if (BuildConfig.LICENSE_URL.isBlank()) return null
@@ -50,7 +52,7 @@ object Ratings {
                 val txt = r.body?.string().orEmpty()
                 val o = JsonParser.parseString(txt).asJsonObject
                 if (o.get("ok")?.asBoolean != true) return@use null
-                store.setRatingsCache(key, txt)
+                store.setRatingsCache(key + "_v2", txt)
                 parse(o)
             }
         }.getOrNull()

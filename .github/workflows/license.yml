@@ -19,6 +19,7 @@ jobs:
       TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
       OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }}
       TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
+      MDBLIST_API_KEY: ${{ secrets.MDBLIST_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,7 +43,7 @@ jobs:
       - name: Set rating service keys
         if: steps.sec.outputs.ready == '1'
         run: |
-          for n in TMDB_API_KEY OMDB_API_KEY TRAKT_CLIENT_ID; do
+          for n in TMDB_API_KEY OMDB_API_KEY TRAKT_CLIENT_ID MDBLIST_API_KEY; do
             v="${!n}"
             if [ -n "$v" ]; then printf '%s' "$v" | npx --yes wrangler@4 secret put "$n"; fi
           done

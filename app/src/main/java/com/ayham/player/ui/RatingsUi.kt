@@ -58,12 +58,14 @@ fun RatingsPanel(vm: AppViewModel, item: Item, year: String, imdbLocal: String?)
         RCard("IMDb", Color(0xFFF5C518), imdbVal?.let { "$it/10" }, listOfNotNull(users, d?.imdb?.second?.takeIf { it > 0 }?.let { votes(it) }).joinToString(" · "),
             imdbId.takeIf { it.isNotEmpty() }?.let { "https://www.imdb.com/title/$it/" }),
         RCard("Rotten Tomatoes", Color(0xFFFA320A), d?.rt?.let { "$it%" }, critics, null),
+        RCard("Rotten Tomatoes", Color(0xFFFA320A), d?.rta?.let { "$it%" }, users, null),
         RCard("Metacritic", Color(0xFF66CC33), d?.mc?.let { "$it/100" }, critics, null),
         RCard("TMDB", Color(0xFF01B4E4), d?.tmdb?.let { String.format("%.1f/10", it.first) }, listOfNotNull(users, d?.tmdb?.second?.let { votes(it) }).joinToString(" · "),
             d?.tmdbId?.takeIf { it > 0 }?.let { "https://www.themoviedb.org/${if (tv) "tv" else "movie"}/$it" }),
         RCard("Trakt", Color(0xFFED1C24), d?.trakt?.let { String.format("%.1f/10", it.first) }, listOfNotNull(users, d?.trakt?.second?.let { votes(it) }).joinToString(" · "),
             imdbId.takeIf { it.isNotEmpty() }?.let { "https://trakt.tv/search/imdb/$it" }),
-    )
+        RCard("Letterboxd", Color(0xFF00E054), d?.lb?.let { String.format("%.1f/5", it.first) }, listOfNotNull(users, d?.lb?.second?.takeIf { it > 0 }?.let { votes(it) }).joinToString(" · "), null),
+    ).filter { it.value != null || it.name !in listOf("Letterboxd") && !(it.name == "Rotten Tomatoes" && it.sub == users) }
     if (cards.none { it.value != null }) return
     Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         RText(if (ar) "التقييمات" else "Ratings", 20, C.text, bold = true, modifier = Modifier.padding(horizontal = if (isCompact()) 16.dp else 44.dp))

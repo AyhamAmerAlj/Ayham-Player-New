@@ -320,6 +320,25 @@ async function ratingsOf(b, env) {
   if (imdb && env.TRAKT_CLIENT_ID) jobs.push(jget('https://api.trakt.tv/' + (type === 'tv' ? 'shows' : 'movies') + '/' + imdb + '/ratings', { 'trakt-api-key': env.TRAKT_CLIENT_ID, 'trakt-api-version': '2' }).then((o) => {
     if (o && o.votes > 0) out.trakt = { r: o.rating, v: o.votes };
   }));
+  // MDBList: مصدر مرخّص يجمع Rotten Tomatoes (نقاد/جمهور) وLetterboxd وMetacritic وغيرها بطلب واحد؛ يملأ الناقص فقط
+  if (env.MDBLIST_API_KEY && (imdb || out.tmdbId)) {
+    const mq = imdb ? 'i=' + imdb : 'tm=' + out.tmdbId + '&m=' + (type === 'tv' ? 'show' : 'movie');
+    jobs.push(jget('https://mdblist.com/api/?apikey=' + env.MDBLIST_API_KEY + '&' + mq).then((o) => {
+      if (!o || !Array.isArray(o.ratings)) return;
+      for (const x of o.ratings) {
+        const sc = Number(x.score), v = Number(x.votes) || 0;
+        if (!(sc > 0)) continue;
+        if (x.source === 'tomatoes' && out.rt === undefined) out.rt = Math.round(sc);
+        else if (x.source === 'popcorn') out.rta = Math.round(sc);
+        else if (x.source === 'metacritic' && out.mc === undefined) out.mc = Math.round(sc);
+        else if (x.source === 'metacriticuser') out.mcu = Math.round(sc);
+        else if (x.source === 'letterboxd') out.lb = { r: Math.round(sc / 20 * 10) / 10, v };
+        else if (x.source === 'imdb' && !out.imdb) out.imdb = { r: Math.round(sc) / 10, v };
+        else if (x.source === 'trakt' && !out.trakt) out.trakt = { r: Math.round(sc) / 10, v };
+        else if (x.source === 'tmdb' && !out.tmdb) out.tmdb = { r: Math.round(sc) / 10, v };
+      }
+    }));
+  }
   await Promise.all(jobs);
   return out;
 }
@@ -344,7 +363,7 @@ async function edge(path, req, env) {
   const t = await req.text();
   if (t.length > 1000) return EJ({ ok: false }, 413);
   let b; try { b = JSON.parse(t); } catch (e) { return EJ({ ok: false }, 400); }
-  const ck = new Request('https://edge.cache' + path + '/' + encodeURIComponent(t));
+  const ck = new Request('https://edge.cache/v2' + path + '/' + encodeURIComponent(t));
   const hit = await caches.default.match(ck);
   if (hit) return hit;
   const out = path === '/v1/ai' ? await aiFind(b, env) : await ratingsOf(b, env);
