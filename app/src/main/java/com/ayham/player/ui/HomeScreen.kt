@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Icon
@@ -387,6 +388,7 @@ fun HomeTiles(vm: AppViewModel) {
             HomeTile(t("series"), Icons.Filled.Tv, Modifier.weight(1f)) { vm.selectTab(3) }
             HomeTile(t("live"), Icons.Filled.LiveTv, Modifier.weight(1f)) { vm.selectTab(1) }
             HomeTile(t("my_list"), Icons.Filled.Favorite, Modifier.weight(1f)) { vm.selectTab(5) }
+            HomeTile(if (vm.lang == "ar") "الليلة" else "Tonight", Icons.Filled.Theaters, Modifier.weight(1f)) { vm.showTonight = true }
             HomeTile(t("settings"), Icons.Filled.Settings, Modifier.weight(1f)) { vm.selectTab(6) }
         }
     }

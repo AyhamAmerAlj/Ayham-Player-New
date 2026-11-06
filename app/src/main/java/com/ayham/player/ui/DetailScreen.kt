@@ -83,6 +83,8 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
     val bg = d?.backdrop.orEmpty().ifEmpty { item.image }
 
     val compact = isCompact()
+    var actorSel by remember { mutableStateOf<String?>(null) }
+    actorSel?.let { ActorDialog(vm, it) { actorSel = null } }
     Box(Modifier.fillMaxSize().background(C.bg)) {
         if (compact) Img(bg, Modifier.fillMaxSize(), w = 960, h = 540)
         else Img(bg, Modifier.fillMaxWidth().fillMaxHeight(0.68f), w = 1280, h = 720)
@@ -199,6 +201,13 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
             }
 
             item { RatingsPanel(vm, item, details?.year.orEmpty(), imdb) }
+            item {
+                val names = d?.cast.orEmpty().split(",", "،").map { it.trim() }.filter { it.length >= 3 }.take(8)
+                if (names.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    RText(if (vm.lang == "ar") "الممثلون (اضغط لعرض أعماله)" else "Cast (tap for their works)", 16, C.textDim, bold = true)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { items(names) { n -> Chip(n, false) { actorSel = n } } }
+                }
+            }
 
             if (similarItems.size >= 3) {
                 item { ContentRow(t("similar"), similarItems) { vm.openDetail(it) } }

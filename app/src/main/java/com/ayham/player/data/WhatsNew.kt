@@ -2,8 +2,12 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "244"
+    const val id = "245"
     val ar = listOf(
+        "الليلة في السينما: اختر مزاجك فيقترح لك فيلماً من مكتبتك (زر الليلة في الرئيسية)",
+        "شريطا سينما أسودان يدخلان عند بدء الفيلم ثم ينسحبان",
+        "بطاقة الحلقة التالية بصورة الحلقة وعدّاد أوضح",
+        "اضغط اسم ممثل في صفحة الفيلم لترى أعماله الموجودة في مكتبتك",
         "تقييمات أوسع: Rotten Tomatoes (نقاد وجمهور) وLetterboxd وMetacritic إلى جانب IMDb وTMDB وTrakt",
         "خط جديد للترجمة (Cairo) أوضح وأجمل على الشاشة",
         "صفحة تفاصيل الفيلم والمسلسل بتصميم جديد: خلفية عريضة وبوستر وتفاصيل وأزرار مرتبة",
@@ -11,6 +15,10 @@ object WhatsNew {
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "Tonight at the cinema: pick a mood and get a movie from your library (Tonight tile on Home)",
+        "Cinematic letterbox bars slide in when a movie starts, then retract",
+        "Next-episode card with a thumbnail and a clearer countdown",
+        "Tap an actor on the details page to see their works in your library",
         "More ratings: Rotten Tomatoes (critics and audience), Letterboxd and Metacritic alongside IMDb, TMDB and Trakt",
         "New subtitle font (Cairo): clearer and nicer on screen",
         "New movie and series details page: wide backdrop, poster, details and tidy buttons",

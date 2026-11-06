@@ -568,6 +568,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         out.values.toList()
     }
 
+    var showTonight by mutableStateOf(false)
+
+    /** فيلم الليلة حسب المزاج، من مكتبتك فقط. */
+    suspend fun tonight(mood: String, skip: Set<String>): Item? = withContext(Dispatchers.IO) {
+        val g = when (mood) { "comedy" -> listOf("comedy"); "thriller" -> listOf("thriller"); "romance" -> listOf("romance"); "family" -> listOf("family"); "action" -> listOf("action"); else -> emptyList() }
+        val q = com.ayham.player.data.SmartQ(genres = g, minRating = if (g.isEmpty()) null else 6.5)
+        runCatching {
+            val titles = com.ayham.player.data.Smart.discover(q, false)
+            matchTitles(Kind.MOVIE, titles, 24).filter { it.key !in skip }.randomOrNull()
+        }.getOrNull()
+    }
+
+    /** أعمال ممثل موجودة في مكتبتك. */
+    suspend fun actorWorks(name: String): List<Item> = withContext(Dispatchers.IO) {
+        runCatching {
+            val all = com.ayham.player.data.Smart.personTitles(name)
+            matchTitles(Kind.MOVIE, all.filter { !it.series }.map { it.t }, 24) + matchTitles(Kind.SERIES, all.filter { it.series }.map { it.t }, 24)
+        }.getOrDefault(emptyList())
+    }
+
     private val recCache = HashMap<String, List<Item>>()
     /** أعمال مشابهة بالقصة والأجواء (توصيات TMDB) مطابقة مع مكتبتك. */
     suspend fun recommendFor(item: Item, year: String): List<Item> = withContext(Dispatchers.IO) {

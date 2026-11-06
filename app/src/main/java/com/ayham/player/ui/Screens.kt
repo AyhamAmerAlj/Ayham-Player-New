@@ -351,6 +351,7 @@ fun MainScreen(vm: AppViewModel) {
         var focusSideNext by remember { mutableStateOf(false) }
         AnnPopup(vm)
         WhatsNewPopup(vm)
+        TonightDialog(vm)
         androidx.activity.compose.BackHandler(enabled = vm.miniItem == null && (full || vm.tab != 0)) {
             focusSideNext = true
             vm.selectTab(0)

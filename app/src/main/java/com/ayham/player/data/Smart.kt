@@ -142,6 +142,24 @@ object Smart {
         return rec.ifEmpty { titles(get("$B/$kind/$id/similar?api_key=$key&language=en-US")?.getAsJsonArray("results")) }
     }
 
+    /** أعمال ممثل/مخرج (من TMDB) بحسب الشعبية. */
+    fun personTitles(name: String): List<SmartTitle> {
+        if (!Tmdb.enabled || name.length < 3) return emptyList()
+        val enc = java.net.URLEncoder.encode(name, "UTF-8")
+        val id = get("$B/search/person?api_key=$key&query=$enc")?.getAsJsonArray("results")?.firstOrNull()?.asJsonObject?.get("id")?.asInt ?: return emptyList()
+        val c = get("$B/person/$id/combined_credits?api_key=$key&language=en-US") ?: return emptyList()
+        val all = (c.getAsJsonArray("cast")?.toList().orEmpty() + c.getAsJsonArray("crew")?.toList().orEmpty()).mapNotNull { it.takeIf { e -> e.isJsonObject }?.asJsonObject }
+        return all.filter { it.get("media_type")?.asString.let { m -> m == "movie" || m == "tv" } }
+            .sortedByDescending { it.get("popularity")?.takeIf { p -> !p.isJsonNull }?.asDouble ?: 0.0 }
+            .distinctBy { it.get("id")?.asInt }
+            .take(60)
+            .map { o ->
+                fun s(k: String) = o.get(k)?.takeIf { !it.isJsonNull }?.asString.orEmpty()
+                val date = s("release_date").ifEmpty { s("first_air_date") }
+                SmartTitle(TmdbTitle(s("title").ifEmpty { s("name") }, s("original_title").ifEmpty { s("original_name") }, date.take(4).toIntOrNull() ?: 0), s("media_type") == "tv")
+            }
+    }
+
     /** وصف قصة عمل: يحدد العناوين المحتملة عبر خادمنا (ذكاء اصطناعي)، ثم نطابقها مع مكتبتك فقط. */
     fun story(q: String): List<SmartTitle> {
         if (BuildConfig.LICENSE_URL.isBlank()) return emptyList()

@@ -207,7 +207,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         vm.openMulti(com.ayham.player.data.Item(com.ayham.player.data.Kind.LIVE, cur.key.substringAfter(':'), cur.title))
         onExit()
     }
-    val nextCardOn = !queue[index].isLive && index + 1 < queue.size && !nextOff && remainMs in 1L..12_000L && errorMsg == null && !controls && panel == null
+    val nextCardOn = !queue[index].isLive && index + 1 < queue.size && !nextOff && remainMs in 1L..15_000L && errorMsg == null && !controls && panel == null
 
     // الصوت الخارجي
     var syncAudio by remember { mutableStateOf(true) }
@@ -902,6 +902,12 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                 },
         )
 
+        // شريطا السينما: يدخلان مع المقدمة ثم ينسحبان بنعومة
+        val bar by androidx.compose.animation.core.animateFloatAsState(if (introShow && !queue[index].isLive) 1f else 0f, androidx.compose.animation.core.tween(if (introShow) 500 else 1100), label = "letterbox")
+        if (bar > 0.01f) {
+            Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().fillMaxHeight(0.12f * bar).background(Color.Black))
+            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.12f * bar).background(Color.Black))
+        }
         val curE = queue[index]
         val showCover = !curE.isLive && errorMsg == null && (introShow || (buffering && introResume == 0L))
         AnimatedVisibility(showCover, enter = fadeIn(), exit = fadeOut(androidx.compose.animation.core.tween(900))) {
@@ -1114,10 +1120,15 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     .padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                BodyText((if (ar) "الحلقة التالية خلال " else "Next episode in ") + secs + (if (ar) " ث" else "s"), 13, C.accent, bold = true)
-                BodyText(queue[index + 1].title, 16, C.text, bold = true, maxLines = 2)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (queue[index + 1].image.isNotBlank()) Img(queue[index + 1].image, Modifier.width(96.dp).height(58.dp).clip(RoundedCornerShape(8.dp)), w = 192, h = 116)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        BodyText((if (ar) "الحلقة التالية خلال " else "Next episode in ") + secs + (if (ar) " ث" else "s"), 13, C.accent, bold = true)
+                        BodyText(queue[index + 1].title, 16, C.text, bold = true, maxLines = 2)
+                    }
+                }
                 Box(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(tc(0x33FFFFFF))) {
-                    Box(Modifier.fillMaxWidth((1f - remainMs / 12_000f).coerceIn(0f, 1f)).fillMaxHeight().background(Brush.horizontalGradient(listOf(C.primary, C.accent))))
+                    Box(Modifier.fillMaxWidth((1f - remainMs / 15_000f).coerceIn(0f, 1f)).fillMaxHeight().background(Brush.horizontalGradient(listOf(C.primary, C.accent))))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Box(
