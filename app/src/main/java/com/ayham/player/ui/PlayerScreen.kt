@@ -280,6 +280,14 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     fun loadMedia(startMs: Long, withSubs: Boolean = true) {
         val key = queue[index].key
         val b = MediaItem.Builder().setUri(queue[index].url)
+        if (queue[index].isLive) {
+            // الاستمرارية أهم من القرب من المباشر: نبدأ متأخرين قليلاً بهامش أمان، وبدون تسريع للّحاق بالبث
+            b.setLiveConfiguration(
+                MediaItem.LiveConfiguration.Builder()
+                    .setTargetOffsetMs(20_000).setMinOffsetMs(8_000).setMaxOffsetMs(90_000)
+                    .setMinPlaybackSpeed(1f).setMaxPlaybackSpeed(1f).build(),
+            )
+        }
         val saved = if (withSubs && !queue[index].isLive) vm.savedSubs(key) else emptyList()
         subsLoaded = saved.isNotEmpty()
         if (saved.isNotEmpty()) {
@@ -636,7 +644,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES,
                     PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
                 )
-                if (silentTries[0] < 3) {
+                if (silentTries[0] < (if (queue[index].isLive) 15 else 3)) {
                     silentTries[0]++
                     if (audioish) {
                         exo.trackSelectionParameters = exo.trackSelectionParameters.buildUpon()
@@ -690,8 +698,8 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
 
     // إعادة محاولة تلقائية للقنوات المباشرة
     LaunchedEffect(errorMsg) {
-        if (errorMsg != null && queue[index].isLive && retryCount < 6) {
-            delay(3000)
+        if (errorMsg != null && queue[index].isLive && retryCount < 60) {
+            delay(2000)
             retryCount++
             retry()
         }
