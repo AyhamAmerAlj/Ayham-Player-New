@@ -10,11 +10,11 @@ import coil.memory.MemoryCache
 class AyhamApp : Application(), ImageLoaderFactory {
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
-            .memoryCache { MemoryCache.Builder(this).maxSizePercent(0.20).build() }
+            .memoryCache { MemoryCache.Builder(this).maxSizePercent(0.30).build() }
             .diskCache {
                 DiskCache.Builder()
                     .directory(cacheDir.resolve("img"))
-                    .maxSizeBytes(150L * 1024 * 1024)
+                    .maxSizeBytes(300L * 1024 * 1024)
                     .build()
             }
             .respectCacheHeaders(false)

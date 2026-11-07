@@ -350,6 +350,7 @@ fun MainScreen(vm: AppViewModel) {
         val full = vm.tab in 1..3
         var focusSideNext by remember { mutableStateOf(false) }
         AnnPopup(vm)
+        LaunchedEffect(Unit) { delay(1500); vm.maybeResumeLive() }
         WhatsNewPopup(vm)
         TonightDialog(vm)
         androidx.activity.compose.BackHandler(enabled = vm.miniItem == null && (full || vm.tab != 0)) {
@@ -1076,6 +1077,7 @@ fun SettingsTab(vm: AppViewModel) {
 
         }
         if (cat == 2) {
+            Chip((if (vm.lang == "ar") "تشغيل آخر قناة عند فتح التطبيق: " else "Resume last channel on launch: ") + (if (vm.resumeLive) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), vm.resumeLive) { vm.changeResumeLive(!vm.resumeLive) }
             Chip((if (vm.lang == "ar") "تقديم وتأخير القنوات المباشرة: " else "Live rewind/forward: ") + (if (vm.liveShift) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), vm.liveShift) { vm.changeLiveShift(!vm.liveShift) }
             SubPreviewCard(vm)
         RText(t("live_format"), 22, C.primaryLight, bold = true)

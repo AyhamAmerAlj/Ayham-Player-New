@@ -94,6 +94,9 @@ fun Modifier.autoFocus(): Modifier {
     return this.focusRequester(fr)
 }
 
+/** خطّاف التحميل المسبق: يضبطه AppViewModel، ويُستدعى عند بقاء التركيز على بوستر نحو ثلث ثانية. */
+object Prefetch { var fn: ((Item) -> Unit)? = null }
+
 /** يعطي نسبة المشاهدة (0..1) لعنصر، أو null. تُوفَّر من الجذر. */
 val LocalProgress = androidx.compose.runtime.staticCompositionLocalOf<(String) -> Float?> { { null } }
 
@@ -112,6 +115,7 @@ fun PosterCard(
     val rating = item.rating.trim().takeIf { it.isNotBlank() && it != "0" && it != "0.0" }
 
     Focusable(modifier = modifier.width(ww).height(hh), shape = shape, focusScale = 1.06f, onClick = onClick) { f ->
+        if (f && item.kind != Kind.LIVE) androidx.compose.runtime.LaunchedEffect(item.key) { kotlinx.coroutines.delay(350); Prefetch.fn?.invoke(item) }
         Box(
             Modifier.fillMaxSize().clip(shape).background(C.surface)
                 .then(if (f) Modifier.border(2.5.dp, Brush.horizontalGradient(listOf(tc(0xFF8B5CF6), tc(0xFFD946EF))), shape) else Modifier)

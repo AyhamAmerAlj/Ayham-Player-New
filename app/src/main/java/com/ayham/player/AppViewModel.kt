@@ -190,6 +190,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val it = withContext(Dispatchers.IO) { db.byId(Kind.LIVE, id) }
             if (it != null) recordHistory(it)
         }
+        store.lastLiveId = id
     }
     fun isFavKey(key: String) = favorites.any { it.key == key }
     fun toggleFavLive(key: String) {
@@ -222,6 +223,39 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         store.saveSubs(key, emptyList())
         store.setPrefSub(key, null)
     }
+    var resumeLive by mutableStateOf(store.resumeLive)
+    fun changeResumeLive(v: Boolean) { resumeLive = v; store.resumeLive = v }
+    private var resumeTried = false
+    /** تشغيل آخر قناة مباشرة تلقائياً عند فتح التطبيق (اختياري من الإعدادات). */
+    fun maybeResumeLive() {
+        if (resumeTried) return
+        resumeTried = true
+        if (!store.resumeLive || stack.isNotEmpty()) return
+        val id = store.lastLiveId
+        if (id.isBlank()) return
+        viewModelScope.launch {
+            val it = withContext(Dispatchers.IO) { db.byId(Kind.LIVE, id) } ?: return@launch
+            if (stack.isEmpty()) playLive(it, LiveSource())
+        }
+    }
+
+    // ---- تسريع فتح الأفلام والمسلسلات: تحميل مسبق للتفاصيل والخلفية والتقييمات عند الوقوف على البوستر ----
+    private val prefetched = HashSet<String>()
+    fun cachedDetails(item: Item): Details? = if (item.kind == Kind.SERIES) seriesCache[item.key]?.details else detailsCache[item.key]
+    fun cachedSeries(item: Item): SeriesInfo? = seriesCache[item.key]
+    fun prefetch(item: Item) {
+        if (item.kind == Kind.LIVE || !prefetched.add(item.key)) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val d = runCatching { if (item.kind == Kind.SERIES) seriesInfo(item).details else movieDetails(item) }.getOrNull() ?: return@launch
+            if (d.backdrop.isNotBlank()) {
+                val app = getApplication<Application>()
+                coil.Coil.imageLoader(app).enqueue(coil.request.ImageRequest.Builder(app).data(d.backdrop).size(1280, 720).build())
+            }
+            runCatching { ratingsOf(item, d.year) }
+        }
+    }
+    init { com.ayham.player.ui.Prefetch.fn = { prefetch(it) } }
+
     var liveShift by mutableStateOf(store.liveShift)
     fun changeLiveShift(v: Boolean) { liveShift = v; store.liveShift = v }
     var subStyle by mutableIntStateOf(store.subStyle)

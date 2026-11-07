@@ -65,6 +65,13 @@ class Store(ctx: Context) {
     fun setPrefSub(key: String, uri: String?) {
         if (uri == null) sp.edit().remove("subpref_$key").apply() else sp.edit().putString("subpref_$key", uri).apply()
     }
+    var resumeLive: Boolean
+        get() = sp.getBoolean("resume_live", false)
+        set(v) { sp.edit().putBoolean("resume_live", v).apply() }
+    var lastLiveId: String
+        get() = sp.getString("last_live_id", "") ?: ""
+        set(v) { sp.edit().putString("last_live_id", v).apply() }
+
     var liveShift: Boolean
         get() = sp.getBoolean("live_shift", false)
         set(v) { sp.edit().putBoolean("live_shift", v).apply() }

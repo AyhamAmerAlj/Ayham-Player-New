@@ -45,8 +45,8 @@ import com.ayham.player.data.SeriesInfo
 @Composable
 fun DetailScreen(vm: AppViewModel, item: Item) {
     val isSeries = item.kind == Kind.SERIES
-    var details by remember(item.key) { mutableStateOf<Details?>(null) }
-    var info by remember(item.key) { mutableStateOf<SeriesInfo?>(null) }
+    var details by remember(item.key) { mutableStateOf<Details?>(vm.cachedDetails(item)) }
+    var info by remember(item.key) { mutableStateOf<SeriesInfo?>(vm.cachedSeries(item)) }
     var season by remember(item.key) { mutableIntStateOf(-1) }
 
     LaunchedEffect(item.key) {
