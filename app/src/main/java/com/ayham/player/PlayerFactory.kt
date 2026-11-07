@@ -24,7 +24,7 @@ object PlayerFactory {
             .setConnectTimeoutMs(15_000)
             .setReadTimeoutMs(20_000)
         val lc = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(15_000, 30_000, 1_500, 3_000)
+            .setBufferDurationsMs(20_000, 40_000, 2_000, 5_000)
             .setTargetBufferBytes(48 * 1024 * 1024)
             .setPrioritizeTimeOverSizeThresholds(false)
             .setBackBuffer(20_000, false)
@@ -54,7 +54,7 @@ object PlayerFactory {
             }
         }.setEnableDecoderFallback(true)
         val p = ExoPlayer.Builder(ctx, renderers)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(DefaultDataSource.Factory(ctx, http)))
+            .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(DefaultDataSource.Factory(ctx, http)).setLoadErrorHandlingPolicy(androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy(8)))
             .setLoadControl(lc)
             .setSeekBackIncrementMs(10_000)
             .setSeekForwardIncrementMs(10_000)

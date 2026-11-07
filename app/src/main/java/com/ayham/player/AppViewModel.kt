@@ -222,6 +222,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         store.saveSubs(key, emptyList())
         store.setPrefSub(key, null)
     }
+    var liveShift by mutableStateOf(store.liveShift)
+    fun changeLiveShift(v: Boolean) { liveShift = v; store.liveShift = v }
     var subStyle by mutableIntStateOf(store.subStyle)
     fun changeSubStyle(v: Int) { subStyle = v; store.subStyle = v }
     var subSize by mutableIntStateOf(store.subSize)

@@ -2,8 +2,10 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "245"
+    const val id = "246"
     val ar = listOf(
+        "البث المباشر أكثر ثباتاً: تقليل التوقف وإعادة التحميل التلقائية",
+        "شريط التقديم والتأخير على القنوات صار اختيارياً: فعّله من الإعدادات إن أردت",
         "الليلة في السينما: اختر مزاجك فيقترح لك فيلماً من مكتبتك (زر الليلة في الرئيسية)",
         "شريطا سينما أسودان يدخلان عند بدء الفيلم ثم ينسحبان",
         "بطاقة الحلقة التالية بصورة الحلقة وعدّاد أوضح",
@@ -15,6 +17,8 @@ object WhatsNew {
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "More stable live streams: fewer stops and automatic reloads",
+        "Live rewind/forward bar is now optional: enable it in Settings",
         "Tonight at the cinema: pick a mood and get a movie from your library (Tonight tile on Home)",
         "Cinematic letterbox bars slide in when a movie starts, then retract",
         "Next-episode card with a thumbnail and a clearer countdown",

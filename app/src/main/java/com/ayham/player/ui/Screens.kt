@@ -1076,6 +1076,7 @@ fun SettingsTab(vm: AppViewModel) {
 
         }
         if (cat == 2) {
+            Chip((if (vm.lang == "ar") "تقديم وتأخير القنوات المباشرة: " else "Live rewind/forward: ") + (if (vm.liveShift) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), vm.liveShift) { vm.changeLiveShift(!vm.liveShift) }
             SubPreviewCard(vm)
         RText(t("live_format"), 22, C.primaryLight, bold = true)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -348,6 +348,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
 
     fun seekBy(ms: Long) {
         val live = queue[index].isLive
+        if (live && !vm.liveShift) return // التقديم والتأخير على القنوات ميزة اختيارية من الإعدادات
         if (live && !exo.isCurrentMediaItemSeekable) {
             showToast(notSeekable)
             return
@@ -601,6 +602,11 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             }
 
             override fun onPlayerError(error: PlaybackException) {
+                if (queue[index].isLive && error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
+                    // تأخّر المشغّل عن نافذة البث: نقفز لحافة المباشر بصمت بدل إظهار خطأ أو إعادة تحميل كاملة
+                    exo.seekToDefaultPosition(); exo.prepare(); exo.playWhenReady = true
+                    return
+                }
                 val pos = exo.currentPosition
                 if (subsLoaded) {
                     // ملف ترجمة فشل: نكمل الفيلم بدون الترجمات المضافة بدل ما يتوقف
@@ -1065,7 +1071,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                         Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = if (compact) 18.dp else 36.dp, vertical = if (compact) 10.dp else 22.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        if (queue[index].isLive) LiveShiftRow(exo) {
+                        if (queue[index].isLive && vm.liveShift) LiveShiftRow(exo) {
                             exo.seekToDefaultPosition()
                             extSession.goLive()
                             touch()
