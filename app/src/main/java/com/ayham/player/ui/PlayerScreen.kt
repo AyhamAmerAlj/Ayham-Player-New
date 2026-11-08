@@ -193,6 +193,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     val isSeries = req.item?.kind == com.ayham.player.data.Kind.SERIES
     var introPos by remember { mutableLongStateOf(0L) }
     var introTick by remember { mutableIntStateOf(0) }
+    var introDone by remember(index) { mutableStateOf(false) } // ضغطت تخطي مرة وحدة: الزر يختفي لباقي الحلقة
     var subUrl by remember { mutableStateOf("") }
     var subsLoaded by remember { mutableStateOf(false) }
     var barVisible by remember { mutableStateOf(false) }
@@ -342,7 +343,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
 
     /** لو الزر يظهر الآن يرجع موضع الانتقال، وإلا null. المقدمة المضبوطة للمسلسل تتبع كل حلقاته. */
     fun introTarget(): Long? {
-        if (!isSeries || queue[index].isLive || introTick < 0) return null
+        if (!isSeries || queue[index].isLive || introTick < 0 || introDone) return null
         val p = introPos
         val prof = req.item?.key?.let { vm.store.introProfile(it) }
         val st = prof?.first ?: 0L
@@ -358,6 +359,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         if (tgt != null) {
             val dur = if (exo.duration == MC.TIME_UNSET) Long.MAX_VALUE else exo.duration
             exo.seekTo(tgt.coerceIn(0L, dur))
+            introDone = true
             showToast(skipIntroT)
         } else skipIntro()
     }
