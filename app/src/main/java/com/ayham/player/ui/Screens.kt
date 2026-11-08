@@ -976,6 +976,7 @@ fun SettingsTab(vm: AppViewModel) {
         if (cat == 0 && vm.ann != null) GlowButton(if (ar) "عرض الإعلان" else "Show announcement") { vm.openAnn() }
 
         // ---- الملفات الشخصية ----
+        val ctx = androidx.compose.ui.platform.LocalContext.current
         if (cat == 0) {
         RText(t("profile"), 22, C.primaryLight, bold = true)
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
