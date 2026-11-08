@@ -1858,26 +1858,26 @@ private fun ProgressRow(exo: ExoPlayer, barFocus: FocusRequester, onVisible: (Bo
             )
             // كبسولة زجاجية فوق المقبض: الوقت الجديد + الفرق + المتبقي + وقت الانتهاء بالساعة
             if (active) {
-                val bw = 210.dp
+                val bw = 168.dp
                 val bwPx = with(density) { bw.toPx() }
                 val bx = with(density) { (xPx - bwPx / 2).coerceIn(0f, (barW - bwPx).coerceAtLeast(0f)).toDp() }
                 val delta = scrub?.let { it - pos }
                 val remain = (dur - shown).coerceAtLeast(0L)
                 Column(
                     Modifier.align(Alignment.TopStart).offset(x = bx).width(bw)
-                        .clip(RoundedCornerShape(14.dp)).background(tc(0xEE140A26))
-                        .border(1.dp, Brush.horizontalGradient(listOf(c1, c2)), RoundedCornerShape(14.dp))
-                        .padding(vertical = 3.dp),
+                        .clip(RoundedCornerShape(50)).background(tc(0xCC0B0618))
+                        .border(0.8.dp, Brush.horizontalGradient(listOf(c1, c2)), RoundedCornerShape(50))
+                        .padding(vertical = 2.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            BodyText(fmt(shown), 16, Color.White, bold = true)
+                            BodyText(fmt(shown), 14, Color.White, bold = true)
                             if (delta != null && kotlin.math.abs(delta) >= 1000L) {
-                                BodyText((if (delta > 0) "+" else "-") + fmt(kotlin.math.abs(delta)), 13, c2, bold = true)
+                                BodyText((if (delta > 0) "+" else "-") + fmt(kotlin.math.abs(delta)), 11, c2, bold = true)
                             }
                         }
-                        BodyText((if (ar) "يتبقى " else "Left ") + fmt(remain) + "  ·  " + (if (ar) "ينتهي " else "Ends ") + hm((System.currentTimeMillis() + remain) / 1000), 11, C.text)
+                        BodyText((if (ar) "يتبقى " else "Left ") + fmt(remain) + "  ·  " + (if (ar) "ينتهي " else "Ends ") + hm((System.currentTimeMillis() + remain) / 1000), 9, C.textDim)
                     }
                 }
             }
