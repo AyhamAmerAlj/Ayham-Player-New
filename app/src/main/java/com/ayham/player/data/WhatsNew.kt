@@ -2,8 +2,12 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "249"
+    const val id = "253"
     val ar = listOf(
+        "الملفات الشخصية: شاشة «من يشاهد الآن؟» بتصميم سينمائي، لكل ملف مفضلته وسجل مشاهدته وآخر قناة وتفضيلاته وإعداداته المستقلة",
+        "تخصيص الملف: الاسم واللقب والصورة (48 رمزاً أو صورة من جهازك) واللون والخلفية والإطار و8 أنماط جاهزة مع معاينة مباشرة",
+        "ملف أطفال بتقييد حسب العمر وبدون إعدادات، وملف ضيف مؤقت، ورمز PIN من 4 أرقام لأي ملف، وإخفاء الملفات",
+        "إدارة الملفات: إضافة وتعديل وحذف وترتيب ونسخ الإعدادات وتحديد الرئيسي والافتراضي، وترحيب سينمائي عند الدخول",
         "شاشة توقف سينمائية: لو التطبيق ساكن تظهر بوسترات أفلامك ومسلسلاتك بحركة هادئة وساعة (من الإعدادات تقدر تغيّر المدة أو تطفيها)",
         "شريط التقديم بفصول مثل أبل تي في، ولونه يتغير حسب بوستر كل فيلم",
         "كبسولة التقديم تعرض الوقت الجديد والفرق والمتبقي ووقت انتهاء الفيلم بالساعة",
@@ -25,6 +29,10 @@ object WhatsNew {
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "Profiles: a cinematic \"Who's watching?\" screen; each profile keeps its own favorites, history, last channel, preferences and settings",
+        "Customize a profile: name, tagline, avatar (48 icons or your own photo), color, background, frame and 8 ready styles with live preview",
+        "Kids profile with age restriction and no settings, a temporary Guest profile, a 4-digit PIN per profile, and hidden profiles",
+        "Manage profiles: add, edit, delete, reorder, copy settings, set main and default, plus a cinematic welcome on entry",
         "Cinematic screensaver: when the app is idle your posters drift by with a gentle zoom and a clock (change the delay or turn it off in Settings)",
         "Chaptered seek bar like Apple TV, tinted from each poster",
         "Seek capsule shows the new time, the jump, time left and the clock time the movie ends",
@@ -51,7 +59,7 @@ object WhatsNew {
 data class Release(val id: String, val ar: List<String>, val en: List<String>)
 
 val releaseHistory = listOf(
-    Release("249", WhatsNew.ar, WhatsNew.en),
+    Release("253", WhatsNew.ar, WhatsNew.en),
     Release("237", listOf("افتتاحية سينمائية جديدة بشعار Ayham"), listOf("New cinematic opening with the Ayham logo")),
     Release("227", listOf(
         "تقييمات متعددة (IMDb وRotten Tomatoes وMetacritic وTMDB وTrakt)",

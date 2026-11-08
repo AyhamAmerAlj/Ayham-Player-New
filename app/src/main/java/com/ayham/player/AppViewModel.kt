@@ -305,6 +305,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun start() {
         if (phase != Phase.SPLASH) return
+        autoEnterProfile()
         viewModelScope.launch {
             val acc0 = savedAccount
             if (acc0 != null) {
@@ -366,6 +367,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** يقرأ من القاعدة عدد العناصر وأقسامها (صغيرة جدًا) ويحدّث الواجهة. */
     private suspend fun refreshKind(kind: Kind) {
         val c = withContext(Dispatchers.IO) { db.count(kind) }
+        if (isKids && !db.lock) restrictKind(kind)
         val cats = withContext(Dispatchers.IO) { db.categories(kind) }
         counts[kind] = c
         categories[kind] = cats
@@ -509,19 +511,90 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---- الملف الشخصي ----
-    var profileName by mutableStateOf(store.profileName)
+    // ======================= الملفات الشخصية =======================
+    var profiles by mutableStateOf(store.profiles())
         private set
-    var profileAvatar by mutableIntStateOf(store.profileAvatar)
+    var activeProfile by mutableStateOf<com.ayham.player.data.Profile?>(store.profiles().firstOrNull { it.id == store.activeId })
         private set
-    /** يزيد عند تغيير الصورة حتى تتحدث الواجهة. */
+    /** false = شاشة اختيار الملف تظهر قبل التطبيق. */
+    var profileReady by mutableStateOf(false)
+        private set
+    /** الملف الذي نرحب به الآن (ترحيب سينمائي بعد الدخول). */
+    var welcome by mutableStateOf<com.ayham.player.data.Profile?>(null)
+    val profileNav = mutableStateListOf<com.ayham.player.data.ProfileUi>()
+    var editTarget by mutableStateOf<com.ayham.player.data.Profile?>(null)
+    /** فُكّ قفل إدارة الملفات بالرمز الرئيسي في هذه الجلسة. */
+    var manageUnlocked = false
+    val profileName: String get() = activeProfile?.name.orEmpty()
+    val isKids: Boolean get() = activeProfile?.type == "KIDS"
+    /** يزيد عند تغيير أي صورة حتى تتحدث الواجهة. */
     var photoVersion by mutableIntStateOf(0)
         private set
-    fun photoFile() = java.io.File(getApplication<Application>().filesDir, "avatar.jpg")
-    fun changeProfileName(v: String) { profileName = v; store.profileName = v }
-    fun changeAvatar(i: Int) { profileAvatar = i; store.profileAvatar = i }
-    /** يحفظ الصورة بحجم صغير ويعتمدها. */
-    fun setPhoto(bytes: ByteArray): Boolean {
+    fun photoFileOf(id: String) = java.io.File(getApplication<Application>().filesDir, if (id == "main") "avatar.jpg" else "avatar_$id.jpg")
+    fun mainProfile() = profiles.firstOrNull { it.type == "MAIN" }
+    fun pinOk(p: com.ayham.player.data.Profile, code: String) = p.pin.isNotEmpty() && p.pin == com.ayham.player.data.Pins.hash(p.id, code)
+    fun newProfileId(): String = java.lang.Long.toHexString(System.nanoTime() xor (Math.random() * 1e12).toLong()).takeLast(8)
+    fun guestProfile(ar: Boolean) = com.ayham.player.data.Profile(id = "guest", name = if (ar) "ضيف" else "Guest", type = "GUEST", avatar = 15, style = 7, bg = 3, frame = 0, tagline = if (ar) "جلسة مؤقتة" else "Temporary session")
+
+    private fun persistProfiles(l: List<com.ayham.player.data.Profile>) {
+        profiles = l
+        store.saveProfiles(l)
+        activeProfile?.let { a -> l.firstOrNull { it.id == a.id }?.let { activeProfile = it } }
+    }
+
+    /** يحفظ (يضيف أو يعدّل) ملفاً، مع صورة اختيارية. */
+    fun saveProfile(p: com.ayham.player.data.Profile, photo: ByteArray? = null) {
+        if (photo != null) savePhoto(p.id, photo)
+        val exists = profiles.any { it.id == p.id }
+        persistProfiles(if (exists) profiles.map { if (it.id == p.id) p else it } else profiles + p)
+        photoVersion++
+        if (p.id == activeProfile?.id) applyRestriction()
+    }
+
+    fun deleteProfile(id: String) {
+        val p = profiles.firstOrNull { it.id == id } ?: return
+        if (p.type == "MAIN" || id == activeProfile?.id) return
+        store.wipe(id)
+        runCatching { photoFileOf(id).delete() }
+        if (store.defaultProfileId == id) store.defaultProfileId = ""
+        persistProfiles(profiles.filter { it.id != id })
+    }
+
+    fun moveProfile(id: String, dir: Int) {
+        val l = profiles.toMutableList()
+        val i = l.indexOfFirst { it.id == id }
+        val j = i + dir
+        if (i < 0 || j !in l.indices) return
+        val t = l[i]; l[i] = l[j]; l[j] = t
+        persistProfiles(l)
+    }
+
+    fun setDefaultProfile(id: String) { store.defaultProfileId = if (store.defaultProfileId == id) "" else id; profiles = profiles.toList() }
+    fun defaultProfileId(): String = store.defaultProfileId
+
+    fun setMainProfile(id: String) {
+        val target = profiles.firstOrNull { it.id == id } ?: return
+        if (target.type == "KIDS") return
+        persistProfiles(profiles.map {
+            when {
+                it.id == id -> it.copy(type = "MAIN", hidden = false)
+                it.type == "MAIN" -> it.copy(type = "PERSONAL")
+                else -> it
+            }
+        })
+    }
+
+    fun clearPin(id: String) {
+        persistProfiles(profiles.map { if (it.id == id) it.copy(pin = "") else it })
+    }
+
+    fun copyProfileSettings(from: String, to: String) {
+        store.copySettings(from, to)
+        if (to == activeProfile?.id) reloadFromStore()
+    }
+
+    /** يحفظ الصورة بحجم صغير مربع (320px) لملف معيّن. */
+    fun savePhoto(id: String, bytes: ByteArray): Boolean {
         return runCatching {
             val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
             android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
@@ -533,11 +606,107 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val side = minOf(bmp.width, bmp.height)
             val sq = android.graphics.Bitmap.createBitmap(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side)
             val scaled = android.graphics.Bitmap.createScaledBitmap(sq, 320, 320, true)
-            photoFile().outputStream().use { scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 88, it) }
-            changeAvatar(-1)
+            photoFileOf(id).outputStream().use { scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 88, it) }
             photoVersion++
             true
         }.getOrDefault(false)
+    }
+
+    // ---- التنقل بين شاشات الملفات ----
+    fun openSwitch() { stopMini(); stack.clear(); multiOpen = false; profileNav.clear(); profileNav.add(com.ayham.player.data.ProfileUi.PICK) }
+    fun openManage() { stopMini(); if (profileNav.lastOrNull() != com.ayham.player.data.ProfileUi.MANAGE) profileNav.add(com.ayham.player.data.ProfileUi.MANAGE) }
+    fun openEditor(p: com.ayham.player.data.Profile?) { editTarget = p; profileNav.add(com.ayham.player.data.ProfileUi.EDIT) }
+    fun profileBack() { if (profileNav.isNotEmpty()) profileNav.removeAt(profileNav.lastIndex) }
+
+    /** عند تشغيل التطبيق: لو فيه ملف افتراضي أو ملف واحد بدون رمز ندخل مباشرة بدون شاشة الاختيار. */
+    private fun autoEnterProfile() {
+        if (profileReady) return
+        val vis = profiles.filter { !it.hidden }
+        val pick = profiles.firstOrNull { it.id == store.defaultProfileId } ?: vis.singleOrNull() ?: profiles.singleOrNull()
+        if (pick != null && pick.pin.isEmpty()) enterProfile(pick, showWelcome = false)
+    }
+
+    /** يفعّل ملفاً: يزامن القديم، يبدّل التخزين، يعيد تحميل كل شيء، ثم يرحّب. */
+    fun enterProfile(p: com.ayham.player.data.Profile, showWelcome: Boolean = true) {
+        val old = activeProfile
+        val doSwitch = {
+            stopMini(); stack.clear(); multiOpen = false; saverOn = false
+            profileNav.clear(); manageUnlocked = false
+            if (old?.type == "GUEST" && old.id != p.id) { store.wipe(old.id); runCatching { photoFileOf(old.id).delete() } }
+            if (p.type == "GUEST") store.wipe(p.id)
+            store.switchTo(p.id, remember = p.type != "GUEST")
+            activeProfile = p
+            reloadFromStore()
+            tab = if (p.type == "KIDS" || p.type == "GUEST") 0 else store.lastTab.coerceIn(0, 5)
+            profileReady = true
+            welcome = if (showWelcome) p else null
+            resumeTried = false
+            lastActive = android.os.SystemClock.uptimeMillis()
+            applyRestriction()
+        }
+        if (old != null && profileReady && sync.available && syncJob?.isActive == true) {
+            viewModelScope.launch { kotlinx.coroutines.withTimeoutOrNull(5000) { sync.run() }; doSwitch() }
+        } else doSwitch()
+    }
+
+    /** يعيد قراءة كل ما هو خاص بالملف من تخزينه (قوائم، إعدادات، ثيم). */
+    private fun reloadFromStore() {
+        uiSounds = store.uiSounds; uiSoundPack = store.uiSoundPack
+        com.ayham.player.ui.UiSound.pack = uiSoundPack; com.ayham.player.ui.UiSound.enabled = uiSounds
+        clockWeather = store.clockWeather; clockRegion = store.clockRegion; clockCity = store.clockCity
+        liveFormat = store.liveFormat; maxRes = store.maxRes; liveLayout = store.liveLayout
+        matchCard = store.matchCard; vodLayout = store.vodLayout
+        saverMin = store.saverMin; resumeLive = store.resumeLive; liveShift = store.liveShift
+        subStyle = store.subStyle; subSize = store.subSize
+        favorites = store.loadList("fav"); later = store.loadList("later"); watched = store.loadList("watched")
+        recent = store.loadList("recent"); history = store.loadList("history")
+        com.ayham.player.ui.ThemeState.select(store.appTheme)
+        detailsCache.clear(); seriesCache.clear(); prefetched.clear()
+        photoVersion++
+        dataVersion++
+    }
+
+    // ---- تقييد المحتوى لملف الأطفال ----
+    private val kidsAdult = listOf("xxx", "adult", "porn", "sexy", "erotic", "+18", "18+", "nsfw", "hentai", "للكبار", "للبالغين", "اباح", "جنس")
+    private val kidsScary = listOf("horror", "رعب", "gore", "slasher", "crime", "جريمة")
+    private val kidsOk = listOf(
+        "kids", "kid", "children", "cartoon", "animation", "disney", "pixar", "family", "toon", "nick", "boomerang", "baby",
+        "اطفال", "طفل", "كرتون", "عائلي", "رسوم", "سبيستون", "spacetoon", "براعم", "كراميش", "طيور",
+    )
+    private fun catMatch(name: String, keys: List<String>): Boolean {
+        val n = com.ayham.player.ui.normalizeForSearch(name)
+        return keys.any { n.contains(com.ayham.player.ui.normalizeForSearch(it)) }
+    }
+    private suspend fun restrictKind(kind: Kind) = withContext(Dispatchers.IO) {
+        val p = activeProfile
+        if (p == null || p.type != "KIDS") return@withContext
+        val cats = db.categoriesRaw(kind)
+        val adult = cats.filter { catMatch(it.name, kidsAdult) }.map { it.id }.toSet()
+        val scary = cats.filter { catMatch(it.name, kidsScary) }.map { it.id }.toSet()
+        val ok = cats.filter { catMatch(it.name, kidsOk) }.map { it.id }.toSet() - adult - scary
+        val allow = db.allow.toMutableMap(); val block = db.block.toMutableMap()
+        allow.remove(kind.ordinal); block.remove(kind.ordinal)
+        when {
+            p.kidsLevel <= 7 && ok.isNotEmpty() -> allow[kind.ordinal] = ok
+            p.kidsLevel <= 12 -> block[kind.ordinal] = adult + scary
+            else -> block[kind.ordinal] = adult
+        }
+        db.allow = allow; db.block = block
+    }
+
+    private fun applyRestriction() {
+        val p = activeProfile
+        if (p?.type != "KIDS") {
+            db.lock = false; db.allow = emptyMap(); db.block = emptyMap()
+            viewModelScope.launch { for (k in Kind.values()) refreshKind(k) }
+            return
+        }
+        db.lock = true
+        viewModelScope.launch {
+            for (k in Kind.values()) restrictKind(k)
+            db.lock = false
+            for (k in Kind.values()) refreshKind(k)
+        }
     }
 
     private val simCache = HashMap<String, List<Item>>()
@@ -780,8 +949,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun maxConnectionsInt(): Int = accountInfo.maxConnections.trim().toIntOrNull() ?: 0
 
     fun selectTab(i: Int) {
+        if (i == 6 && isKids) return // ملف الأطفال بدون إعدادات
         if (i != 1) stopMini()
         tab = i
+        if (profileReady && i in 0..5) store.lastTab = i
     }
 
     fun ensureLivePlayer(): ExoPlayer =

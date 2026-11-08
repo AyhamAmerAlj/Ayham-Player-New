@@ -35,24 +35,11 @@ val avatarPresets: List<Pair<Pair<Color, Color>, String>> = listOf(
     (Color(0xFFA855F7) to Color(0xFF581C87)) to "👑",
 )
 
-/** دائرة الملف الشخصي: صورة المستخدم أو أفاتار جاهز. */
+/** صورة الملف النشط (تُستخدم بالرئيسية). */
 @Composable
 fun ProfileAvatar(vm: AppViewModel, size: Dp = 40.dp, modifier: Modifier = Modifier) {
-    val idx = vm.profileAvatar
-    if (idx < 0) {
-        val bmp = remember(vm.photoVersion) {
-            runCatching { BitmapFactory.decodeFile(vm.photoFile().absolutePath)?.asImageBitmap() }.getOrNull()
-        }
-        if (bmp != null) {
-            Image(
-                bmp, null,
-                modifier.size(size).clip(CircleShape).border(2.dp, C.primary, CircleShape),
-                contentScale = ContentScale.Crop,
-            )
-            return
-        }
-    }
-    PresetAvatar(if (idx < 0) 0 else idx, size, modifier)
+    val p = vm.activeProfile ?: return
+    ProfileAvatarView(vm, p, size, modifier)
 }
 
 @Composable
@@ -69,7 +56,7 @@ fun PresetAvatar(index: Int, size: Dp = 40.dp, modifier: Modifier = Modifier) {
 
 /** رمز QR لإرسال صورة الملف الشخصي من الهاتف إلى الشاشة. */
 @Composable
-fun PhotoQrCard(vm: AppViewModel, onDone: () -> Unit) {
+fun PhotoQrCard(vm: AppViewModel, onPhoto: (ByteArray) -> Unit, onDone: () -> Unit) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     var url by remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     val savedMsg = t("photo_saved")
@@ -77,10 +64,9 @@ fun PhotoQrCard(vm: AppViewModel, onDone: () -> Unit) {
         val main = android.os.Handler(android.os.Looper.getMainLooper())
         val srv = com.ayham.player.data.LoginServer(onUpload = { _, bytes ->
             main.post {
-                if (vm.setPhoto(bytes)) {
-                    android.widget.Toast.makeText(ctx, savedMsg, android.widget.Toast.LENGTH_SHORT).show()
-                    onDone()
-                }
+                onPhoto(bytes)
+                android.widget.Toast.makeText(ctx, savedMsg, android.widget.Toast.LENGTH_SHORT).show()
+                onDone()
             }
         }, photoMode = true)
         val ip = com.ayham.player.data.LoginServer.localIp()

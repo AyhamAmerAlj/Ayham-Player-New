@@ -405,7 +405,7 @@ fun BottomNav(vm: AppViewModel) {
     Row(
         Modifier.fillMaxWidth().background(tc(0xFF140A26)).navigationBarsPadding().padding(vertical = 4.dp),
     ) {
-        navEntries.forEachIndexed { i0, e ->
+        (if (vm.isKids) navEntries.filter { it.tab != 6 } else navEntries).forEachIndexed { i0, e ->
             val i = if (e.tab >= 0) e.tab else i0
             val sel = vm.tab == i
             Column(
@@ -426,7 +426,7 @@ private data class NavEntry(val icon: ImageVector, val key: String, val tab: Int
 
 @Composable
 fun NavRail(vm: AppViewModel) {
-    val entries = navEntries
+    val entries = if (vm.isKids) navEntries.filter { it.tab != 6 } else navEntries
     Column(
         Modifier.width(104.dp).fillMaxHeight()
             .background(Brush.verticalGradient(listOf(tc(0x552A1850), tc(0x330B0614))))
@@ -975,39 +975,26 @@ fun SettingsTab(vm: AppViewModel) {
         }
         if (cat == 0 && vm.ann != null) GlowButton(if (ar) "عرض الإعلان" else "Show announcement") { vm.openAnn() }
 
-        // ---- الملف الشخصي ----
-        val ctx = androidx.compose.ui.platform.LocalContext.current
-        val tvDevice = remember { isTvDevice(ctx) }
-        var showQr by remember { mutableStateOf(false) }
-        val photoPicker = androidx.activity.compose.rememberLauncherForActivityResult(
-            androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
-        ) { uri: android.net.Uri? ->
-            if (uri != null) {
-                val bytes = runCatching { ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
-                if (bytes != null) vm.setPhoto(bytes)
-            }
-        }
+        // ---- الملفات الشخصية ----
         if (cat == 0) {
         RText(t("profile"), 22, C.primaryLight, bold = true)
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
             ProfileAvatar(vm, 72.dp)
-            AyhamField(vm.profileName, { vm.changeProfileName(it) }, t("profile_name"), Modifier.weight(1f))
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                RText(vm.profileName.ifBlank { "Ayham" }, 22, Color.White, bold = true, maxLines = 1)
+                vm.activeProfile?.tagline?.takeIf { it.isNotBlank() }?.let { BodyText(it, 14, C.textDim) }
+            }
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            avatarPresets.indices.forEach { i ->
-                Focusable(shape = CircleShape, focusScale = 1.12f, onClick = { vm.changeAvatar(i) }) { _ ->
-                    Box(
-                        Modifier.then(
-                            if (vm.profileAvatar == i) Modifier.border(3.dp, Color.White, CircleShape) else Modifier,
-                        ),
-                    ) { PresetAvatar(i, 52.dp) }
-                }
-            }
-            GlowButton(t("photo_from_phone")) {
-                if (tvDevice) showQr = !showQr else photoPicker.launch(arrayOf("image/*"))
+            GlowButton(if (ar) "تبديل الملف الشخصي" else "Switch profile", primary = true) { vm.openSwitch() }
+            GlowButton(if (ar) "تعديل ملفي" else "Edit my profile") { vm.activeProfile?.let { vm.openEditor(it) } }
+            GlowButton(if (ar) "إدارة الملفات" else "Manage profiles") {
+                val m = vm.mainProfile()
+                if (m == null || m.pin.isEmpty() || vm.manageUnlocked) vm.openManage()
+                else vm.openSwitch()
             }
         }
-        if (showQr) PhotoQrCard(vm) { showQr = false }
+        BodyText(if (ar) "لكل ملف مفضلته وسجله وتفضيلاته وإعداداته المستقلة." else "Each profile keeps its own favorites, history, preferences and settings.", 13, C.textDim)
 
         }
         if (cat == 1) {

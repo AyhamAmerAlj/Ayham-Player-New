@@ -4,15 +4,97 @@ import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
-class Store(ctx: Context) {
-    private val sp = ctx.getSharedPreferences("ayham_player", Context.MODE_PRIVATE)
+class Store(private val ctx: Context) {
+    /** التخزين العام (الحساب واللغة والكاش والملفات الشخصية). وهو نفسه تخزين الملف الرئيسي حتى لا تضيع بيانات المستخدمين القدامى. */
+    private val gsp = ctx.getSharedPreferences("ayham_player", Context.MODE_PRIVATE)
     private val gson = Gson()
+    @Volatile private var cur: android.content.SharedPreferences = gsp
+    /** تخزين الملف الشخصي النشط: مفضلته وسجله وتفضيلاته وإعداداته مستقلة تماماً. */
+    private val sp: android.content.SharedPreferences get() = cur
+
+    var activeId: String = "main"
+        private set
+
+    private fun prefsFor(id: String): android.content.SharedPreferences =
+        if (id == "main") gsp else ctx.getSharedPreferences("ayham_profile_$id", Context.MODE_PRIVATE)
+
+    init {
+        val list = profiles()
+        val want = gsp.getString("active_profile", null) ?: "main"
+        activeId = if (list.any { it.id == want }) want else (list.firstOrNull { it.type == "MAIN" }?.id ?: "main")
+        cur = prefsFor(activeId)
+    }
+
+    // ---- سجل الملفات الشخصية ----
+    fun profiles(): List<Profile> {
+        val json = gsp.getString("profiles", null)
+        val l = json?.let {
+            runCatching { gson.fromJson<List<Profile>>(it, object : TypeToken<List<Profile>>() {}.type) }.getOrNull()
+        }?.filter { it.id.isNotBlank() }
+        if (!l.isNullOrEmpty()) return l
+        // أول تشغيل بعد الترقية: الملف الرئيسي يرث اسم وصورة النظام القديم وبياناته كلها
+        val legacy = gsp.getString("profile_name", "") ?: ""
+        val main = Profile(
+            id = "main", name = legacy.ifBlank { "Ayham" }, type = "MAIN",
+            avatar = gsp.getInt("profile_avatar", 5), style = 1, bg = 1, frame = 1,
+            syncId = legacy.trim().ifBlank { "main" },
+        )
+        saveProfiles(listOf(main))
+        return listOf(main)
+    }
+    fun saveProfiles(l: List<Profile>) { gsp.edit().putString("profiles", gson.toJson(l)).apply() }
+
+    var defaultProfileId: String
+        get() = gsp.getString("default_profile", "") ?: ""
+        set(v) { gsp.edit().putString("default_profile", v).apply() }
+
+    /** يبدّل الملف النشط. الضيف لا يُحفظ كآخر ملف مستخدم. */
+    fun switchTo(id: String, remember: Boolean = true) {
+        activeId = id
+        if (remember) gsp.edit().putString("active_profile", id).apply()
+        cur = prefsFor(id)
+    }
+
+    /** يمسح كل بيانات ملف (حذف الملف أو انتهاء جلسة الضيف). */
+    fun wipe(id: String) {
+        if (id == "main") return
+        prefsFor(id).edit().clear().commit()
+    }
+
+    private val settingKeys = listOf(
+        "live_layout", "vod_layout", "app_theme", "ui_sounds", "ui_sound_pack", "clock_weather", "clock_region", "clock_city",
+        "saver_min", "match_card", "live_fmt", "max_res", "sub_style", "sub_size", "live_shift", "resume_live", "ext_auto",
+    )
+    /** ينسخ الإعدادات (لا المشاهدة ولا المفضلة) من ملف إلى آخر. */
+    fun copySettings(from: String, to: String) {
+        val a = prefsFor(from)
+        val e = prefsFor(to).edit()
+        for (k in settingKeys) {
+            when (val v = a.all[k]) {
+                is Boolean -> e.putBoolean(k, v)
+                is Int -> e.putInt(k, v)
+                is Long -> e.putLong(k, v)
+                is String -> e.putString(k, v)
+                null -> e.remove(k)
+                else -> {}
+            }
+        }
+        e.commit()
+    }
+
+    /** مساحة مزامنة الملف النشط (فاضي = بدون مزامنة، مثل الضيف). */
+    fun syncId(): String = profiles().firstOrNull { it.id == activeId }?.syncId?.ifBlank { "p_$activeId" } ?: ""
+
+    /** آخر قسم فتحه المستخدم في هذا الملف. */
+    var lastTab: Int
+        get() = sp.getInt("last_tab", 0)
+        set(v) { sp.edit().putInt("last_tab", v).apply() }
 
     fun loadAccount(): Account? =
-        sp.getString("account", null)?.let { runCatching { gson.fromJson(it, Account::class.java) }.getOrNull() }
+        gsp.getString("account", null)?.let { runCatching { gson.fromJson(it, Account::class.java) }.getOrNull() }
 
     fun saveAccount(a: Account?) {
-        sp.edit().apply {
+        gsp.edit().apply {
             if (a == null) remove("account") else putString("account", gson.toJson(a))
         }.apply()
     }
@@ -23,13 +105,13 @@ class Store(ctx: Context) {
         set(v) { sp.edit().putString("app_theme", v).apply() }
 
     var lang: String
-        get() = sp.getString("lang", "ar") ?: "ar"
-        set(v) { sp.edit().putString("lang", v).apply() }
+        get() = gsp.getString("lang", "ar") ?: "ar"
+        set(v) { gsp.edit().putString("lang", v).apply() }
 
     /** آخر مرة تم فيها تحميل القائمة كاملة (للكاش). */
     var catalogTime: Long
-        get() = sp.getLong("catalog_time", 0L)
-        set(v) { sp.edit().putLong("catalog_time", v).apply() }
+        get() = gsp.getLong("catalog_time", 0L)
+        set(v) { gsp.edit().putLong("catalog_time", v).apply() }
 
     /** 0 = بدون حد (4K لو متوفر)، 1080 = أخف على الشاشة. */
     var maxRes: Int
@@ -96,15 +178,6 @@ class Store(ctx: Context) {
         get() = sp.getInt("sub_size", 1)
         set(v) { sp.edit().putInt("sub_size", v).apply() }
 
-    // ---- الملف الشخصي ----
-    var profileName: String
-        get() = sp.getString("profile_name", "") ?: ""
-        set(v) { sp.edit().putString("profile_name", v).apply() }
-    /** رقم الأفاتار الجاهز، أو -1 لو الصورة من الجهاز. */
-    var profileAvatar: Int
-        get() = sp.getInt("profile_avatar", 0)
-        set(v) { sp.edit().putInt("profile_avatar", v).apply() }
-
     fun clearProgress() {
         val e = sp.edit()
         sp.all.keys.filter { it.startsWith("p_") && it != "p_cleared" || it.startsWith("pt_") }.forEach { e.remove(it) }
@@ -114,18 +187,18 @@ class Store(ctx: Context) {
 
     /** تقييم IMDb محفوظ (فاضي = ما لقيناه) حتى ما نكرر الطلبات. */
     fun ratingsCache(k: String): Pair<Long, String>? {
-        val v = sp.getString("rtg_$k", null) ?: return null
+        val v = gsp.getString("rtg_$k", null) ?: return null
         val i = v.indexOf('|')
         if (i < 0) return null
         return (v.substring(0, i).toLongOrNull() ?: return null) to v.substring(i + 1)
     }
-    fun setRatingsCache(k: String, json: String) { sp.edit().putString("rtg_$k", "${System.currentTimeMillis()}|$json").apply() }
+    fun setRatingsCache(k: String, json: String) { gsp.edit().putString("rtg_$k", "${System.currentTimeMillis()}|$json").apply() }
 
     fun raw(k: String): String? = sp.getString(k, null)
     fun putRaw(k: String, v: String) { sp.edit().putString(k, v).apply() }
 
-    fun imdb(key: String): String? = sp.getString("imdb_$key", null)
-    fun setImdb(key: String, v: String) { sp.edit().putString("imdb_$key", v).apply() }
+    fun imdb(key: String): String? = gsp.getString("imdb_$key", null)
+    fun setImdb(key: String, v: String) { gsp.edit().putString("imdb_$key", v).apply() }
 
     /** تخطيط الأفلام والمسلسلات: grid أو list. */
     var vodLayout: String
@@ -151,8 +224,8 @@ class Store(ctx: Context) {
         set(v) { sp.edit().putInt("clock_city", v).apply() }
 
     var annDismissed: String
-        get() = sp.getString("ann_dismissed", "") ?: ""
-        set(v) { sp.edit().putString("ann_dismissed", v).apply() }
+        get() = gsp.getString("ann_dismissed", "") ?: ""
+        set(v) { gsp.edit().putString("ann_dismissed", v).apply() }
 
     var extAuto: Boolean
         get() = sp.getBoolean("ext_auto", true)
@@ -217,12 +290,12 @@ class Store(ctx: Context) {
     }
 
     /** تحديثات "ما الجديد؟" التي شاهدها المستخدم (لا تظهر مرتين). */
-    fun newsSeen(): Set<String> = (sp.getString("news_seen", "") ?: "").split(",").filter { it.isNotBlank() }.toSet()
-    fun markNewsSeen(id: String) { sp.edit().putString("news_seen", (newsSeen() + id).toList().takeLast(100).joinToString(",")).apply() }
+    fun newsSeen(): Set<String> = (gsp.getString("news_seen", "") ?: "").split(",").filter { it.isNotBlank() }.toSet()
+    fun markNewsSeen(id: String) { gsp.edit().putString("news_seen", (newsSeen() + id).toList().takeLast(100).joinToString(",")).apply() }
 
     var whatsNewSeen: String
-        get() = sp.getString("whatsnew_seen", "") ?: ""
-        set(v) { sp.edit().putString("whatsnew_seen", v).apply() }
+        get() = gsp.getString("whatsnew_seen", "") ?: ""
+        set(v) { gsp.edit().putString("whatsnew_seen", v).apply() }
 
     /** يضيف ثواني مشاهدة للأسبوع الحالي لقناة أو فيلم، ويحفظ أعلى 30 فقط. */
     fun addWatch(key: String, name: String, sec: Long) {
@@ -263,12 +336,12 @@ class Store(ctx: Context) {
 
     // ---- كاش قسم الرائج (TMDB): قائمة عناوين مع وقت الجلب ----
     fun trendCache(kind: String): Pair<Long, String>? {
-        val v = sp.getString("trend_$kind", null) ?: return null
+        val v = gsp.getString("trend_$kind", null) ?: return null
         val i = v.indexOf('|'); if (i < 1) return null
         return (v.substring(0, i).toLongOrNull() ?: return null) to v.substring(i + 1)
     }
     fun setTrendCache(kind: String, json: String) {
-        sp.edit().putString("trend_$kind", System.currentTimeMillis().toString() + "|" + json).apply()
+        gsp.edit().putString("trend_$kind", System.currentTimeMillis().toString() + "|" + json).apply()
     }
 }
 

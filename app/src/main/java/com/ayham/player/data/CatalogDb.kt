@@ -119,13 +119,36 @@ class CatalogDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "catalo
     }
 
     // ---------------- القراءة ----------------
-    fun categories(kind: Kind): List<Category> {
+    fun categories(kind: Kind): List<Category> = categoriesRaw(kind).filter { catOk(kind, it.id) }
+
+    /** كل الأقسام بدون أي تقييد (لحساب قوائم الحجب/السماح لملف الأطفال). */
+    fun categoriesRaw(kind: Kind): List<Category> {
         val out = ArrayList<Category>()
         readableDatabase.rawQuery(
             "SELECT cid, name, cnt FROM cats WHERE kind=? AND cnt>0 ORDER BY rowid",
             arrayOf(kind.ordinal.toString()),
         ).use { c -> while (c.moveToNext()) out.add(Category(c.getString(0) ?: "", c.getString(1) ?: "", c.getInt(2))) }
         return out
+    }
+
+    // ---- تقييد المحتوى لملف الأطفال: فئات مسموحة فقط أو فئات محجوبة ----
+    @Volatile var lock = false
+    @Volatile var allow: Map<Int, Set<String>> = emptyMap()
+    @Volatile var block: Map<Int, Set<String>> = emptyMap()
+    private fun lit(s: String) = "'" + s.replace("'", "''") + "'"
+    private fun restrictSql(kind: Kind): String {
+        if (lock) return " AND 0=1"
+        val a = allow[kind.ordinal]
+        if (!a.isNullOrEmpty()) return " AND cat IN (" + a.joinToString(",") { lit(it) } + ")"
+        val b = block[kind.ordinal]
+        if (!b.isNullOrEmpty()) return " AND cat NOT IN (" + b.joinToString(",") { lit(it) } + ")"
+        return ""
+    }
+    private fun catOk(kind: Kind, cid: String): Boolean {
+        if (lock) return false
+        val a = allow[kind.ordinal]
+        if (!a.isNullOrEmpty()) return cid in a
+        return block[kind.ordinal]?.contains(cid) != true
     }
 
     private val cols = "kind,sid,name,image,cat,rating,ext,added,_id"
@@ -146,7 +169,7 @@ class CatalogDb(ctx: Context) : SQLiteOpenHelper(ctx.applicationContext, "catalo
     }
 
     private fun query(kind: Kind, where: String, args: List<String>, order: String, limit: Int, offset: Int = 0): List<Item> {
-        val sql = "SELECT $cols FROM items WHERE kind=?" + (if (where.isEmpty()) "" else " AND ($where)") +
+        val sql = "SELECT $cols FROM items WHERE kind=?" + (if (where.isEmpty()) "" else " AND ($where)") + restrictSql(kind) +
             " ORDER BY $order LIMIT $limit OFFSET $offset"
         val out = ArrayList<Item>(minOf(limit, 256))
         readableDatabase.rawQuery(sql, (listOf(kind.ordinal.toString()) + args).toTypedArray()).use { c ->

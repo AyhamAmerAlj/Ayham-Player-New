@@ -176,7 +176,7 @@ fun TopBar(vm: AppViewModel) {
             }
         }
         Spacer(Modifier.weight(0.2f))
-        Focusable(shape = RoundedCornerShape(24.dp), focusScale = 1.05f, onClick = { vm.selectTab(6) }) { f ->
+        Focusable(shape = RoundedCornerShape(24.dp), focusScale = 1.05f, onClick = { vm.openSwitch() }) { f ->
             Row(
                 Modifier.clip(RoundedCornerShape(24.dp)).background(if (f) tc(0x558B5CF6) else Color.Transparent).padding(horizontal = 8.dp, vertical = 3.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -631,7 +631,7 @@ fun TvTopNav(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusReq
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         // اليسار: الوقت والملف الشخصي
-        Focusable(shape = RoundedCornerShape(30.dp), focusScale = 1.04f, onClick = { vm.selectTab(6) }) { f ->
+        Focusable(shape = RoundedCornerShape(30.dp), focusScale = 1.04f, onClick = { vm.openSwitch() }) { f ->
             Row(
                 Modifier.height(52.dp).clip(RoundedCornerShape(30.dp)).background(barBg)
                     .border(1.dp, if (f) C.accent else tc(0x338B5CF6), RoundedCornerShape(30.dp)).padding(horizontal = 14.dp),

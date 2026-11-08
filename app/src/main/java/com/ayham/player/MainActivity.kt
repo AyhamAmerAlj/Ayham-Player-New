@@ -75,12 +75,26 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun Root(vm: AppViewModel) {
+    Box(Modifier.fillMaxSize()) {
+        RootInner(vm)
+        // ترحيب سينمائي بعد اختيار الملف ثم ينسحب إلى الرئيسية
+        vm.welcome?.let { w -> com.ayham.player.ui.WelcomeOverlay(vm, w) { vm.welcome = null } }
+    }
+}
+
+@Composable
+private fun RootInner(vm: AppViewModel) {
     val lic = LicenseManager.state
     if (lic == LicState.NEED_CODE) { LicenseScreen(); return }
     LaunchedEffect(lic) { if (lic == LicState.OK) vm.start() }
     // موضع استدعاء واحد للافتتاحية حتى لا تُعاد الحركة عند تبدّل الحالات
     if (lic == LicState.CHECKING || vm.phase == Phase.SPLASH || (vm.phase == Phase.LOADING && vm.bootSplash)) {
         SplashScreen()
+        return
+    }
+    // شاشة اختيار الملف الشخصي (عند التشغيل أو التبديل أو الإدارة)
+    if (!vm.profileReady || vm.profileNav.isNotEmpty()) {
+        com.ayham.player.ui.ProfileFlow(vm)
         return
     }
     when (vm.phase) {

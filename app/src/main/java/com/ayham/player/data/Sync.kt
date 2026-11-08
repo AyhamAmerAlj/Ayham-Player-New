@@ -28,9 +28,9 @@ class SyncEngine(private val store: Store, private val onLists: (Map<String, Lis
     private val JSON = "application/json".toMediaType()
     private val names = listOf("fav", "later", "watched", "recent", "history")
 
-    val available: Boolean get() = LicenseManager.enabled && LicenseManager.isOk && LicenseManager.savedCode() != null
+    val available: Boolean get() = LicenseManager.enabled && LicenseManager.isOk && LicenseManager.savedCode() != null && store.syncId().isNotEmpty()
 
-    private fun profile(): String = store.profileName.trim().ifBlank { "main" }
+    private fun profile(): String = store.syncId().ifBlank { "main" }
 
     private fun post(path: String, extra: Map<String, Any?>): JsonObject? = try {
         val body = HashMap<String, Any?>(extra)
