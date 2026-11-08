@@ -2,8 +2,13 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "248"
+    const val id = "249"
     val ar = listOf(
+        "شاشة توقف سينمائية: لو التطبيق ساكن تظهر بوسترات أفلامك ومسلسلاتك بحركة هادئة وساعة (من الإعدادات تقدر تغيّر المدة أو تطفيها)",
+        "شريط التقديم بفصول مثل أبل تي في، ولونه يتغير حسب بوستر كل فيلم",
+        "كبسولة التقديم تعرض الوقت الجديد والفرق والمتبقي ووقت انتهاء الفيلم بالساعة",
+        "لقطة عنوان سينمائية لكل حلقة: الموسم والحلقة واسمها",
+        "بطاقة نهاية الفيلم: قيّمه بـ 👍/👎 وشاهد أفلاماً مشابهة من مكتبتك",
         "تشغيل آخر قناة مباشرة تلقائياً عند فتح التطبيق (اختياري من الإعدادات)",
         "فتح الأفلام والمسلسلات أسرع: تُحمَّل التفاصيل والخلفية والتقييمات مسبقاً عند الوقوف على البوستر",
         "القنوات تفضّل الاستمرارية: مخزن أكبر وبدء بهامش أمان وإعادة محاولة تلقائية صامتة بدل التوقف",
@@ -20,6 +25,11 @@ object WhatsNew {
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "Cinematic screensaver: when the app is idle your posters drift by with a gentle zoom and a clock (change the delay or turn it off in Settings)",
+        "Chaptered seek bar like Apple TV, tinted from each poster",
+        "Seek capsule shows the new time, the jump, time left and the clock time the movie ends",
+        "Cinematic title card for every episode: season, episode and name",
+        "End-of-movie card: rate it 👍/👎 and pick a similar title from your library",
         "Resume the last live channel when the app opens (optional in Settings)",
         "Faster movie and series opening: details, backdrop and ratings preload while you hover a poster",
         "Channels favor continuity: bigger buffer, safety margin from live and silent auto-retry instead of stopping",
@@ -41,7 +51,7 @@ object WhatsNew {
 data class Release(val id: String, val ar: List<String>, val en: List<String>)
 
 val releaseHistory = listOf(
-    Release("238", WhatsNew.ar, WhatsNew.en),
+    Release("249", WhatsNew.ar, WhatsNew.en),
     Release("237", listOf("افتتاحية سينمائية جديدة بشعار Ayham"), listOf("New cinematic opening with the Ayham logo")),
     Release("227", listOf(
         "تقييمات متعددة (IMDb وRotten Tomatoes وMetacritic وTMDB وTrakt)",

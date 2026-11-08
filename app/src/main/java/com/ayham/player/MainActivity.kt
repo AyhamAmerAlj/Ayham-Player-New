@@ -49,6 +49,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // أي ضغطة أو لمسة تصفّر عدّاد الخمول، وتغلق شاشة التوقف لو كانت ظاهرة
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (vm.saverOn) { if (event.action == android.view.KeyEvent.ACTION_DOWN) vm.userActive(); return true }
+        vm.lastActive = android.os.SystemClock.uptimeMillis()
+        return super.dispatchKeyEvent(event)
+    }
+
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        if (vm.saverOn) { if (ev.action == android.view.MotionEvent.ACTION_DOWN) vm.userActive(); return true }
+        vm.lastActive = android.os.SystemClock.uptimeMillis()
+        return super.dispatchTouchEvent(ev)
+    }
+
     override fun onStop() {
         vm.flushSync()
         super.onStop()
@@ -107,6 +120,16 @@ private fun Ready(vm: AppViewModel) {
             kotlinx.coroutines.delay(3 * 60 * 1000L)
         }
     }
+    androidx.compose.runtime.LaunchedEffect(Unit) { kotlinx.coroutines.delay(1500); vm.maybeResumeLive() }
+    // الدخول أو الخروج من شاشة (مشغّل/تفاصيل) يصفّر عدّاد الخمول حتى لا تظهر شاشة التوقف فور الرجوع
+    androidx.compose.runtime.LaunchedEffect(vm.stack.size) { vm.lastActive = android.os.SystemClock.uptimeMillis() }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(4000)
+            val idle = android.os.SystemClock.uptimeMillis() - vm.lastActive
+            if (vm.saverMin > 0 && !vm.saverOn && vm.stack.isEmpty() && !vm.multiOpen && vm.miniItem == null && idle > vm.saverMin * 60_000L) vm.saverOn = true
+        }
+    }
     Box(Modifier.fillMaxSize()) {
         when (top) {
             null -> if (vm.multiOpen) com.ayham.player.ui.MultiView(vm) else holder.SaveableStateProvider("main") { MainScreen(vm) }
@@ -115,6 +138,7 @@ private fun Ready(vm: AppViewModel) {
             }
             is Screen.Player -> PlayerScreen(vm, top.req) { vm.pop() }
         }
+        if (vm.saverOn) com.ayham.player.ui.Screensaver(vm)
         if (top !is Screen.Player) com.ayham.player.ui.UpdateDialog(vm)
         if (top !is Screen.Player && (vm.updInfo == null || vm.updDismissed)) com.ayham.player.ui.NewsDialog(vm)
     }

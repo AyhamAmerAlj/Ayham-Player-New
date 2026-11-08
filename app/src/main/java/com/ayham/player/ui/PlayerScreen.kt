@@ -8,6 +8,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -172,6 +173,13 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     var introShow by remember { mutableStateOf(false) }
     val subTf = remember { androidx.core.content.res.ResourcesCompat.getFont(ctx, com.ayham.player.R.font.cairo_semibold) }
     var introResume by remember { mutableLongStateOf(0L) }
+    var endCard by remember { mutableStateOf(false) }
+    // لون الشريط يُستخرج من بوستر العمل (يتغير مع كل فيلم/مسلسل)
+    var tint by remember { mutableStateOf<Color?>(null) }
+    LaunchedEffect(index) {
+        val url = req.item?.image?.takeIf { it.isNotBlank() } ?: queue[index].image
+        tint = if (url.isBlank() || queue[index].isLive) null else kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { posterTint(ctx, url) }
+    }
     var tracks by remember { mutableStateOf(Tracks.EMPTY) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var controls by remember { mutableStateOf(true) }
@@ -465,6 +473,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     /** زر الرجوع: يغلق اللوحة، أو يلغي عدّاد الحلقة التالية، أو يخفي الشريط فقط. الخروج فقط لو الشريط مخفي. */
     fun onBack() {
         when {
+            endCard -> exit()
             panel != null -> closePanel()
             nextCardOn -> nextOff = true
             controls -> controls = false
@@ -509,6 +518,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     }
 
     fun handleKey(code: Int, repeat: Int): Boolean {
+        if (endCard) return false
         when (code) {
             AKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { togglePlay(); return true }
             AKeyEvent.KEYCODE_MEDIA_PLAY -> { exo.play(); return true }
@@ -601,7 +611,9 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                 if (state == Player.STATE_ENDED && !queue[index].isLive) {
                     val d = exo.duration.coerceAtLeast(0L)
                     vm.saveProgress(req.item, queue[index].key, d, d)
-                    if (index + 1 < queue.size && !nextOff) { remainMs = Long.MAX_VALUE; index++ } else exit()
+                    if (index + 1 < queue.size && !nextOff) { remainMs = Long.MAX_VALUE; index++ }
+                    else if (req.item != null) { endCard = true; controls = false }
+                    else exit()
                 }
             }
 
@@ -931,8 +943,19 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                 }
                 Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Color.Transparent, Color.Black))))
                 Column(Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    RText(curE.title, 40, Color.White, bold = true, maxLines = 3)
-                    val meta = listOfNotNull(
+                    val epM = if (isSeries) Regex("""S(\d+)E(\d+)\s*(.*)$""").find(curE.title) else null
+                    if (epM != null) {
+                        val ar = vm.lang == "ar"
+                        val sName = req.item?.name?.let { com.ayham.player.data.Imdb.clean(it) } ?: ""
+                        val epTitle = epM.groupValues[3].trim()
+                        androidx.compose.runtime.key(index) {
+                            if (sName.isNotBlank()) Reveal(0) { RText(sName, 22, C.primaryLight, bold = true, maxLines = 1) }
+                            Reveal(250) { RText((if (ar) "الموسم " else "Season ") + epM.groupValues[1].toInt() + "  ·  " + (if (ar) "الحلقة " else "Episode ") + epM.groupValues[2].toInt(), 46, Color.White, bold = true, maxLines = 2) }
+                            Reveal(500) { Box(Modifier.width(120.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(Brush.horizontalGradient(listOf(C.primary, C.accent)))) }
+                            if (epTitle.isNotBlank()) Reveal(750) { RText(epTitle, 24, C.text, maxLines = 2) }
+                        }
+                    } else RText(curE.title, 40, Color.White, bold = true, maxLines = 3)
+                    val meta = if (epM != null) "" else listOfNotNull(
                         req.item?.rating?.takeIf { it.isNotBlank() && it != "0" }?.let { "★ $it" },
                         if (isSeries) "${index + 1} / ${queue.size}" else null,
                     ).joinToString("   ·   ")
@@ -945,7 +968,11 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             }
         }
 
-        if (buffering && errorMsg == null) {
+        AnimatedVisibility(endCard && req.item != null, enter = fadeIn(androidx.compose.animation.core.tween(700)), exit = fadeOut()) {
+            EndCard(vm, req.item!!, vm.lang == "ar", onClose = { exit() }, onOpen = { r -> exit(); vm.openDetail(r) })
+        }
+
+        if (buffering && errorMsg == null && !endCard) {
             CircularProgressIndicator(
                 color = C.accent, strokeWidth = 4.dp,
                 modifier = Modifier.align(Alignment.Center).size(52.dp),
@@ -1084,7 +1111,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             extSession.goLive()
                             touch()
                         }
-                        if (!queue[index].isLive) ProgressRow(exo, barFocus, onVisible = { barVisible = it }, onToggle = { togglePlay() }, marks = remember(index) { vm.store.introProfile(queue[index].key)?.let { listOf(it.first, it.second) } ?: emptyList() }) { touch() }
+                        if (!queue[index].isLive) ProgressRow(exo, barFocus, onVisible = { barVisible = it }, onToggle = { togglePlay() }, tint = tint, ar = vm.lang == "ar", marks = remember(index) { vm.store.introProfile(queue[index].key)?.let { listOf(it.first, it.second) } ?: emptyList() }) { touch() }
                         Row(
                             Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -1692,7 +1719,7 @@ private fun trackLabel(f: Format, i: Int, lang: String): String {
  * لتقدّم أو ترجّع بكيفك، والضغط المستمر يسرّع الحركة، والتنفيذ بعد توقفك لحظة (أو بزر OK).
  */
 @Composable
-private fun ProgressRow(exo: ExoPlayer, barFocus: FocusRequester, onVisible: (Boolean) -> Unit, onToggle: () -> Unit, marks: List<Long> = emptyList(), onTouch: () -> Unit) {
+private fun ProgressRow(exo: ExoPlayer, barFocus: FocusRequester, onVisible: (Boolean) -> Unit, onToggle: () -> Unit, marks: List<Long> = emptyList(), tint: Color? = null, ar: Boolean = true, onTouch: () -> Unit) {
     var pos by remember { mutableLongStateOf(0L) }
     var dur by remember { mutableLongStateOf(0L) }
     var buffered by remember { mutableLongStateOf(0L) }
@@ -1715,8 +1742,10 @@ private fun ProgressRow(exo: ExoPlayer, barFocus: FocusRequester, onVisible: (Bo
     val shown = scrub ?: pos
     val active = focused || scrub != null
     val density = androidx.compose.ui.platform.LocalDensity.current
+    val c1 by androidx.compose.animation.animateColorAsState(tint ?: C.primary, androidx.compose.animation.core.tween(900), label = "c1")
+    val c2 by androidx.compose.animation.animateColorAsState(if (tint != null) androidx.compose.ui.graphics.lerp(tint, Color.White, 0.4f) else C.accent, androidx.compose.animation.core.tween(900), label = "c2")
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        BodyText(fmt(shown), 14, if (scrub != null) C.accent else C.text, bold = scrub != null)
+        BodyText(fmt(shown), 14, if (scrub != null) c2 else C.text, bold = scrub != null)
         var barW by remember { mutableStateOf(1) }
         fun posAt(x: Float): Long = (x / barW.coerceAtLeast(1) * dur).toLong().coerceIn(0L, dur)
         val trackH by androidx.compose.animation.core.animateDpAsState(if (active) 14.dp else 8.dp, label = "trk")
@@ -1783,13 +1812,27 @@ private fun ProgressRow(exo: ExoPlayer, barFocus: FocusRequester, onVisible: (Bo
         ) {
             val frac = (shown.toFloat() / dur).coerceIn(0f, 1f)
             val buf = (buffered.toFloat() / dur).coerceIn(0f, 1f)
-            // المسار: مخزّن مؤقتًا (أبيض خفيف) ثم المُشاهَد (تدرج)
-            Box(
-                Modifier.align(Alignment.BottomStart).padding(bottom = 16.dp).fillMaxWidth().height(trackH)
-                    .clip(RoundedCornerShape(8.dp)).background(tc(0x33FFFFFF)),
-            ) {
-                Box(Modifier.fillMaxWidth(buf).fillMaxHeight().background(tc(0x44FFFFFF)))
-                Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(Brush.horizontalGradient(listOf(C.primary, C.accent))))
+            // المسار مقسّم إلى فصول (مثل أبل تي في): الفصل الحالي يكبر، والمخزَّن أبيض خفيف، والمُشاهَد بلون البوستر
+            val segs = (dur / 600_000L).toInt().coerceIn(3, 12)
+            androidx.compose.foundation.Canvas(Modifier.align(Alignment.BottomStart).padding(bottom = 12.dp).fillMaxWidth().height(trackH + 8.dp)) {
+                val w = size.width
+                val gap = 3.dp.toPx()
+                val segW = w / segs
+                val cy = size.height / 2f
+                val actI = (frac * segs).toInt().coerceAtMost(segs - 1)
+                val brush = Brush.horizontalGradient(listOf(c1, c2), startX = 0f, endX = w)
+                for (i in 0 until segs) {
+                    val x0 = i * segW + (if (i == 0) 0f else gap / 2f)
+                    val x1 = (i + 1) * segW - (if (i == segs - 1) 0f else gap / 2f)
+                    val hh = (trackH.toPx() + (if (i == actI && active) 6.dp.toPx() else 0f)) / 2f
+                    val cr = androidx.compose.ui.geometry.CornerRadius(hh, hh)
+                    val top = cy - hh
+                    drawRoundRect(Color(0x33FFFFFF), androidx.compose.ui.geometry.Offset(x0, top), androidx.compose.ui.geometry.Size(x1 - x0, hh * 2), cr)
+                    val bf = (buf * segs - i).coerceIn(0f, 1f)
+                    if (bf > 0f) drawRoundRect(Color(0x44FFFFFF), androidx.compose.ui.geometry.Offset(x0, top), androidx.compose.ui.geometry.Size((x1 - x0) * bf, hh * 2), cr)
+                    val pf = (frac * segs - i).coerceIn(0f, 1f)
+                    if (pf > 0f) drawRoundRect(brush, androidx.compose.ui.geometry.Offset(x0, top), androidx.compose.ui.geometry.Size((x1 - x0) * pf, hh * 2), cr)
+                }
             }
             // علامات المقدمة (بداية ونهاية) على الشريط
             marks.forEach { m ->
@@ -1803,7 +1846,7 @@ private fun ProgressRow(exo: ExoPlayer, barFocus: FocusRequester, onVisible: (Bo
             // توهج يتبع المقبض
             Box(
                 Modifier.align(Alignment.BottomStart).offset(x = xDp - thumb, y = -(16.dp + trackH / 2) + thumb)
-                    .size(thumb * 2).background(Brush.radialGradient(listOf((if (scrub != null) C.accent else C.primary).copy(alpha = 0.45f), Color.Transparent)), androidx.compose.foundation.shape.CircleShape),
+                    .size(thumb * 2).background(Brush.radialGradient(listOf((if (scrub != null) c2 else c1).copy(alpha = 0.45f), Color.Transparent)), androidx.compose.foundation.shape.CircleShape),
             )
             // المقبض الدائري المتوهج
             Box(
@@ -1811,24 +1854,30 @@ private fun ProgressRow(exo: ExoPlayer, barFocus: FocusRequester, onVisible: (Bo
                     .offset(x = xDp - thumb / 2, y = -(16.dp + trackH / 2 - thumb / 2))
                     .size(thumb).clip(androidx.compose.foundation.shape.CircleShape)
                     .background(Color.White)
-                    .border(if (active) 4.dp else 2.dp, if (scrub != null) C.accent else C.primary, androidx.compose.foundation.shape.CircleShape),
+                    .border(if (active) 4.dp else 2.dp, if (scrub != null) c2 else c1, androidx.compose.foundation.shape.CircleShape),
             )
-            // فقاعة الوقت فوق المقبض (تظهر عند التركيز أو التقديم) مع فرق الثواني
+            // كبسولة زجاجية فوق المقبض: الوقت الجديد + الفرق + المتبقي + وقت الانتهاء بالساعة
             if (active) {
-                val bw = 96.dp
+                val bw = 210.dp
                 val bwPx = with(density) { bw.toPx() }
                 val bx = with(density) { (xPx - bwPx / 2).coerceIn(0f, (barW - bwPx).coerceAtLeast(0f)).toDp() }
                 val delta = scrub?.let { it - pos }
+                val remain = (dur - shown).coerceAtLeast(0L)
                 Column(
                     Modifier.align(Alignment.TopStart).offset(x = bx).width(bw)
-                        .clip(RoundedCornerShape(12.dp)).background(tc(0xEE140A26))
-                        .border(1.dp, if (scrub != null) C.accent else tc(0x55FFFFFF), RoundedCornerShape(12.dp))
-                        .padding(vertical = 4.dp),
+                        .clip(RoundedCornerShape(14.dp)).background(tc(0xEE140A26))
+                        .border(1.dp, Brush.horizontalGradient(listOf(c1, c2)), RoundedCornerShape(14.dp))
+                        .padding(vertical = 3.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    BodyText(fmt(shown), 16, Color.White, bold = true)
-                    if (delta != null && kotlin.math.abs(delta) >= 1000L) {
-                        BodyText((if (delta > 0) "+" else "-") + fmt(kotlin.math.abs(delta)), 12, C.accent, bold = true)
+                    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            BodyText(fmt(shown), 16, Color.White, bold = true)
+                            if (delta != null && kotlin.math.abs(delta) >= 1000L) {
+                                BodyText((if (delta > 0) "+" else "-") + fmt(kotlin.math.abs(delta)), 13, c2, bold = true)
+                            }
+                        }
+                        BodyText((if (ar) "يتبقى " else "Left ") + fmt(remain) + "  ·  " + (if (ar) "ينتهي " else "Ends ") + hm((System.currentTimeMillis() + remain) / 1000), 11, C.text)
                     }
                 }
             }
@@ -2029,4 +2078,74 @@ private fun techChips(exo: ExoPlayer): List<String> {
         out += when (a.channelCount) { 1 -> "Mono"; 2 -> "Stereo"; 6 -> "5.1"; 8 -> "7.1"; else -> if (a.channelCount > 0) "${a.channelCount}ch" else "" }
     }
     return out.filter { it.isNotBlank() }
+}
+
+
+/** لون مميّز من البوستر (تدرج اللون السائد بين البكسلات الزاهية) ليكون لون الشريط. */
+private suspend fun posterTint(ctx: android.content.Context, url: String): Color? {
+    return try {
+        val r = coil.request.ImageRequest.Builder(ctx).data(url).size(40, 60).allowHardware(false).build()
+        val bmp = (coil.Coil.imageLoader(ctx).execute(r).drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap ?: return null
+        val w = bmp.width
+        val h = bmp.height
+        val px = IntArray(w * h)
+        bmp.getPixels(px, 0, w, 0, 0, w, h)
+        val hsv = FloatArray(3)
+        var sx = 0.0
+        var sy = 0.0
+        var tw = 0.0
+        for (p in px) {
+            android.graphics.Color.colorToHSV(p, hsv)
+            if (hsv[1] < 0.3f || hsv[2] < 0.3f) continue
+            val wt = (hsv[1] * hsv[2]).toDouble()
+            val rad = Math.toRadians(hsv[0].toDouble())
+            sx += Math.cos(rad) * wt
+            sy += Math.sin(rad) * wt
+            tw += wt
+        }
+        if (tw < 3.0) return null
+        var hue = Math.toDegrees(Math.atan2(sy, sx)).toFloat()
+        if (hue < 0) hue += 360f
+        Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 0.72f, 1f)))
+    } catch (_: Throwable) { null }
+}
+
+@Composable
+private fun Reveal(delayMs: Int, content: @Composable () -> Unit) {
+    val a = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(Unit) { delay(delayMs.toLong()); a.animateTo(1f, androidx.compose.animation.core.tween(700)) }
+    Box(Modifier.graphicsLayer { alpha = a.value; translationY = (1f - a.value) * 24f }) { content() }
+}
+
+/** بطاقة نهاية الفيلم/آخر حلقة: تقييم سريع (👍/👎) واقتراح أعمال مشابهة من مكتبتك. */
+@Composable
+private fun EndCard(vm: AppViewModel, item: Item, ar: Boolean, onClose: () -> Unit, onOpen: (Item) -> Unit) {
+    var like by remember { mutableStateOf(vm.store.raw("like_" + item.key)) }
+    val recs by androidx.compose.runtime.produceState(emptyList<Item>(), item.key) {
+        value = runCatching { vm.recommendFor(item, vm.cachedDetails(item)?.year ?: "") }.getOrDefault(emptyList()).take(4)
+    }
+    val compact = isCompact()
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.9f)), contentAlignment = Alignment.Center) {
+        if (item.image.isNotBlank()) Img(item.image, Modifier.fillMaxSize().blur(30.dp).alpha(0.25f), w = 400, h = 600)
+        Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            RText(if (ar) "انتهى العرض" else "That's a wrap", 18, C.accent, bold = true)
+            RText(com.ayham.player.data.Imdb.clean(item.name), 34, Color.White, bold = true, maxLines = 2)
+            RText(if (ar) "هل أعجبك؟" else "Did you like it?", 20, C.text)
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                GlowButton(if (ar) "👍 أعجبني" else "👍 Liked", Modifier.autoFocus(), primary = like == "1") { like = "1"; vm.store.putRaw("like_" + item.key, "1") }
+                GlowButton(if (ar) "👎 ما أعجبني" else "👎 Not for me", primary = like == "0") { like = "0"; vm.store.putRaw("like_" + item.key, "0") }
+            }
+            if (recs.isNotEmpty()) {
+                RText(if (ar) "شاهد بعده" else "Watch next", 18, C.primaryLight, bold = true)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    recs.forEach { r ->
+                        Focusable(Modifier.width(if (compact) 76.dp else 120.dp).aspectRatio(2f / 3f), onClick = { onOpen(r) }) {
+                            Img(r.image, Modifier.fillMaxSize(), w = 240, h = 360)
+                        }
+                    }
+                }
+            }
+            GlowButton(if (ar) "إغلاق" else "Close") { onClose() }
+        }
+    }
 }

@@ -72,6 +72,10 @@ class Store(ctx: Context) {
         get() = sp.getString("last_live_id", "") ?: ""
         set(v) { sp.edit().putString("last_live_id", v).apply() }
 
+    var saverMin: Int
+        get() = sp.getInt("saver_min", 2)
+        set(v) { sp.edit().putInt("saver_min", v).apply() }
+
     var liveShift: Boolean
         get() = sp.getBoolean("live_shift", false)
         set(v) { sp.edit().putBoolean("live_shift", v).apply() }

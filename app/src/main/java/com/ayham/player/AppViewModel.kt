@@ -223,6 +223,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         store.saveSubs(key, emptyList())
         store.setPrefSub(key, null)
     }
+    // ---- شاشة التوقف السينمائية ----
+    var saverMin by mutableStateOf(store.saverMin)
+    fun changeSaverMin(v: Int) { saverMin = v; store.saverMin = v }
+    var saverOn by mutableStateOf(false)
+    @Volatile var lastActive = android.os.SystemClock.uptimeMillis()
+    /** أي لمسة أو ضغطة زر: تصفّر عدّاد الخمول، وتُرجع true لو كانت شاشة التوقف ظاهرة (فتُغلق وتُبلع الضغطة). */
+    fun userActive(): Boolean {
+        lastActive = android.os.SystemClock.uptimeMillis()
+        if (saverOn) { saverOn = false; return true }
+        return false
+    }
+    suspend fun saverItems(): List<Item> = withContext(Dispatchers.IO) {
+        (db.top(Kind.MOVIE, 60) + db.top(Kind.SERIES, 40)).filter { it.image.isNotBlank() }.shuffled().take(14)
+    }
+
     var resumeLive by mutableStateOf(store.resumeLive)
     fun changeResumeLive(v: Boolean) { resumeLive = v; store.resumeLive = v }
     private var resumeTried = false
