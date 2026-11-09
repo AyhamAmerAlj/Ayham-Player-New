@@ -271,6 +271,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     init { com.ayham.player.ui.Prefetch.fn = { prefetch(it) } }
 
+    var ambient by mutableStateOf(store.ambient)
+    fun changeAmbient(v: Boolean) { ambient = v; store.ambient = v }
+    var curtain by mutableStateOf(store.curtain)
+    fun changeCurtain(v: Boolean) { curtain = v; store.curtain = v }
+    var pauseScreen by mutableStateOf(store.pauseScreen)
+    fun changePauseScreen(v: Boolean) { pauseScreen = v; store.pauseScreen = v }
+
     var liveShift by mutableStateOf(store.liveShift)
     fun changeLiveShift(v: Boolean) { liveShift = v; store.liveShift = v }
     var subStyle by mutableIntStateOf(store.subStyle)
@@ -657,6 +664,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         liveFormat = store.liveFormat; maxRes = store.maxRes; liveLayout = store.liveLayout
         matchCard = store.matchCard; vodLayout = store.vodLayout
         saverMin = store.saverMin; resumeLive = store.resumeLive; liveShift = store.liveShift
+        ambient = store.ambient; curtain = store.curtain; pauseScreen = store.pauseScreen
         subStyle = store.subStyle; subSize = store.subSize
         favorites = store.loadList("fav"); later = store.loadList("later"); watched = store.loadList("watched")
         recent = store.loadList("recent"); history = store.loadList("history")

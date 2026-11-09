@@ -1068,6 +1068,9 @@ fun SettingsTab(vm: AppViewModel) {
                 vm.changeSaverMin(when (vm.saverMin) { 0 -> 1; 1 -> 2; 2 -> 5; else -> 0 })
             }
             Chip((if (vm.lang == "ar") "تشغيل آخر قناة عند فتح التطبيق: " else "Resume last channel on launch: ") + (if (vm.resumeLive) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), vm.resumeLive) { vm.changeResumeLive(!vm.resumeLive) }
+            Chip((if (vm.lang == "ar") "الإضاءة المحيطة للأفلام: " else "Ambient glow: ") + (if (vm.ambient) (if (vm.lang == "ar") "مفعّلة" else "On") else (if (vm.lang == "ar") "مغلقة" else "Off")), vm.ambient) { vm.changeAmbient(!vm.ambient) }
+            Chip((if (vm.lang == "ar") "ستارة السينما عند بدء الفيلم: " else "Cinema curtain: ") + (if (vm.curtain) (if (vm.lang == "ar") "مفعّلة" else "On") else (if (vm.lang == "ar") "مغلقة" else "Off")), vm.curtain) { vm.changeCurtain(!vm.curtain) }
+            Chip((if (vm.lang == "ar") "شاشة الإيقاف السينمائية: " else "Cinematic pause screen: ") + (if (vm.pauseScreen) (if (vm.lang == "ar") "مفعّلة" else "On") else (if (vm.lang == "ar") "مغلقة" else "Off")), vm.pauseScreen) { vm.changePauseScreen(!vm.pauseScreen) }
             Chip((if (vm.lang == "ar") "تقديم وتأخير القنوات المباشرة: " else "Live rewind/forward: ") + (if (vm.liveShift) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), vm.liveShift) { vm.changeLiveShift(!vm.liveShift) }
             SubPreviewCard(vm)
         RText(t("live_format"), 22, C.primaryLight, bold = true)

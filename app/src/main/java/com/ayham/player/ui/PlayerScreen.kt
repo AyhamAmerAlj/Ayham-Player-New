@@ -171,6 +171,12 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     var isPlaying by remember { mutableStateOf(false) }
     var buffering by remember { mutableStateOf(true) }
     var introShow by remember { mutableStateOf(false) }
+    // ---- لمسات سينمائية: شاشة الإيقاف، الستارة، الإضاءة المحيطة ----
+    var pauseOn by remember { mutableStateOf(false) }
+    var pauseTick by remember { mutableIntStateOf(0) }
+    var curtainOpen by remember { mutableStateOf(!(vm.curtain && req.item?.kind == com.ayham.player.data.Kind.MOVIE)) }
+    var ambTop by remember { mutableStateOf(Color.Black) }
+    var ambBot by remember { mutableStateOf(Color.Black) }
     val subTf = remember { androidx.core.content.res.ResourcesCompat.getFont(ctx, com.ayham.player.R.font.cairo_semibold) }
     var introResume by remember { mutableLongStateOf(0L) }
     var endCard by remember { mutableStateOf(false) }
@@ -279,7 +285,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         }
     }
 
-    fun touch() { lastTouch[0] = android.os.SystemClock.uptimeMillis() }
+    fun touch() { lastTouch[0] = android.os.SystemClock.uptimeMillis(); if (pauseOn) pauseOn = false; pauseTick++ }
 
     fun showToast(msg: String) {
         toast = msg
@@ -749,6 +755,60 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         }
     }
 
+    // شاشة الإيقاف السينمائية: لو بقي العمل موقوفاً 6 ثوانٍ تظهر معلوماته بدل الشريط
+    LaunchedEffect(isPlaying, buffering, pauseTick, panel, endCard) {
+        if (!isPlaying && !buffering && panel == null && !endCard && vm.pauseScreen && !queue[index].isLive && errorMsg == null) {
+            delay(6000)
+            pauseOn = true
+            controls = false
+        } else pauseOn = false
+    }
+    var pauseDet by remember(index) { mutableStateOf<com.ayham.player.data.Details?>(null) }
+    var pauseInfo by remember(index) { mutableStateOf<com.ayham.player.data.SeriesInfo?>(null) }
+    LaunchedEffect(pauseOn) {
+        val it = req.item
+        if (pauseOn && it != null && pauseDet == null) {
+            if (it.kind == com.ayham.player.data.Kind.SERIES) {
+                val si = runCatching { vm.seriesInfo(it) }.getOrNull()
+                pauseInfo = si; pauseDet = si?.details
+            } else pauseDet = runCatching { vm.movieDetails(it) }.getOrNull()
+        }
+    }
+    // الإضاءة المحيطة: نأخذ لوني أعلى وأسفل الصورة كل 2.5 ث ونملأ بهما الأشرطة السوداء حول الفيلم
+    LaunchedEffect(isPlaying, vm.ambient, index) {
+        if (!vm.ambient || queue[index].isLive || android.os.Build.VERSION.SDK_INT < 26) return@LaunchedEffect
+        while (isPlaying) {
+            val sv = pv?.videoSurfaceView as? android.view.SurfaceView
+            if (sv != null && sv.width > 0 && sv.holder.surface.isValid) {
+                val bmp = android.graphics.Bitmap.createBitmap(16, 9, android.graphics.Bitmap.Config.ARGB_8888)
+                val ok = kotlinx.coroutines.suspendCancellableCoroutine<Boolean> { c ->
+                    try {
+                        android.view.PixelCopy.request(
+                            sv, bmp,
+                            android.view.PixelCopy.OnPixelCopyFinishedListener { r -> if (c.isActive) c.resumeWith(Result.success(r == android.view.PixelCopy.SUCCESS)) },
+                            android.os.Handler(android.os.Looper.getMainLooper()),
+                        )
+                    } catch (_: Throwable) { if (c.isActive) c.resumeWith(Result.success(false)) }
+                }
+                if (ok) { ambTop = ambientColor(bmp, 0, 4); ambBot = ambientColor(bmp, 5, 9) }
+            }
+            delay(2500)
+        }
+    }
+    val curtainP by androidx.compose.animation.core.animateFloatAsState(
+        if (curtainOpen) 1f else 0f, androidx.compose.animation.core.tween(1400, easing = androidx.compose.animation.core.FastOutSlowInEasing), label = "curtain",
+    )
+    LaunchedEffect(buffering, isPlaying, introShow, errorMsg) {
+        if (!curtainOpen && (errorMsg != null || (isPlaying && !buffering && !introShow))) {
+            delay(600)
+            curtainOpen = true
+            if (errorMsg == null) UiSound.cinema()
+        }
+    }
+    LaunchedEffect(endCard) {
+        if (endCard && vm.curtain && req.item?.kind == com.ayham.player.data.Kind.MOVIE) { curtainOpen = false; UiSound.cinema() }
+    }
+
     // إخفاء الأزرار تلقائيًا
     LaunchedEffect(controls, panel, isPlaying) {
         if (controls && panel == null && isPlaying) {
@@ -840,10 +900,16 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             .focusRequester(rootFocus)
             .focusable(),
     ) {
+        if (vm.ambient && !queue[index].isLive) {
+            val at by androidx.compose.animation.animateColorAsState(ambTop, androidx.compose.animation.core.tween(1800), label = "at")
+            val ab by androidx.compose.animation.animateColorAsState(ambBot, androidx.compose.animation.core.tween(1800), label = "ab")
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to at, 0.22f to Color.Black, 0.78f to Color.Black, 1f to ab)))
+        }
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { c ->
                 PlayerView(c).apply {
+                    pv = this
                     useController = false
                     player = exo
                     keepScreenOn = true
@@ -936,6 +1002,16 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().fillMaxHeight(0.12f * bar).background(Color.Black))
             Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.12f * bar).background(Color.Black))
         }
+        // ستارة السينما: مغلقة أثناء التحميل ثم تنفتح من الوسط، وتنغلق عند نهاية الفيلم
+        if (curtainP < 0.999f) {
+            val cb = Brush.horizontalGradient(listOf(Color(0xFF3A0510), Color(0xFF7A0C1E), Color(0xFF3A0510), Color(0xFF8A1126), Color(0xFF3A0510), Color(0xFF7A0C1E), Color(0xFF3A0510)))
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Row(Modifier.fillMaxSize()) {
+                    Box(Modifier.weight(1f).fillMaxHeight().graphicsLayer { translationX = -size.width * curtainP }.background(cb))
+                    Box(Modifier.weight(1f).fillMaxHeight().graphicsLayer { translationX = size.width * curtainP }.background(cb))
+                }
+            }
+        }
         val curE = queue[index]
         val showCover = !curE.isLive && errorMsg == null && (introShow || (buffering && introResume == 0L))
         AnimatedVisibility(showCover, enter = fadeIn(), exit = fadeOut(androidx.compose.animation.core.tween(900))) {
@@ -970,7 +1046,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             }
         }
 
-        AnimatedVisibility(endCard && req.item != null, enter = fadeIn(androidx.compose.animation.core.tween(700)), exit = fadeOut()) {
+        AnimatedVisibility(endCard && req.item != null, enter = fadeIn(androidx.compose.animation.core.tween(700, delayMillis = if (vm.curtain && req.item?.kind == com.ayham.player.data.Kind.MOVIE) 1500 else 0)), exit = fadeOut()) {
             EndCard(vm, req.item!!, vm.lang == "ar", onClose = { exit() }, onOpen = { r -> exit(); vm.openDetail(r) })
         }
 
@@ -1042,6 +1118,11 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     }
                 }
             }
+        }
+
+        // شاشة الإيقاف السينمائية
+        AnimatedVisibility(pauseOn && !endCard, enter = fadeIn(androidx.compose.animation.core.tween(900)), exit = fadeOut(androidx.compose.animation.core.tween(250))) {
+            PauseCinema(vm, req.item, queue[index].title, queue[index].image, pauseDet, pauseInfo, vm.lang == "ar", (exo.duration - exo.currentPosition).coerceAtLeast(0L))
         }
 
         // ---------------- أزرار التحكم (دائمًا يسار-يمين) ----------------
@@ -2148,6 +2229,69 @@ private fun EndCard(vm: AppViewModel, item: Item, ar: Boolean, onClose: () -> Un
                 }
             }
             GlowButton(if (ar) "إغلاق" else "Close") { onClose() }
+        }
+    }
+}
+
+
+private fun ambientColor(bmp: android.graphics.Bitmap, y0: Int, y1: Int): Color {
+    var r = 0L; var g = 0L; var b = 0L; var n = 0
+    for (y in y0 until y1) for (x in 0 until bmp.width) {
+        val p = bmp.getPixel(x, y)
+        r += android.graphics.Color.red(p); g += android.graphics.Color.green(p); b += android.graphics.Color.blue(p); n++
+    }
+    if (n == 0) return Color.Black
+    val hsv = FloatArray(3)
+    android.graphics.Color.RGBToHSV((r / n).toInt(), (g / n).toInt(), (b / n).toInt(), hsv)
+    hsv[1] = (hsv[1] * 1.15f).coerceAtMost(1f)
+    hsv[2] = hsv[2].coerceAtMost(0.55f)
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}
+
+/** شاشة الإيقاف: خلفية العمل بتقريب بطيء مع عنوانه وقصته وأبطاله بدل شريط التحكم. */
+@Composable
+private fun PauseCinema(
+    vm: AppViewModel, item: Item?, title: String, image: String,
+    det: com.ayham.player.data.Details?, info: com.ayham.player.data.SeriesInfo?, ar: Boolean, remainMs: Long,
+) {
+    val z = remember { androidx.compose.animation.core.Animatable(1f) }
+    LaunchedEffect(Unit) { z.animateTo(1.12f, androidx.compose.animation.core.tween(30_000, easing = androidx.compose.animation.core.LinearEasing)) }
+    val isSeries = item?.kind == com.ayham.player.data.Kind.SERIES
+    val epM = if (isSeries) Regex("""S(\d+)E(\d+)\s*(.*)$""").find(title) else null
+    val epPlot = epM?.let { m -> info?.seasons?.get(m.groupValues[1].toInt())?.firstOrNull { it.num == m.groupValues[2].toInt() }?.plot }
+    val bg = det?.backdrop?.takeIf { it.isNotBlank() } ?: item?.image?.takeIf { it.isNotBlank() } ?: image
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        if (bg.isNotBlank()) Img(bg, Modifier.fillMaxSize().graphicsLayer { scaleX = z.value; scaleY = z.value }.alpha(0.55f), w = 1280, h = 720)
+        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xE6000000), Color(0x66000000), Color(0xE6000000)))))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color(0x99000000), 0.35f to Color.Transparent, 0.75f to Color(0x66000000), 1f to Color(0xF0000000))))
+        Column(
+            Modifier.align(Alignment.CenterStart).padding(horizontal = 56.dp).fillMaxWidth(0.62f),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            RText(if (ar) "⏸  متوقف مؤقتاً" else "⏸  Paused", 16, C.accent, bold = true)
+            if (epM != null) {
+                item?.name?.let { RText(com.ayham.player.data.Imdb.clean(it), 22, C.primaryLight, bold = true, maxLines = 1) }
+                RText((if (ar) "الموسم " else "Season ") + epM.groupValues[1].toInt() + "  ·  " + (if (ar) "الحلقة " else "Episode ") + epM.groupValues[2].toInt(), 40, Color.White, bold = true, maxLines = 2)
+                epM.groupValues[3].trim().takeIf { it.isNotBlank() }?.let { RText(it, 24, C.text, bold = true, maxLines = 2) }
+            } else {
+                RText(com.ayham.player.data.Imdb.clean(item?.name ?: title), 40, Color.White, bold = true, maxLines = 3)
+            }
+            val meta = listOfNotNull(
+                det?.year?.takeIf { it.isNotBlank() },
+                det?.duration?.takeIf { it.isNotBlank() },
+                det?.genre?.takeIf { it.isNotBlank() }?.split(",", "/")?.take(2)?.joinToString(" · ") { it.trim() },
+                (det?.rating ?: item?.rating)?.takeIf { it.isNotBlank() && it != "0" }?.let { "★ $it" },
+            ).joinToString("   ·   ")
+            if (meta.isNotBlank()) BodyText(meta, 16, C.primaryLight)
+            val plot = (epPlot?.takeIf { it.isNotBlank() } ?: det?.plot)?.trim().orEmpty()
+            if (plot.isNotBlank()) RText(plot, 18, C.text, maxLines = 5)
+            det?.cast?.takeIf { it.isNotBlank() }?.let { c ->
+                BodyText((if (ar) "بطولة: " else "Starring: ") + c.split(",").take(4).joinToString(if (ar) "، " else ", ") { it.trim() }, 15, C.textDim)
+            }
+        }
+        Column(Modifier.align(Alignment.BottomStart).padding(horizontal = 56.dp, vertical = 36.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (remainMs > 0L) BodyText((if (ar) "يتبقى " else "Left ") + fmt(remainMs) + "   ·   " + (if (ar) "ينتهي " else "Ends ") + hm((System.currentTimeMillis() + remainMs) / 1000), 14, C.textDim)
+            BodyText(if (ar) "اضغط أي زر للمتابعة" else "Press any key to continue", 13, C.textDim)
         }
     }
 }

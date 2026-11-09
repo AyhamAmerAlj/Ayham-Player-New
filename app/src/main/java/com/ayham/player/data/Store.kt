@@ -63,7 +63,7 @@ class Store(private val ctx: Context) {
 
     private val settingKeys = listOf(
         "live_layout", "vod_layout", "app_theme", "ui_sounds", "ui_sound_pack", "clock_weather", "clock_region", "clock_city",
-        "saver_min", "match_card", "live_fmt", "max_res", "sub_style", "sub_size", "live_shift", "resume_live", "ext_auto",
+        "saver_min", "match_card", "live_fmt", "max_res", "sub_style", "sub_size", "live_shift", "resume_live", "ext_auto", "ambient", "curtain", "pause_screen",
     )
     /** ينسخ الإعدادات (لا المشاهدة ولا المفضلة) من ملف إلى آخر. */
     fun copySettings(from: String, to: String) {
@@ -157,6 +157,16 @@ class Store(private val ctx: Context) {
     var saverMin: Int
         get() = sp.getInt("saver_min", 2)
         set(v) { sp.edit().putInt("saver_min", v).apply() }
+
+    var ambient: Boolean
+        get() = sp.getBoolean("ambient", true)
+        set(v) { sp.edit().putBoolean("ambient", v).apply() }
+    var curtain: Boolean
+        get() = sp.getBoolean("curtain", true)
+        set(v) { sp.edit().putBoolean("curtain", v).apply() }
+    var pauseScreen: Boolean
+        get() = sp.getBoolean("pause_screen", true)
+        set(v) { sp.edit().putBoolean("pause_screen", v).apply() }
 
     var liveShift: Boolean
         get() = sp.getBoolean("live_shift", false)

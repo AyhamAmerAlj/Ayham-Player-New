@@ -22,7 +22,8 @@ object UiSound {
     @Volatile var pack = 0
     private var ready = 0
     private var idSplash = 0
-    private const val TOTAL = 7
+    private const val TOTAL = 8
+    private var idCinema = 0
     private var last = 0L
 
     fun init(ctx: Context) {
@@ -43,6 +44,8 @@ object UiSound {
             }
             val fs = File(dir, "splash_v1.wav").also { if (!it.exists()) it.writeBytes(wav(splashSound())) }
             idSplash = p.load(fs.path, 1)
+            val fc2 = File(dir, "cinema_v1.wav").also { if (!it.exists()) it.writeBytes(wav(cinemaSound())) }
+            idCinema = p.load(fc2.path, 1)
             pool = p
         }
     }
@@ -57,6 +60,36 @@ object UiSound {
     fun isReady() = ready >= TOTAL
     /** نغمة الافتتاحية: حفيف حرير ناعم ثم رنين هادئ عند ظهور الشعار. */
     fun splash() { if (enabled && ready >= TOTAL) pool?.play(idSplash, 0.6f, 0.6f, 1, 0, 1f) }
+
+    /** افتتاحية السينما: نبضة عميقة تتصاعد مع حفيف ستارة، ثم وتر دافئ. */
+    fun cinema() { if (enabled && ready >= TOTAL) pool?.play(idCinema, 0.7f, 0.7f, 1, 0, 1f) }
+
+    private fun cinemaSound(): ShortArray {
+        val n = (SR * 2.2).toInt()
+        val out = DoubleArray(n)
+        val rnd = java.util.Random(23L)
+        var lp = 0.0
+        for (i in 0 until n) {
+            val t = i.toDouble() / SR
+            // نبضة عميقة تتصاعد ثم تهدأ
+            val swell = sin(PI * (t / 1.6).coerceAtMost(1.0)).let { it * it }
+            val low = (sin(2 * PI * 55.0 * t) + 0.6 * sin(2 * PI * 82.5 * t)) * swell * 0.38
+            // حفيف قماش: ضجيج مصفّى يفتح خلال أول 1.3 ث
+            val x = (t / 1.3).coerceIn(0.0, 1.0)
+            lp += (0.03 + 0.2 * sin(PI * x)) * ((rnd.nextDouble() * 2 - 1) - lp)
+            val whoosh = lp * sin(PI * x) * 0.5
+            out[i] = low + whoosh
+        }
+        // وتر دافئ عند 1.1 ث
+        val st = (SR * 1.1).toInt()
+        for (i in st until n) {
+            val t = (i - st).toDouble() / SR
+            val env = (t / 0.03).coerceAtMost(1.0) * exp(-t * 2.6)
+            val v = sin(2 * PI * 261.6 * t) + 0.8 * sin(2 * PI * 329.6 * t) + 0.7 * sin(2 * PI * 392.0 * t) + 0.3 * sin(2 * PI * 523.25 * t)
+            out[i] += v / 2.8 * env * 0.4
+        }
+        return ShortArray(n) { (out[it].coerceIn(-1.0, 1.0) * 32767).toInt().toShort() }
+    }
 
     private fun splashSound(): ShortArray {
         val n = (SR * 2.4).toInt()

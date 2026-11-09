@@ -2,8 +2,12 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "253"
+    const val id = "255"
     val ar = listOf(
+        "شاشة إيقاف سينمائية: لو أوقفت فيلماً أو حلقة تظهر خلفيته بحركة هادئة مع القصة والأبطال والمتبقي بدل شريط التحكم (اختيارية من الإعدادات)",
+        "ستارة سينما تنفتح عند بدء الفيلم وتنغلق عند نهايته مع صوت افتتاحية (اختيارية)",
+        "إضاءة محيطة تملأ الأشرطة السوداء حول الفيلم بألوان المشهد (اختيارية)",
+        "خلفية الرئيسية تتقرّب ببطء بعد الوقوف على العمل، مثل مقدمة العرض",
         "الملفات الشخصية: شاشة «من يشاهد الآن؟» بتصميم سينمائي، لكل ملف مفضلته وسجل مشاهدته وآخر قناة وتفضيلاته وإعداداته المستقلة",
         "تخصيص الملف: الاسم واللقب والصورة (48 رمزاً أو صورة من جهازك) واللون والخلفية والإطار و8 أنماط جاهزة مع معاينة مباشرة",
         "ملف أطفال بتقييد حسب العمر وبدون إعدادات، وملف ضيف مؤقت، ورمز PIN من 4 أرقام لأي ملف، وإخفاء الملفات",
@@ -29,6 +33,10 @@ object WhatsNew {
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "Cinematic pause screen: pause a movie or episode and see its backdrop, story, cast and time left instead of the controls (optional)",
+        "Cinema curtain opens when a movie starts and closes at the end, with an opening sound (optional)",
+        "Ambient glow fills the black bars around a movie with the scene's colors (optional)",
+        "Home backdrop slowly zooms after you rest on a title, like a trailer intro",
         "Profiles: a cinematic \"Who's watching?\" screen; each profile keeps its own favorites, history, last channel, preferences and settings",
         "Customize a profile: name, tagline, avatar (48 icons or your own photo), color, background, frame and 8 ready styles with live preview",
         "Kids profile with age restriction and no settings, a temporary Guest profile, a 4-digit PIN per profile, and hidden profiles",
@@ -59,7 +67,7 @@ object WhatsNew {
 data class Release(val id: String, val ar: List<String>, val en: List<String>)
 
 val releaseHistory = listOf(
-    Release("253", WhatsNew.ar, WhatsNew.en),
+    Release("255", WhatsNew.ar, WhatsNew.en),
     Release("237", listOf("افتتاحية سينمائية جديدة بشعار Ayham"), listOf("New cinematic opening with the Ayham logo")),
     Release("227", listOf(
         "تقييمات متعددة (IMDb وRotten Tomatoes وMetacritic وTMDB وTrakt)",

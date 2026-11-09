@@ -2,6 +2,7 @@ package com.ayham.player.ui
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -124,7 +125,10 @@ fun TvHome(
     Box(Modifier.fillMaxSize()) {
         val bg = details?.backdrop.orEmpty().ifEmpty { item.image }
         Crossfade(targetState = bg, modifier = Modifier.fillMaxSize(), animationSpec = tween(500), label = "tvhomeBg") { url ->
-            Img(url, Modifier.fillMaxSize(), w = 1280, h = 720)
+            // بعد 2.5 ث من الوقوف على العمل تبدأ الخلفية بتقريب بطيء (مثل مقدمة العرض)
+            val z = remember { androidx.compose.animation.core.Animatable(1f) }
+            LaunchedEffect(url) { z.snapTo(1f); delay(2500); z.animateTo(1.1f, tween(16000, easing = androidx.compose.animation.core.LinearEasing)) }
+            Img(url, Modifier.fillMaxSize().graphicsLayer { scaleX = z.value; scaleY = z.value }, w = 1280, h = 720)
         }
         Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(tc(0x990B0614), tc(0x220B0614), tc(0x990B0614)))))
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to tc(0xAA0B0614), 0.3f to tc(0x000B0614), 0.5f to tc(0xBB05020B), 1f to tc(0xFF05020B))))
