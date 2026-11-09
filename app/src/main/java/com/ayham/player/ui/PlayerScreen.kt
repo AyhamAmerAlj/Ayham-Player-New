@@ -140,7 +140,8 @@ private fun subMime(url: String): String {
     return when {
         clean.endsWith(".vtt") -> MimeTypes.TEXT_VTT
         clean.endsWith(".ass") || clean.endsWith(".ssa") -> MimeTypes.TEXT_SSA
-        clean.endsWith(".ttml") || clean.endsWith(".xml") -> MimeTypes.APPLICATION_TTML
+        clean.endsWith(".ttml") || clean.endsWith(".xml") || clean.endsWith(".dfxp") -> MimeTypes.APPLICATION_TTML
+        clean.endsWith(".sup") -> MimeTypes.APPLICATION_PGS
         else -> MimeTypes.APPLICATION_SUBRIP
     }
 }
@@ -1414,7 +1415,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                 }
                             }
                             if (tv) item { PanelItem(t("sub_phone"), sub = t("sub_phone_help")) { panel = Panel.SUBPHONE } }
-                            else item { PanelItem(t("sub_file"), sub = "srt / vtt / zip") { pickSub.launch(arrayOf("*/*")) } }
+                            else item { PanelItem(t("sub_file"), sub = "srt · vtt · ass · sub · smi · lrc · ttml · zip") { pickSub.launch(arrayOf("*/*")) } }
                             item { PanelItem(t("sub_trysub"), sub = "subdl.com") { panel = Panel.TRYSUB } }
                             item { PanelItem(t("sub_url")) { panel = Panel.SUBURL } }
                             item { PanelItem(t("back")) { panel = Panel.MENU } }

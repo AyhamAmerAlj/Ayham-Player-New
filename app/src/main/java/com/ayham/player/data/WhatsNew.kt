@@ -2,8 +2,9 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "255"
+    const val id = "256"
     val ar = listOf(
+        "رفع الترجمة بصيغ أكثر: srt وvtt وass وssa وsub وsbv وsmi وlrc وttml وdfxp وsup وtxt وzip وgz (الصيغ غير المدعومة تُحوَّل تلقائياً)",
         "شاشة إيقاف سينمائية: لو أوقفت فيلماً أو حلقة تظهر خلفيته بحركة هادئة مع القصة والأبطال والمتبقي بدل شريط التحكم (اختيارية من الإعدادات)",
         "ستارة سينما تنفتح عند بدء الفيلم وتنغلق عند نهايته مع صوت افتتاحية (اختيارية)",
         "إضاءة محيطة تملأ الأشرطة السوداء حول الفيلم بألوان المشهد (اختيارية)",
@@ -33,6 +34,7 @@ object WhatsNew {
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "Upload subtitles in many more formats: srt, vtt, ass, ssa, sub, sbv, smi, lrc, ttml, dfxp, sup, txt, zip, gz (unsupported ones are converted automatically)",
         "Cinematic pause screen: pause a movie or episode and see its backdrop, story, cast and time left instead of the controls (optional)",
         "Cinema curtain opens when a movie starts and closes at the end, with an opening sound (optional)",
         "Ambient glow fills the black bars around a movie with the scene's colors (optional)",
@@ -67,7 +69,7 @@ object WhatsNew {
 data class Release(val id: String, val ar: List<String>, val en: List<String>)
 
 val releaseHistory = listOf(
-    Release("255", WhatsNew.ar, WhatsNew.en),
+    Release("256", WhatsNew.ar, WhatsNew.en),
     Release("237", listOf("افتتاحية سينمائية جديدة بشعار Ayham"), listOf("New cinematic opening with the Ayham logo")),
     Release("227", listOf(
         "تقييمات متعددة (IMDb وRotten Tomatoes وMetacritic وTMDB وTrakt)",

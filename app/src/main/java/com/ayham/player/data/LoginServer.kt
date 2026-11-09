@@ -177,8 +177,8 @@ button{width:100%;padding:15px;border:0;border-radius:24px;background:#8B5CF6;co
 <h1>إرسال ترجمة للشاشة</h1>
 <p class=s>1) حمّل ملف الترجمة من الموقع ثم 2) اخترها وأرسلها</p>
 <a href="https://subdl.com/" target=_blank style="display:block;text-align:center;padding:14px;border-radius:24px;border:1px solid #8B5CF6;color:#C4A1FF;text-decoration:none;margin-bottom:22px">فتح موقع SubDL</a>
-<label>ملف الترجمة (srt / vtt / ass / zip)</label>
-<input id=f type=file accept=".srt,.vtt,.ass,.ssa,.zip">
+<label>ملف الترجمة (srt · vtt · ass · ssa · sub · sbv · smi · lrc · ttml · dfxp · sup · txt · zip · gz)</label>
+<input id=f type=file>
 <button onclick="send()">إرسال للشاشة</button>
 <p id=m class=s></p>
 <script>
