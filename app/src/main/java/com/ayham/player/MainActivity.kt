@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
         com.ayham.player.ui.AppIcon.load(com.ayham.player.data.Store(this).appIcon)
         ThemeState.select(com.ayham.player.data.Store(this).appTheme)
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(ThemeState.palette.bg.toArgb()))
+        com.ayham.player.ui.FrameRate.load(this); com.ayham.player.ui.FrameRate.apply(this, com.ayham.player.ui.FrameRate.ui)
         LicenseManager.init(this)
         lifecycleScope.launch { LicenseManager.start(); LicenseManager.heartbeat() }
         setContent {

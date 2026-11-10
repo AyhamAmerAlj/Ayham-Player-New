@@ -257,7 +257,9 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             ctl?.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             ctl?.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
         }
+        activity?.let { FrameRate.apply(it, FrameRate.player) }
         onDispose {
+            activity?.let { FrameRate.apply(it, FrameRate.ui) }
             if (!tv) {
                 activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_USER
                 ctl?.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())

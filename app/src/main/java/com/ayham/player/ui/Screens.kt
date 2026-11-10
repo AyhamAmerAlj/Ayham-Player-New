@@ -1020,6 +1020,28 @@ fun SettingsTab(vm: AppViewModel) {
             ThemeState.palette.taglineSub?.let { BodyText(it, 15, C.textDim) }
         }
 
+        val act = ctx as? android.app.Activity
+        val sup = remember { act?.let { FrameRate.supported(it) } ?: emptyList() }
+        RText(if (ar) "معدل الفريمات (FPS)" else "Frame rate (FPS)", 22, C.primaryLight, bold = true)
+        BodyText(if (ar) "يُطبَّق على شاشة جهازك فعلياً. أقل = أخف وأوفر، أعلى = أنعم. التلقائي يترك القرار للنظام." else "Applied to your real display. Lower = lighter, higher = smoother. Auto lets the system decide.", 13, C.textDim)
+        if (sup.isNotEmpty()) BodyText((if (ar) "جهازك يدعم: " else "Your device supports: ") + sup.joinToString(" / ") { "${it}Hz" }, 13, C.textDim)
+        listOf(
+            (if (ar) "التصفح (الرئيسية والأفلام والمسلسلات)" else "Browsing (home, movies, series)") to true,
+            (if (ar) "المشغّل" else "Player") to false,
+        ).forEach { (title, isUi) ->
+            RText(title, 16, C.text)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FrameRate.choices.forEach { hz ->
+                    val cur = if (isUi) FrameRate.ui else FrameRate.player
+                    val real = hz == 0 || FrameRate.resolve(act ?: return@forEach, hz) == hz
+                    Chip(FrameRate.label(hz, ar) + if (!real) " *" else "", cur == hz) {
+                        act?.let { if (isUi) FrameRate.setUi(it, hz) else FrameRate.setPlayer(it, hz) }
+                        if (!real) android.widget.Toast.makeText(ctx, if (ar) "جهازك لا يدعم هذا التردد، سيُستخدم الأقرب له" else "Not supported by your display; the closest rate is used", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+
         RText(if (ar) "أيقونة التطبيق" else "App icon", 22, C.primaryLight, bold = true)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             AppIcon.all.forEach { k ->

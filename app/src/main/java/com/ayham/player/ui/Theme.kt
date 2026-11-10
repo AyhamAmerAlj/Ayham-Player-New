@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -169,7 +170,7 @@ fun Focusable(
 ) {
     var focused by remember { mutableStateOf(false) }
     val longFired = remember { booleanArrayOf(false) }
-    val sc by animateFloatAsState(if (focused) focusScale else 1f, tween(90), label = "sc")
+    val sc by animateFloatAsState(if (focused) focusScale else 1f, spring(dampingRatio = 0.72f, stiffness = 420f), label = "sc")
     Box(
         modifier = modifier
             .graphicsLayer { scaleX = sc; scaleY = sc }
