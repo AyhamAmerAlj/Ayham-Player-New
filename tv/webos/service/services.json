@@ -1,0 +1,7 @@
+{
+  "id": "com.ayham.player.tv.service",
+  "description": "Ayham Player fetch helper",
+  "services": [
+    { "name": "com.ayham.player.tv.service", "description": "Ayham Player fetch helper" }
+  ]
+}

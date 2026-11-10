@@ -1,0 +1,6 @@
+{
+  "name": "com.ayham.player.tv.service",
+  "version": "1.0.0",
+  "description": "Ayham Player fetch helper",
+  "main": "service.js"
+}

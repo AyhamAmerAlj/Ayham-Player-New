@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths-ignore:
       - 'web/**'
+      - 'tv/**'
   workflow_dispatch:
 
 permissions:

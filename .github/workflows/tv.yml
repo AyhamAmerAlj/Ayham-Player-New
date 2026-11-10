@@ -1,0 +1,49 @@
+name: Build TV apps (LG webOS + Samsung Tizen)
+
+on:
+  push:
+    branches: [main]
+    paths: ['tv/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Syntax check
+        run: node --check tv/app/app.js && node --check tv/webos/service/service.js
+
+      - name: Package LG webOS (.ipk)
+        run: |
+          npm i -g @webos-tools/cli
+          rm -rf build && mkdir -p build/webos-app build/webos-service out
+          cp -r tv/app/. build/webos-app/
+          cp tv/webos/appinfo.json tv/webos/icon.png tv/webos/largeIcon.png build/webos-app/
+          cp -r tv/webos/service/. build/webos-service/
+          ares-package --no-minify -o out build/webos-app build/webos-service
+          ls -la out
+          cp out/*.ipk AyhamPlayer-webOS.ipk
+
+      - name: Package Samsung Tizen (.wgt, unsigned)
+        run: |
+          mkdir -p build/tizen && cp -r tv/app/. build/tizen/
+          cp tv/tizen/config.xml tv/tizen/icon.png build/tizen/
+          (cd build/tizen && zip -qr ../../AyhamPlayer-Tizen-unsigned.wgt .)
+          (cd build && zip -qr ../AyhamPlayer-Tizen-project.zip tizen)
+
+      - name: Publish release "tv"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete tv --yes --cleanup-tag 2>/dev/null || true
+          gh release create tv --latest=false --title "Ayham Player TV (LG / Samsung)" \
+            --notes "ملفات تطبيق الشاشات: LG webOS (ipk) وSamsung Tizen (wgt غير موقّع + مشروع)" \
+            AyhamPlayer-webOS.ipk AyhamPlayer-Tizen-unsigned.wgt AyhamPlayer-Tizen-project.zip

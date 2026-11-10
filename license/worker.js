@@ -4,7 +4,7 @@
 const ACTIVE_MS = 10 * 60 * 1000; // الجلسة تُعتبر حيّة 10 دقائق بعد آخر نبضة
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST, GET, OPTIONS' } });
 const now = () => Date.now();
 function cleanSrv(b) {
   const url = String(b.url || '').trim().replace(/\/+$/, '');

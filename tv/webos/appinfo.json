@@ -1,0 +1,13 @@
+{
+  "id": "com.ayham.player.tv",
+  "version": "1.0.0",
+  "vendor": "Ayham",
+  "type": "web",
+  "main": "index.html",
+  "title": "Ayham Player",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "resolution": "1920x1080",
+  "bgColor": "#0C0618",
+  "disableBackHistoryAPI": true
+}
