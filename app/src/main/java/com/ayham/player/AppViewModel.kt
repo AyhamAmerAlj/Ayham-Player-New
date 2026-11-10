@@ -858,6 +858,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (q.length < 2) emptyList() else db.search(kind, q, limit)
     }
 
+    /** يغيّر أيقونة التطبيق (على مستوى الجهاز) ويطبّق ثيمها على الملف الحالي. */
+    fun changeAppIcon(ctx: android.content.Context, k: String) {
+        com.ayham.player.ui.AppIcon.apply(ctx, k)
+        store.appIcon = k
+        changeTheme(com.ayham.player.ui.AppIcon.themeOf(k))
+    }
+
     fun changeTheme(id: String) {
         com.ayham.player.ui.ThemeState.select(id)
         store.appTheme = com.ayham.player.ui.ThemeState.id

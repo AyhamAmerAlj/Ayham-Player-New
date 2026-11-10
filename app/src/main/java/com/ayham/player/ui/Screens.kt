@@ -107,14 +107,13 @@ fun SplashScreen() {
         androidx.compose.animation.core.infiniteRepeatable(tween(1600, easing = androidx.compose.animation.core.FastOutSlowInEasing), androidx.compose.animation.core.RepeatMode.Reverse),
         label = "pulse",
     )
-    val violet = Color(0xFF8B5CF6)
-    val magenta = Color(0xFFD946EF)
+    val (violet, magenta, splashBg) = AppIcon.splashColors()
     val compact = isCompact()
     val box = if (compact) 150.dp else 200.dp
     val fs = if (compact) 30 else 42
     fun seg(t: Float, a: Float, b: Float) = ((t - a) / (b - a)).coerceIn(0f, 1f)
     fun ease(x: Float) = 1f - (1f - x) * (1f - x) * (1f - x)
-    Box(Modifier.fillMaxSize().background(Color(0xFF030106)), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(splashBg), contentAlignment = Alignment.Center) {
         androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
             val t = p.value
             val g = 0.34f * ease(seg(t, 0.05f, 0.7f)) * (if (t >= 0.95f) pulse else 1f)
@@ -154,7 +153,7 @@ fun SplashScreen() {
                     }
                 }
                 Image(
-                    painterResource(R.drawable.ic_launcher), null,
+                    painterResource(AppIcon.res()), null,
                     Modifier.size(box * 0.78f).graphicsLayer {
                         val x = seg(p.value, 0.46f, 0.70f)
                         val back = 1f + 2.2f * Math.pow((x - 1f).toDouble(), 3.0).toFloat() + 1.2f * Math.pow((x - 1f).toDouble(), 2.0).toFloat()
@@ -166,10 +165,10 @@ fun SplashScreen() {
             }
             androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
                 // الاسم كنص واحد (أخف بكثير من حرف لكل عنصر) مع ظهور وتكبير ناعم
-                val name = remember {
+                val name = remember(magenta) {
                     androidx.compose.ui.text.buildAnnotatedString {
                         withStyle(androidx.compose.ui.text.SpanStyle(color = Color.White)) { append("AYHAM ") }
-                        withStyle(androidx.compose.ui.text.SpanStyle(color = Color(0xFFD946EF))) { append("PLAYER") }
+                        withStyle(androidx.compose.ui.text.SpanStyle(color = magenta)) { append("PLAYER") }
                     }
                 }
                 androidx.compose.foundation.text.BasicText(
@@ -261,7 +260,7 @@ fun LoginScreen(vm: AppViewModel) {
                 verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
             ) {
                 Image(
-                    painterResource(R.drawable.ic_launcher), null,
+                    painterResource(AppIcon.res()), null,
                     Modifier.size(if (compact) 96.dp else 170.dp),
                 )
                 RText("Ayham Player", if (compact) 24 else 40, C.text, bold = true)
@@ -305,7 +304,7 @@ fun LoadingScreen(vm: AppViewModel) {
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Image(painterResource(R.drawable.ic_launcher), null, Modifier.size(120.dp).graphicsLayer { scaleX = sc; scaleY = sc })
+            Image(painterResource(AppIcon.res()), null, Modifier.size(120.dp).graphicsLayer { scaleX = sc; scaleY = sc })
             ThemeState.palette.tagline?.let { RText(it, 18, C.gold, bold = true) }
         }
         StripeBar(Modifier.align(Alignment.TopCenter))
@@ -1013,11 +1012,34 @@ fun SettingsTab(vm: AppViewModel) {
             Chip("Light Mode", ThemeState.id == Themes.LIGHT) { vm.changeTheme(Themes.LIGHT) }
             Chip("Ayham", ThemeState.id == Themes.AYHAM) { vm.changeTheme(Themes.AYHAM) }
             Chip("Royal White", ThemeState.id == Themes.ROYAL) { vm.changeTheme(Themes.ROYAL) }
+            Chip("VIC11", ThemeState.id == Themes.VIC11) { vm.changeTheme(Themes.VIC11) }
+            Chip("CY19", ThemeState.id == Themes.CY19) { vm.changeTheme(Themes.CY19) }
         }
         ThemeState.palette.tagline?.let { tl ->
             RText(tl, 20, C.gold, bold = true)
             ThemeState.palette.taglineSub?.let { BodyText(it, 15, C.textDim) }
         }
+
+        RText(if (ar) "أيقونة التطبيق" else "App icon", 22, C.primaryLight, bold = true)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            AppIcon.all.forEach { k ->
+                val on = AppIcon.id == k
+                Focusable(shape = RoundedCornerShape(18.dp), focusScale = 1.08f, onClick = {
+                    vm.changeAppIcon(ctx, k)
+                    android.widget.Toast.makeText(ctx, if (ar) "تم تغيير الأيقونة والثيم، وقد تحتاج ثواني لتظهر بالشاشة الرئيسية" else "Icon and theme changed. It may take a few seconds to show on the home screen", android.widget.Toast.LENGTH_LONG).show()
+                }) { _ ->
+                    Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Image(
+                            painterResource(AppIcon.resOf(k)), null,
+                            Modifier.size(72.dp).clip(RoundedCornerShape(16.dp))
+                                .then(if (on) Modifier.border(3.dp, C.accent, RoundedCornerShape(16.dp)) else Modifier),
+                        )
+                        RText(AppIcon.nameOf(k, ar), 14, if (on) C.accent else C.textDim, bold = on)
+                    }
+                }
+            }
+        }
+        BodyText(if (ar) "يتغير ثيم التطبيق والافتتاحية مع الأيقونة تلقائياً. وتقدر تغيّر الثيم لاحقاً بشكل مستقل." else "The app theme and splash follow the icon. You can change the theme separately afterwards.", 13, C.textDim)
 
         RText(if (ar) "مباراة برشلونة القادمة" else "Next Barcelona match", 22, C.primaryLight, bold = true)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

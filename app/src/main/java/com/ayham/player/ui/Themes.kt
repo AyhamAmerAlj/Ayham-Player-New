@@ -46,6 +46,8 @@ object Themes {
     const val LIGHT = "light"
     const val AYHAM = "ayham"
     const val ROYAL = "royal"
+    const val VIC11 = "vic11"
+    const val CY19 = "cy19"
 
     val original = Palette(
         id = ORIGINAL,
@@ -185,7 +187,49 @@ object Themes {
         glow = Color(0xFF1E3A6E),
     )
 
-    val all: List<Palette> = listOf(original, barcelona, dark, light, ayham, royal)
+    /** VIC11: بنفسجي داكن عميق مع وهج مرجاني-خوخي، مستوحى من الشعار الأول. */
+    private val vic11Remap: Map<Long, Long> = mapOf(
+        0x030106L to 0x0C0618L,
+        0x05020BL to 0x0E0620L, 0x0B0614L to 0x150A2BL, 0x0A0518L to 0x150A2BL, 0x0E0820L to 0x1A0D34L,
+        0x120A26L to 0x1E0F3CL, 0x140A26L to 0x1E0F3CL, 0x1C1033L to 0x2B1650L, 0x2A1260L to 0x3A1D6AL,
+        0x2A1850L to 0x3E2370L, 0x3B1A7AL to 0x4D2A86L,
+        0x8B5CF6L to 0xD14B86L, 0x6D28D9L to 0xA83770L, 0x7C3AEDL to 0xBE4079L, 0xA855F7L to 0xE0608FL,
+        0x8B1FD9L to 0xA83770L, 0x9F67FFL to 0xF0788CL, 0xA78BFAL to 0xFFAA8EL, 0xC4A1FFL to 0xFFC4AAL,
+        0xD946EFL to 0xFF8A7AL, 0xE879F9L to 0xFFA08AL,
+    )
+
+    val vic11 = Palette(
+        id = VIC11,
+        bg = Color(0xFF150A2B), bg2 = Color(0xFF1E0F3C), surface = Color(0xFF2B1650), surfaceHi = Color(0xFF3E2370),
+        primary = Color(0xFFD14B86), primaryLight = Color(0xFFFFAA8E), accent = Color(0xFFFF8A7A),
+        text = Color(0xFFFFF5F2), textDim = Color(0xFFC9B3C8), danger = Color(0xFFFF6B8B), ok = Color(0xFF5EEAD4),
+        remap = vic11Remap,
+        stripe = listOf(Color(0xFFD14B86), Color(0xFFFF9A7A)),
+        glow = Color(0xFFFF7A8A),
+    )
+
+    /** CY19: خلفية نيلية داكنة بتدرج أزرق-بنفسجي ثم وردي ثم برتقالي، مستوحى من الشعار الثاني. */
+    private val cy19Remap: Map<Long, Long> = mapOf(
+        0x030106L to 0x08031CL,
+        0x05020BL to 0x08031CL, 0x0B0614L to 0x0F0826L, 0x0A0518L to 0x0F0826L, 0x0E0820L to 0x130A30L,
+        0x120A26L to 0x170C38L, 0x140A26L to 0x170C38L, 0x1C1033L to 0x241454L, 0x2A1260L to 0x3A1F86L,
+        0x2A1850L to 0x34206FL, 0x3B1A7AL to 0x4A2AA0L,
+        0x8B5CF6L to 0xE0389FL, 0x6D28D9L to 0xB82A80L, 0x7C3AEDL to 0xCE3190L, 0xA855F7L to 0xF056B0L,
+        0x8B1FD9L to 0xB82A80L, 0x9F67FFL to 0x7A5CFFL, 0xA78BFAL to 0xFF9AC8L, 0xC4A1FFL to 0xFFC2E0L,
+        0xD946EFL to 0xFFA14AL, 0xE879F9L to 0xFFB45EL,
+    )
+
+    val cy19 = Palette(
+        id = CY19,
+        bg = Color(0xFF0F0826), bg2 = Color(0xFF170C38), surface = Color(0xFF241454), surfaceHi = Color(0xFF34206F),
+        primary = Color(0xFFE0389F), primaryLight = Color(0xFFFF9AC8), accent = Color(0xFFFFA14A),
+        text = Color(0xFFFFF7FC), textDim = Color(0xFFC8B4DE), danger = Color(0xFFFF6B8B), ok = Color(0xFF5EEAD4),
+        remap = cy19Remap,
+        stripe = listOf(Color(0xFF5B3DF5), Color(0xFFE0389F), Color(0xFFFFA14A)),
+        glow = Color(0xFF5B3DF5),
+    )
+
+    val all: List<Palette> = listOf(original, barcelona, dark, light, ayham, royal, vic11, cy19)
 
     fun byId(id: String): Palette = all.firstOrNull { it.id == id } ?: original
 }
@@ -217,3 +261,54 @@ fun tc(argb: Long): Color {
     return Color((argb and 0xFF000000L) or to)
 }
 
+
+
+/**
+ * أيقونة التطبيق (على مستوى الجهاز). تغييرها يبدّل أيقونة المشغّل وشعار الشاشات والافتتاحية والثيم المرتبط بها.
+ * التبديل الفعلي يتم بتفعيل activity-alias واحد وتعطيل الباقي.
+ */
+object AppIcon {
+    const val DEFAULT = "default"
+    const val VIC11 = "vic11"
+    const val CY19 = "cy19"
+    val all = listOf(DEFAULT, VIC11, CY19)
+
+    var id: String by mutableStateOf(DEFAULT)
+        private set
+
+    fun load(saved: String) { id = if (saved in all) saved else DEFAULT }
+
+    fun res(): Int = when (id) {
+        VIC11 -> com.ayham.player.R.drawable.ic_launcher_vic11
+        CY19 -> com.ayham.player.R.drawable.ic_launcher_cy19
+        else -> com.ayham.player.R.drawable.ic_launcher
+    }
+    fun resOf(k: String): Int = when (k) {
+        VIC11 -> com.ayham.player.R.drawable.ic_launcher_vic11
+        CY19 -> com.ayham.player.R.drawable.ic_launcher_cy19
+        else -> com.ayham.player.R.drawable.ic_launcher
+    }
+    fun themeOf(k: String): String = when (k) { VIC11 -> Themes.VIC11; CY19 -> Themes.CY19; else -> Themes.ORIGINAL }
+    fun nameOf(k: String, ar: Boolean): String = when (k) { VIC11 -> "VIC11"; CY19 -> "CY19"; else -> if (ar) "الأصلي" else "Original" }
+
+    /** ألوان الافتتاحية حسب الشعار: (لون أول، لون ثانٍ، خلفية). */
+    fun splashColors(): Triple<Color, Color, Color> = when (id) {
+        VIC11 -> Triple(Color(0xFFD14B86), Color(0xFFFF9A7A), Color(0xFF0C0618))
+        CY19 -> Triple(Color(0xFF5B3DF5), Color(0xFFFF3AA8), Color(0xFF08031C))
+        else -> Triple(Color(0xFF8B5CF6), Color(0xFFD946EF), Color(0xFF030106))
+    }
+
+    /** يبدّل الأيقونة فعلياً: يفعّل الاسم البديل الجديد أولاً ثم يعطّل الباقي حتى لا يختفي التطبيق من القائمة. */
+    fun apply(ctx: android.content.Context, k: String) {
+        val names = mapOf(DEFAULT to "IconDefault", VIC11 to "IconVic11", CY19 to "IconCy19")
+        val pm = ctx.packageManager
+        fun cn(n: String) = android.content.ComponentName(ctx.packageName, "com.ayham.player.$n")
+        runCatching {
+            pm.setComponentEnabledSetting(cn(names.getValue(k)), android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED, android.content.pm.PackageManager.DONT_KILL_APP)
+            for ((key, n) in names) if (key != k) {
+                pm.setComponentEnabledSetting(cn(n), android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED, android.content.pm.PackageManager.DONT_KILL_APP)
+            }
+        }
+        id = if (k in all) k else DEFAULT
+    }
+}

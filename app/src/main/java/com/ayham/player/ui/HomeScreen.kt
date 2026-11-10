@@ -108,7 +108,7 @@ fun Sidebar(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusRequ
             .padding(horizontal = 12.dp, vertical = 12.dp),
     ) {
         Row(Modifier.padding(start = 6.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Image(painterResource(R.drawable.ic_launcher), null, Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)))
+            Image(painterResource(AppIcon.res()), null, Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)))
             Spacer(Modifier.width(8.dp))
             Column {
                 RText("Ayham", 16, Color.White, bold = true, maxLines = 1)
@@ -670,7 +670,7 @@ fun TvTopNav(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusReq
             }
         }
         // اليمين: أيقونة التطبيق فقط
-        Image(painterResource(R.drawable.ic_launcher), null, Modifier.size(48.dp).clip(RoundedCornerShape(13.dp)))
+        Image(painterResource(AppIcon.res()), null, Modifier.size(48.dp).clip(RoundedCornerShape(13.dp)))
     }
 }
 

@@ -12,6 +12,11 @@ class Store(private val ctx: Context) {
     /** تخزين الملف الشخصي النشط: مفضلته وسجله وتفضيلاته وإعداداته مستقلة تماماً. */
     private val sp: android.content.SharedPreferences get() = cur
 
+    /** أيقونة التطبيق (على مستوى الجهاز): default / vic11 / cy19. */
+    var appIcon: String
+        get() = gsp.getString("app_icon", "default") ?: "default"
+        set(v) { gsp.edit().putString("app_icon", v).apply() }
+
     var activeId: String = "main"
         private set
 

@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
             android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_USER
         // الثيم المحفوظ يُطبّق قبل أول رسم للواجهة
+        com.ayham.player.ui.AppIcon.load(com.ayham.player.data.Store(this).appIcon)
         ThemeState.select(com.ayham.player.data.Store(this).appTheme)
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(ThemeState.palette.bg.toArgb()))
         LicenseManager.init(this)

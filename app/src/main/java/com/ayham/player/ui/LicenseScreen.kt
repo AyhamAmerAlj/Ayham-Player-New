@@ -55,7 +55,7 @@ fun LicenseScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Image(painterResource(R.drawable.ic_launcher), null, Modifier.size(84.dp).clip(RoundedCornerShape(20.dp)))
+            Image(painterResource(AppIcon.res()), null, Modifier.size(84.dp).clip(RoundedCornerShape(20.dp)))
             RText("تفعيل Ayham Player", 26, C.text, bold = true)
             BodyText("اكتب كود التفعيل الذي استلمته. للشراء تواصل عبر واتساب: 07828244399", 14, C.textDim)
             AyhamField(code, { code = it.uppercase() }, "كود التفعيل", if (tv) Modifier.autoFocus() else Modifier, imeAction = ImeAction.Done) { go() }
