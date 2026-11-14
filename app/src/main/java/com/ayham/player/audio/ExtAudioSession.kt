@@ -158,7 +158,7 @@ class ExtAudioSession(
         mainTap.clear()
         extTap.enabled = autoSync
         mainTap.enabled = autoSync
-        val p = PlayerFactory.create(ctx, maxRes, extTap, pcmOnly = true, delayProcessor = delayProcessor)
+        val p = PlayerFactory.create(ctx, maxRes, extTap, pcmOnly = true, delayProcessor = delayProcessor, lite = true)
         p.trackSelectionParameters = pipParams(p)
         p.volume = volume
         p.addListener(extListener)
@@ -184,7 +184,8 @@ class ExtAudioSession(
     private fun pipParams(p: ExoPlayer) = p.trackSelectionParameters.buildUpon()
         .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, !pip)
         .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
-        .setMaxVideoSize(640, 360)
+        .setMaxVideoSize(if (pip) 640 else 426, if (pip) 360 else 240)
+        .setMaxVideoBitrate(if (pip) 1_800_000 else 900_000)
         .build()
 
     fun changePip(on: Boolean) {
@@ -403,6 +404,7 @@ class ExtAudioSession(
     private fun resetMeasure() {
         phase = Phase.MEASURING
         prevLag = null
+        recent.clear()
         extTap.clear()
         mainTap.clear()
     }
@@ -482,28 +484,70 @@ class ExtAudioSession(
         }
     }
 
+    private val recent = ArrayList<SyncEstimate>()
+    private var lastActAt = 0L
+
+    private fun fmtS(x: Double) = String.format(java.util.Locale.US, "%.1f", x)
+
     private fun onEstimate(est: SyncEstimate?) {
-        if (est == null || est.confidence < 0.30) {
-            prevLag = null
-            status = s(
-                "ثقة منخفضة: تعذّر مطابقة الصوتين (قد لا تنقل القناتان نفس الحدث). المزامنة لم تتغير.",
-                "Low confidence: couldn't match the two audios (channels may show different events). Sync unchanged.",
-            )
-            return
-        }
+        if (est == null) { prevLag = null; recent.clear(); return }
+        recent.add(est)
+        while (recent.size > 4) recent.removeAt(0)
         val lag = est.lagSec
-        val pl = prevLag
+        val pct = (est.confidence * 100).toInt().coerceIn(0, 99)
         prevLag = lag
-        if (pl == null || abs(lag - pl) > 0.25) {
-            status = s("جارٍ التأكد من القياس…", "Verifying measurement…")
+        fun agree(k: Int, tol: Double): Boolean =
+            recent.size >= k && recent.takeLast(k).all { abs(it.lagSec - lag) <= tol }
+        // القياس يُقبل لو الثقة عالية وتكرر مرتين، أو متوسطة وتكرر ثلاث مرات متتالية بنفس الفرق
+        val strong = est.confidence >= 0.75 && agree(2, 0.25)
+        val steady = est.confidence >= 0.45 && recent.takeLast(3).all { it.confidence >= 0.45 } && agree(3, 0.3)
+        if (!strong && !steady) {
+            status = if (est.confidence >= 0.25)
+                s("أفضل تقدير ${fmtS(lag)} ث (ثقة $pct%)… جارٍ التأكد من صوت الجمهور", "Best estimate ${fmtS(lag)}s ($pct%)… confirming with crowd sound")
+            else
+                s("ثقة منخفضة ($pct%): صوت الجمهور غير واضح الآن. نكمل التحليل تلقائيًا.", "Low confidence ($pct%): crowd sound unclear right now. Still analyzing.")
             return
         }
-        delayMs = (lag * 1000).toLong()
-        val pct = (est.confidence * 100).toInt().coerceAtMost(99)
+        if (now() - lastActAt < 20_000L && abs(lag) > 0.18) return // ننتظر تأثير التصحيح السابق
+        // lag مقيس قبل معالج التأخير: الفرق الفعلي = lag + التأخير المطبّق
+        val d = delayProcessor.delayMs
+        val eff = lag + d / 1000.0
         when {
-            abs(lag) <= 0.18 -> status = s("تمت المزامنة بصوت الجمهور (فرق ${(abs(lag) * 1000).toInt()}ms، ثقة $pct%)", "Synced (diff ${(abs(lag) * 1000).toInt()}ms, confidence $pct%)")
-            abs(lag) > 14.0 -> status = s("الفرق كبير جدًا (${"%.1f".format(abs(lag))}ث). جرّب قناة ثانية أو إعادة التشغيل.", "Difference too large (${"%.1f".format(abs(lag))}s). Try another channel.")
-            else -> startCorrection(lag)
+            abs(eff) <= 0.18 -> {
+                delayMs = d
+                status = s("تمت المزامنة بصوت الجمهور (فرق ${(abs(eff) * 1000).toInt()}ms، ثقة $pct%)", "Synced by crowd sound (diff ${(abs(eff) * 1000).toInt()}ms, confidence $pct%)")
+            }
+            abs(eff) > 25.0 -> status = s("الفرق كبير جدًا (${fmtS(abs(eff))}ث). جرّب قناة ثانية.", "Difference too large (${fmtS(abs(eff))}s). Try another channel.")
+            else -> applyEffective(eff, d, pct)
+        }
+    }
+
+    /** تصحيح مباشر بلا تقطيع: تأخير صوت التعليق بدقة، أو إرجاع الصورة (قفزة واحدة) بدل التبطيء. */
+    private fun applyEffective(eff: Double, d: Long, pct: Int) {
+        lastActAt = now()
+        if (eff < 0) {
+            // التعليق أبكر من الصورة: نؤخره
+            val nd = d + (-eff * 1000).toLong()
+            if (nd <= 35_000L) {
+                manualMs = nd; delayMs = nd; delayProcessor.delayMs = nd
+                status = s("تم تأخير التعليق ${fmtS(nd / 1000.0)} ث بصوت الجمهور (ثقة $pct%)", "Commentary delayed ${fmtS(nd / 1000.0)}s by crowd sound ($pct%)")
+                resetMeasure()
+                return
+            }
+            startCorrection(eff)
+            return
+        }
+        // التعليق متأخر عن الصورة: نلغي أي تأخير مطبّق ثم نرجّع الصورة بالباقي
+        val dec = min(d, (eff * 1000).toLong())
+        val nd = d - dec
+        val rest = (eff * 1000).toLong() - dec
+        if (nd != d) { manualMs = nd; delayMs = nd; delayProcessor.delayMs = nd }
+        if (rest <= 180L) { resetMeasure(); return }
+        if (moveMain(-rest)) {
+            status = s("تم تأخير الصورة ${fmtS(rest / 1000.0)} ث لتطابق التعليق (ثقة $pct%)", "Picture delayed ${fmtS(rest / 1000.0)}s to match commentary ($pct%)")
+            resetMeasure()
+        } else {
+            startCorrection(rest / 1000.0)
         }
     }
 

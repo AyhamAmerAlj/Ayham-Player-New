@@ -17,17 +17,23 @@ import com.ayham.player.audio.TapAudioSink
 
 /** مصنع واحد للمشغّل: نفس الإعدادات الخفيفة للمشغّل الكبير والمصغّر. */
 object PlayerFactory {
-    fun create(ctx: Context, maxRes: Int, tap: EnvelopeTap? = null, pcmOnly: Boolean = false, delayProcessor: com.ayham.player.audio.DelayAudioProcessor? = null): ExoPlayer {
+    fun create(ctx: Context, maxRes: Int, tap: EnvelopeTap? = null, pcmOnly: Boolean = false, delayProcessor: com.ayham.player.audio.DelayAudioProcessor? = null, lite: Boolean = false): ExoPlayer {
         val http = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
             .setUserAgent("AyhamPlayer/1.0")
             .setConnectTimeoutMs(20_000)
             .setReadTimeoutMs(30_000)
-        val lc = DefaultLoadControl.Builder()
+        // قناة التعليق (lite): مخزن أصغر حتى لا تزاحم القناة الرئيسية على الشبكة والذاكرة وتسبب تقطيعًا
+        val lc = (if (lite) DefaultLoadControl.Builder()
+            .setBufferDurationsMs(12_000, 24_000, 2_500, 6_000)
+            .setTargetBufferBytes(16 * 1024 * 1024)
+            .setPrioritizeTimeOverSizeThresholds(false)
+            .setBackBuffer(15_000, false)
+        else DefaultLoadControl.Builder()
             .setBufferDurationsMs(30_000, 60_000, 2_500, 8_000)
             .setTargetBufferBytes(80 * 1024 * 1024)
             .setPrioritizeTimeOverSizeThresholds(false)
-            .setBackBuffer(20_000, false)
+            .setBackBuffer(20_000, false))
             .build()
         val renderers = object : DefaultRenderersFactory(ctx) {
             override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink? {
