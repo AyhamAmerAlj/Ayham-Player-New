@@ -87,7 +87,7 @@ object SubTools {
     }
 
     // ================= تحويل الصيغ غير المدعومة إلى SRT =================
-    private class Cue(val s: Long, val e: Long, val t: String)
+    class Cue(val s: Long, val e: Long, val t: String)
 
     private fun stamp(ms: Long): String =
         String.format(java.util.Locale.US, "%02d:%02d:%02d,%03d", ms / 3_600_000, ms / 60_000 % 60, ms / 1000 % 60, ms % 1000)
@@ -183,5 +183,38 @@ object SubTools {
         }
         val cues = rows.mapIndexed { i, r -> Cue(r.first, rows.getOrNull(i + 1)?.first ?: (r.first + 4000), r.second) }
         return build(cues)
+    }
+
+    // ================= تأخير/تقديم الترجمة + قراءة الأسطر (للترجمة المزدوجة) =================
+    private val cueTime = Regex("(?:(\\d+):)?(\\d{1,2}):(\\d{2})[.,](\\d{1,3})\\s*-->\\s*(?:(\\d+):)?(\\d{1,2}):(\\d{2})[.,](\\d{1,3})")
+
+    fun readText(uri: String): String? = runCatching {
+        val bytes = if (uri.startsWith("file:")) File(java.net.URI(uri)).readBytes()
+        else java.net.URL(uri).openStream().use { it.readBytes() }
+        String(toUtf8(bytes), Charsets.UTF_8)
+    }.getOrNull()
+
+    /** يقرأ ملفات srt/vtt فقط. غيرها (ass مثلاً) ترجع null. */
+    fun parseCues(text: String): List<Cue>? {
+        if (!text.contains("-->")) return null
+        val out = ArrayList<Cue>()
+        for (block in text.replace("\r", "").split(Regex("\n\\s*\n"))) {
+            val lines = block.lines()
+            val i = lines.indexOfFirst { cueTime.containsMatchIn(it) }
+            if (i < 0) continue
+            val m = cueTime.find(lines[i])!!
+            val g = m.groupValues
+            val st = tms(g[1].ifEmpty { "0" }, g[2], g[3], g[4])
+            val en = tms(g[5].ifEmpty { "0" }, g[6], g[7], g[8])
+            val body = clean(lines.drop(i + 1).joinToString("\n"))
+            if (body.isNotBlank()) out.add(Cue(st, en, body))
+        }
+        return out.ifEmpty { null }
+    }
+
+    /** نسخة SRT مزاحة بالمللي ثانية (موجب = تظهر لاحقًا). */
+    fun shifted(text: String, ms: Long): String? {
+        val c = parseCues(text) ?: return null
+        return build(c.map { Cue((it.s + ms).coerceAtLeast(0L), (it.e + ms).coerceAtLeast(1L), it.t) })
     }
 }

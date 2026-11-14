@@ -70,6 +70,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import com.ayham.player.data.SubTools
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -295,6 +297,87 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         toastId++
     }
 
+    val uiScope = rememberCoroutineScope()
+    val langDone = remember { intArrayOf(-1) }
+    var dualUri by remember(index) { mutableStateOf(vm.store.subDual(queue[index].key)) }
+    var dualText by remember { mutableStateOf("") }
+    LaunchedEffect(index, dualUri) {
+        dualText = ""
+        val u = dualUri ?: return@LaunchedEffect
+        val dly = vm.store.subDelay(req.item?.key ?: queue[index].key)
+        val cues = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { SubTools.readText(u)?.let { SubTools.parseCues(it) } } ?: return@LaunchedEffect
+        while (true) {
+            val p = exo.currentPosition - dly
+            dualText = cues.firstOrNull { p >= it.s && p < it.e }?.t.orEmpty()
+            delay(250)
+        }
+    }
+    fun showKey() = req.item?.key ?: queue[index].key
+    fun shiftFile(u: String, ms: Long) = java.io.File(ctx.filesDir, "subs/shift/" + u.hashCode().toUInt() + "_" + ms + ".srt")
+    fun effUri(u: String, ms: Long): String =
+        if (ms == 0L) u else shiftFile(u, ms).takeIf { it.exists() }?.let { Uri.fromFile(it).toString() } ?: u
+
+    fun lang2(l: String?) = l?.lowercase(Locale.US)?.take(2)?.takeIf { it.length == 2 && it != "un" }
+
+    fun applyShowLang(t: Tracks) {
+        if (queue[index].isLive || req.item == null) return
+        if (langDone[0] == index) return
+        if (t.groups.none { it.type == MC.TRACK_TYPE_AUDIO }) return
+        langDone[0] = index
+        val (al, sl) = vm.store.showLang(showKey())
+        val p = exo.trackSelectionParameters.buildUpon()
+        var changed = false
+        if (al != null) {
+            val hit = t.groups.filter { it.type == MC.TRACK_TYPE_AUDIO }.firstNotNullOfOrNull { g ->
+                (0 until g.length).firstOrNull { lang2(g.getTrackFormat(it).language) == al && g.isTrackSupported(it) }?.let { g to it }
+            }
+            if (hit != null && !hit.first.isTrackSelected(hit.second)) {
+                p.setTrackTypeDisabled(MC.TRACK_TYPE_AUDIO, false).setOverrideForType(TrackSelectionOverride(hit.first.mediaTrackGroup, hit.second))
+                audioOverridden = true
+                changed = true
+            }
+        }
+        if (vm.prefSub(queue[index].key) == null && sl != null) {
+            if (sl == "off") {
+                p.setTrackTypeDisabled(MC.TRACK_TYPE_TEXT, true); changed = true
+            } else {
+                val hit = t.groups.filter { it.type == MC.TRACK_TYPE_TEXT }.firstNotNullOfOrNull { g ->
+                    (0 until g.length).firstOrNull { lang2(g.getTrackFormat(it).language) == sl }?.let { g to it }
+                }
+                if (hit != null) {
+                    p.setTrackTypeDisabled(MC.TRACK_TYPE_TEXT, false).setOverrideForType(TrackSelectionOverride(hit.first.mediaTrackGroup, hit.second))
+                    changed = true
+                }
+            }
+        }
+        if (changed) exo.trackSelectionParameters = p.build()
+    }
+
+    fun setDelay(ms: Long, ar: Boolean) {
+        val sk = showKey()
+        val saved = vm.savedSubs(queue[index].key)
+        uiScope.launch {
+            val ok = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                var all = true
+                if (ms != 0L) saved.forEach { sv ->
+                    val f = shiftFile(sv.uri, ms)
+                    if (!f.exists()) {
+                        val out = SubTools.readText(sv.uri)?.let { SubTools.shifted(it, ms) }
+                        if (out != null) { f.parentFile?.mkdirs(); f.writeText(out) } else all = false
+                    }
+                }
+                all
+            }
+            vm.store.setSubDelay(sk, ms)
+            loadMedia(exo.currentPosition)
+            showToast(
+                if (ms == 0L) (if (ar) "التأخير: 0" else "Delay: 0")
+                else (if (ar) "تأخير الترجمة " else "Subtitle delay ") + String.format(Locale.US, "%+.1f", ms / 1000f) + (if (ar) " ث" else " s") +
+                    (if (!ok) (if (ar) " (بعض الصيغ لا تدعم)" else " (some formats unsupported)") else ""),
+            )
+        }
+    }
+
     fun loadMedia(startMs: Long, withSubs: Boolean = true) {
         val key = queue[index].key
         val b = MediaItem.Builder().setUri(queue[index].url)
@@ -310,10 +393,12 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         subsLoaded = saved.isNotEmpty()
         if (saved.isNotEmpty()) {
             val pref = vm.prefSub(key)
+            val dly = vm.store.subDelay(showKey())
             b.setSubtitleConfigurations(
                 saved.map { sv ->
-                    MediaItem.SubtitleConfiguration.Builder(Uri.parse(sv.uri))
-                        .setMimeType(subMime(sv.uri))
+                    val eu = effUri(sv.uri, dly)
+                    MediaItem.SubtitleConfiguration.Builder(Uri.parse(eu))
+                        .setMimeType(subMime(eu))
                         .setLabel(sv.label)
                         .setSelectionFlags(if (sv.uri == pref) MC.SELECTION_FLAG_DEFAULT else 0)
                         .build()
@@ -630,6 +715,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
 
             override fun onTracksChanged(t: Tracks) {
                 tracks = t
+                runCatching { applyShowLang(t) }
             }
 
             override fun onPlayerError(error: PlaybackException) {
@@ -935,6 +1021,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             },
             onRelease = { it.player = null },
             update = {
+                it.subtitleView?.setBottomPaddingFraction(when (vm.subPos) { 0 -> 0.02f; 1 -> 0.08f; else -> 0.18f })
                 it.subtitleView?.setFractionalTextSize(when (vm.subSize) { 0 -> 0.042f; 1 -> 0.055f; else -> 0.075f })
                 it.subtitleView?.setStyle(subCaptionStyle(vm.subStyle, subTf))
                 it.resizeMode = when (aspect) {
@@ -944,6 +1031,13 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                 }
             },
         )
+
+        if (dualText.isNotBlank() && !queue[index].isLive) {
+            Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Bottom, horizontalAlignment = Alignment.CenterHorizontally) {
+                RText(dualText, when (vm.subSize) { 0 -> 15; 1 -> 19; else -> 25 }, Color(0xFFFFE066), bold = true, maxLines = 3)
+                Spacer(Modifier.fillMaxHeight(when (vm.subPos) { 0 -> 0.17f; 1 -> 0.23f; else -> 0.33f }))
+            }
+        }
 
         // طبقة اللمس: نقرة = إظهار/إخفاء التحكم، نقرتين = تقديم/رجوع (أو تبديل قناة)، سحب عمودي = سطوع/صوت
         Box(
@@ -1386,6 +1480,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             item {
                                 PanelItem(t("off"), selected = !anySelected, modifier = Modifier.autoFocus()) {
                                     vm.setPrefSub(queue[index].key, null)
+                                    if (req.item != null) vm.store.setShowSubLang(showKey(), "off")
                                     exo.trackSelectionParameters = exo.trackSelectionParameters.buildUpon()
                                         .setTrackTypeDisabled(MC.TRACK_TYPE_TEXT, true).build()
                                 }
@@ -1401,6 +1496,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                     val lbl = g.getTrackFormat(i).label
                                     val mk = queue[index].key
                                     vm.setPrefSub(mk, vm.savedSubs(mk).firstOrNull { sv -> sv.label == lbl }?.uri)
+                                    if (req.item != null) vm.store.setShowSubLang(showKey(), lang2(g.getTrackFormat(i).language))
                                     exo.trackSelectionParameters = exo.trackSelectionParameters.buildUpon()
                                         .setTrackTypeDisabled(MC.TRACK_TYPE_TEXT, false)
                                         .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, i))
@@ -1413,6 +1509,47 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                         vm.clearSubs(queue[index].key)
                                         loadMedia(exo.currentPosition, withSubs = false)
                                         showToast(subClearedT)
+                                    }
+                                }
+                            }
+                            item {
+                                val ar = vm.lang == "ar"
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    BodyText(if (ar) "الحجم" else "Size", 13, C.textDim)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        listOf(t("size_s"), t("size_m"), t("size_l")).forEachIndexed { i, l -> Chip(l, vm.subSize == i) { vm.changeSubSize(i) } }
+                                    }
+                                    BodyText(if (ar) "الموضع" else "Position", 13, C.textDim)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        listOf(if (ar) "أسفل" else "Low", if (ar) "وسط" else "Mid", if (ar) "أعلى" else "High").forEachIndexed { i, l -> Chip(l, vm.subPos == i) { vm.changeSubPos(i) } }
+                                    }
+                                }
+                            }
+                            if (vm.savedSubs(queue[index].key).isNotEmpty()) {
+                                item {
+                                    val ar = vm.lang == "ar"
+                                    val d = vm.store.subDelay(showKey())
+                                    var dv by remember { mutableLongStateOf(d) }
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        BodyText((if (ar) "تأخير/تقديم الترجمة: " else "Subtitle delay: ") + String.format(Locale.US, "%+.1f", dv / 1000f) + (if (ar) " ث (للترجمات المضافة)" else " s (added subtitles)"), 13, C.textDim)
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            GlowButton("− 0.5", height = 50.dp, modifier = Modifier.weight(1f)) { dv -= 500L; setDelay(dv, ar) }
+                                            GlowButton("0", height = 50.dp, modifier = Modifier.weight(1f)) { dv = 0L; setDelay(0L, ar) }
+                                            GlowButton("+ 0.5", height = 50.dp, modifier = Modifier.weight(1f)) { dv += 500L; setDelay(dv, ar) }
+                                        }
+                                    }
+                                }
+                                item {
+                                    val ar = vm.lang == "ar"
+                                    val others = vm.savedSubs(queue[index].key).filter { it.uri != vm.prefSub(queue[index].key) }
+                                    PanelItem(
+                                        (if (ar) "ترجمة ثانية (مزدوجة): " else "Second subtitle: ") + (others.firstOrNull { it.uri == dualUri }?.label ?: (if (ar) "إيقاف" else "Off")),
+                                        sub = if (ar) "تظهر فوق الترجمة الأولى" else "Shown above the main one",
+                                    ) {
+                                        val order = listOf<String?>(null) + others.map { it.uri }
+                                        val nx = order[(order.indexOf(dualUri).coerceAtLeast(0) + 1) % order.size]
+                                        dualUri = nx
+                                        vm.store.setSubDual(queue[index].key, nx)
                                     }
                                 }
                             }
@@ -1633,6 +1770,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                             .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, i))
                                             .build()
                                         vm.store.setAudioPref(queue[index].key, "s\t$key\t0\t\t")
+                                        if (!live && req.item != null) vm.store.setShowAudioLang(showKey(), lang2(g.getTrackFormat(i).language))
                                     }
                                 }
                             } else {
@@ -2210,6 +2348,9 @@ private fun EndCard(vm: AppViewModel, item: Item, ar: Boolean, onClose: () -> Un
     val recs by androidx.compose.runtime.produceState(emptyList<Item>(), item.key) {
         value = runCatching { vm.recommendFor(item, vm.cachedDetails(item)?.year ?: "") }.getOrDefault(emptyList()).take(4)
     }
+    val parts by androidx.compose.runtime.produceState(emptyList<Pair<Int, Item>>(), item.key) { value = vm.franchiseOf(item) }
+    val cur = com.ayham.player.data.Franchise.parse(item.name)?.n ?: 1
+    val nextPart = parts.firstOrNull { it.first > cur }?.second
     val compact = isCompact()
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.9f)), contentAlignment = Alignment.Center) {
         if (item.image.isNotBlank()) Img(item.image, Modifier.fillMaxSize().blur(30.dp).alpha(0.25f), w = 400, h = 600)
@@ -2220,6 +2361,9 @@ private fun EndCard(vm: AppViewModel, item: Item, ar: Boolean, onClose: () -> Un
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 GlowButton(if (ar) "👍 أعجبني" else "👍 Liked", Modifier.autoFocus(), primary = like == "1") { like = "1"; vm.store.putRaw("like_" + item.key, "1") }
                 GlowButton(if (ar) "👎 ما أعجبني" else "👎 Not for me", primary = like == "0") { like = "0"; vm.store.putRaw("like_" + item.key, "0") }
+            }
+            if (nextPart != null) {
+                GlowButton((if (ar) "▶ الجزء التالي: " else "▶ Next part: ") + com.ayham.player.data.Imdb.clean(nextPart.name), primary = true) { onOpen(nextPart) }
             }
             if (recs.isNotEmpty()) {
                 RText(if (ar) "شاهد بعده" else "Watch next", 18, C.primaryLight, bold = true)

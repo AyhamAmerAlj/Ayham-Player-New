@@ -2,8 +2,12 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "258"
+    const val id = "259"
     val ar = listOf(
+        "ذاكرة اللغة: التطبيق يتذكر لغة الصوت والترجمة التي اخترتها لكل فيلم أو مسلسل ويطبّقها تلقائياً على باقي الحلقات",
+        "الترجمة: تأخير/تقديم بنصف ثانية، وحجم وموضع، وترجمة ثانية مزدوجة فوق الأولى (للترجمات المضافة بصيغة srt/vtt)",
+        "الجزء التالي: عند نهاية الفيلم يظهر زر الجزء التالي، وفي صفحة العمل صف «أجزاء السلسلة»",
+        "خلفية صفحة التفاصيل تتحرك ببطء سينمائي",
         "اختيار معدل الفريمات (30 / 60 / 120 / تلقائي) من الإعدادات، منفصل للتصفح وللمشغّل، مع حركة تنقل أنعم وأكثر سينمائية",
         "تغيير أيقونة التطبيق من الإعدادات: أيقونتان جديدتان مع ثيمين VIC11 وCY19، وتتغير الافتتاحية والشعار حسب الأيقونة",
         "رفع الترجمة بصيغ أكثر: srt وvtt وass وssa وsub وsbv وsmi وlrc وttml وdfxp وsup وtxt وzip وgz (الصيغ غير المدعومة تُحوَّل تلقائياً)",
@@ -36,6 +40,10 @@ object WhatsNew {
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "Language memory: the app remembers your audio and subtitle language per movie or series and applies it to the next episodes",
+        "Subtitles: delay/advance in 0.5 s steps, size and position, and a second dual subtitle above the first (added srt/vtt subtitles)",
+        "Next part: a next-part button at the end of a movie, and a \"The collection\" row on the title page",
+        "The detail-page backdrop now drifts with a slow cinematic zoom",
         "Pick the frame rate (30 / 60 / 120 / Auto) in Settings, separately for browsing and the player, with smoother cinematic navigation",
         "Change the app icon in Settings: two new icons with matching VIC11 and CY19 themes; the splash and logo follow the icon",
         "Upload subtitles in many more formats: srt, vtt, ass, ssa, sub, sbv, smi, lrc, ttml, dfxp, sup, txt, zip, gz (unsupported ones are converted automatically)",
@@ -73,7 +81,7 @@ object WhatsNew {
 data class Release(val id: String, val ar: List<String>, val en: List<String>)
 
 val releaseHistory = listOf(
-    Release("258", WhatsNew.ar, WhatsNew.en),
+    Release("259", WhatsNew.ar, WhatsNew.en),
     Release("237", listOf("افتتاحية سينمائية جديدة بشعار Ayham"), listOf("New cinematic opening with the Ayham logo")),
     Release("227", listOf(
         "تقييمات متعددة (IMDb وRotten Tomatoes وMetacritic وTMDB وTrakt)",

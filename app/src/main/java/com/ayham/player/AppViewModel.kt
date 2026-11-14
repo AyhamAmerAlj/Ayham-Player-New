@@ -284,6 +284,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun changeSubStyle(v: Int) { subStyle = v; store.subStyle = v }
     var subSize by mutableIntStateOf(store.subSize)
     fun changeSubSize(v: Int) { subSize = v; store.subSize = v }
+    var subPos by mutableIntStateOf(store.subPos)
+    fun changeSubPos(v: Int) { subPos = v; store.subPos = v }
 
     // ---- دليل البرامج ----
     private val epgCache = HashMap<String, Pair<Long, List<EpgEntry>>>()
@@ -850,6 +852,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 .distinctBy { it.key }
             if (found.none { it.key == item.key }) (listOf(item) + found) else found
         }.getOrDefault(emptyList()).let { if (it.size > 1) it else emptyList() }
+    }
+
+    /** أجزاء نفس السلسلة (مرتبة): فيلم 1،2،3... أو مسلسل بأجزاء. فارغة إن لم يوجد غير جزء واحد. */
+    suspend fun franchiseOf(item: Item): List<Pair<Int, Item>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val me = com.ayham.player.data.Franchise.parse(item.name) ?: return@runCatching emptyList<Pair<Int, Item>>()
+            val found = db.search(item.kind, normalizeForSearch(me.title), 120).mapNotNull { it0 ->
+                com.ayham.player.data.Franchise.parse(it0.name)?.takeIf { f -> f.key == me.key }?.let { f -> f.n to it0 }
+            }
+            val all = (found + (me.n to item)).distinctBy { it.first }.sortedBy { it.first }
+            // نفضّل العنصر الحالي لرقمه
+            val fixed = all.map { if (it.first == me.n) me.n to item else it }
+            if (fixed.size >= 2) fixed else emptyList()
+        }.getOrDefault(emptyList())
     }
 
     /** بحث داخل نوع واحد. */

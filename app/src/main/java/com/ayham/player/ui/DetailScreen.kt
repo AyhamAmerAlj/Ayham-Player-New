@@ -32,6 +32,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -70,6 +72,8 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
         val rec = vm.recommendFor(item, details?.year.orEmpty())
         if (rec.isNotEmpty()) similarItems = (rec + similarItems).distinctBy { it.key }.filter { it.key != item.key }.take(24)
     }
+    var franchise by remember(item.key) { mutableStateOf<List<Pair<Int, Item>>>(emptyList()) }
+    LaunchedEffect(item.key) { franchise = vm.franchiseOf(item) }
     var imdb by remember(item.key) { mutableStateOf<String?>(null) }
     val yearKey = details?.year.orEmpty()
     LaunchedEffect(item.key, details != null, yearKey) {
@@ -86,8 +90,14 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
     var actorSel by remember { mutableStateOf<String?>(null) }
     actorSel?.let { ActorDialog(vm, it) { actorSel = null } }
     Box(Modifier.fillMaxSize().background(C.bg)) {
-        if (compact) Img(bg, Modifier.fillMaxSize(), w = 960, h = 540)
-        else Img(bg, Modifier.fillMaxWidth().fillMaxHeight(0.68f), w = 1280, h = 720)
+        val kb = androidx.compose.animation.core.rememberInfiniteTransition(label = "kb")
+        val kz by kb.animateFloat(
+            1f, 1.09f,
+            androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(22_000, easing = androidx.compose.animation.core.LinearEasing), androidx.compose.animation.core.RepeatMode.Reverse),
+            label = "kz",
+        )
+        if (compact) Img(bg, Modifier.fillMaxSize().graphicsLayer { scaleX = kz; scaleY = kz }, w = 960, h = 540)
+        else Box(Modifier.fillMaxWidth().fillMaxHeight(0.68f).clipToBounds()) { Img(bg, Modifier.fillMaxSize().graphicsLayer { scaleX = kz; scaleY = kz }, w = 1280, h = 720) }
         if (compact) Box(
             Modifier.fillMaxSize().background(
                 Brush.horizontalGradient(listOf(tc(0xF20B0614), tc(0xE60B0614), tc(0xAA0B0614))),
@@ -209,6 +219,9 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
                 }
             }
 
+            if (franchise.size >= 2) {
+                item { ContentRow(if (vm.lang == "ar") "أجزاء السلسلة" else "The collection", franchise.map { it.second }) { vm.openDetail(it) } }
+            }
             if (similarItems.size >= 3) {
                 item { ContentRow(t("similar"), similarItems) { vm.openDetail(it) } }
             }

@@ -189,6 +189,28 @@ class Store(private val ctx: Context) {
     }
     fun clearQueries() { sp.edit().remove("recent_q").apply() }
 
+    // ---- ذاكرة لغة الصوت/الترجمة لكل عمل (فيلم أو مسلسل)، وتأخير الترجمة والترجمة المزدوجة ----
+    /** (لغة الصوت، لغة الترجمة أو "off") */
+    fun showLang(showKey: String): Pair<String?, String?> =
+        (sp.getString("lang_a_$showKey", null)) to (sp.getString("lang_s_$showKey", null))
+    fun setShowAudioLang(showKey: String, lang: String?) {
+        if (lang.isNullOrBlank()) sp.edit().remove("lang_a_$showKey").apply() else sp.edit().putString("lang_a_$showKey", lang).apply()
+    }
+    fun setShowSubLang(showKey: String, lang: String?) {
+        if (lang.isNullOrBlank()) sp.edit().remove("lang_s_$showKey").apply() else sp.edit().putString("lang_s_$showKey", lang).apply()
+    }
+    fun subDelay(showKey: String): Long = sp.getLong("sdelay_$showKey", 0L)
+    fun setSubDelay(showKey: String, ms: Long) {
+        if (ms == 0L) sp.edit().remove("sdelay_$showKey").apply() else sp.edit().putLong("sdelay_$showKey", ms).apply()
+    }
+    fun subDual(key: String): String? = sp.getString("sdual_$key", null)
+    fun setSubDual(key: String, uri: String?) {
+        if (uri == null) sp.edit().remove("sdual_$key").apply() else sp.edit().putString("sdual_$key", uri).apply()
+    }
+    var subPos: Int
+        get() = sp.getInt("sub_pos", 1)
+        set(v) { sp.edit().putInt("sub_pos", v).apply() }
+
     var subSize: Int
         get() = sp.getInt("sub_size", 1)
         set(v) { sp.edit().putInt("sub_size", v).apply() }
