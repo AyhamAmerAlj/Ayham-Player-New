@@ -2,8 +2,9 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "260"
+    const val id = "261"
     val ar = listOf(
+        "مزامنة بصوت الجمهور: التحليل صار يعزل هدير وهمس الجمهور والصافرة عن صوت المعلق (نطاقان منفصلان) ويقارنهما بين الصورة وقناة التعليق بدقة أعلى وثقة أوضح",
         "مزامنة المباراة: لوحة سريعة لقنوات الرياضة (من قائمة المشغّل) بأزرار −5 −1 −½ +½ +1 +5 وحالة المزامنة التلقائية والرجوع للصوت الأصلي، والحد الأقصى صار 60 ثانية",
         "ذاكرة اللغة: التطبيق يتذكر لغة الصوت والترجمة التي اخترتها لكل فيلم أو مسلسل ويطبّقها تلقائياً على باقي الحلقات",
         "الترجمة: تأخير/تقديم بنصف ثانية، وحجم وموضع، وترجمة ثانية مزدوجة فوق الأولى (للترجمات المضافة بصيغة srt/vtt)",
@@ -41,6 +42,7 @@ object WhatsNew {
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "Crowd-sound sync: analysis now separates the crowd rumble, crowd hiss and whistle from the commentator's voice (two bands) and matches them between picture and commentary with better precision and clearer confidence",
         "Match sync: a quick panel for sports channels (player menu) with −5 −1 −½ +½ +1 +5, auto-sync status and back to original audio; the limit is now 60 s",
         "Language memory: the app remembers your audio and subtitle language per movie or series and applies it to the next episodes",
         "Subtitles: delay/advance in 0.5 s steps, size and position, and a second dual subtitle above the first (added srt/vtt subtitles)",
@@ -83,7 +85,7 @@ object WhatsNew {
 data class Release(val id: String, val ar: List<String>, val en: List<String>)
 
 val releaseHistory = listOf(
-    Release("260", WhatsNew.ar, WhatsNew.en),
+    Release("261", WhatsNew.ar, WhatsNew.en),
     Release("237", listOf("افتتاحية سينمائية جديدة بشعار Ayham"), listOf("New cinematic opening with the Ayham logo")),
     Release("227", listOf(
         "تقييمات متعددة (IMDb وRotten Tomatoes وMetacritic وTMDB وTrakt)",

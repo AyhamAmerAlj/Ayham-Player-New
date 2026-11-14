@@ -385,26 +385,6 @@ class ExtAudioSession(
 
     // ------------------------------------------------------------------ مزامنة
 
-    // ------------------------------------------------------------------ AI Scoreboard Sync (تجريبي)
-    var aiStatus by mutableStateOf("")
-    var aiConfidence by mutableFloatStateOf(0f)
-    var isAiAnalyzing by mutableStateOf(false)
-
-    fun runAiScoreboardSync() {
-        if (isAiAnalyzing) return
-        isAiAnalyzing = true
-        aiStatus = s("جارٍ فحص ساعة المباراة في القناتين...", "Scanning match clock in both streams...")
-        aiConfidence = 0.5f
-
-        scope.launch {
-            delay(2500) // وقت المحاكاة الذكية للفحص الدوري
-            // في حال عدم توفر مكتبة ثقيلة لقراءة الشاشة على الجهاز الضعيف
-            aiConfidence = 0.85f
-            aiStatus = s("تم الفحص: لوحة النتائج غير مستقرة، يفضل استخدام الضبط اليدوي الدقيق", "Scan complete: clock unclear, manual fine-tuning recommended")
-            isAiAnalyzing = false
-        }
-    }
-
     fun setAuto(on: Boolean) {
         autoSync = on
         extTap.enabled = on && player != null
@@ -489,7 +469,7 @@ class ExtAudioSession(
         if (!p.isPlaying) return
         val have = min(mainTap.spanSec(), extTap.spanSec())
         if (have < 28.0) {
-            status = s("جارٍ تحليل الصوت… ${(have / 28.0 * 100).toInt().coerceAtMost(99)}%", "Analyzing audio… ${(have / 28.0 * 100).toInt().coerceAtMost(99)}%")
+            status = s("نسمع صوت الجمهور… ${(have / 28.0 * 100).toInt().coerceAtMost(99)}%", "Listening to the crowd… ${(have / 28.0 * 100).toInt().coerceAtMost(99)}%")
             return
         }
         if (computing) return
@@ -503,7 +483,7 @@ class ExtAudioSession(
     }
 
     private fun onEstimate(est: SyncEstimate?) {
-        if (est == null || est.confidence < 0.35) {
+        if (est == null || est.confidence < 0.30) {
             prevLag = null
             status = s(
                 "ثقة منخفضة: تعذّر مطابقة الصوتين (قد لا تنقل القناتان نفس الحدث). المزامنة لم تتغير.",
@@ -521,7 +501,7 @@ class ExtAudioSession(
         delayMs = (lag * 1000).toLong()
         val pct = (est.confidence * 100).toInt().coerceAtMost(99)
         when {
-            abs(lag) <= 0.18 -> status = s("تمت المزامنة (فرق ${(abs(lag) * 1000).toInt()}ms، ثقة $pct%)", "Synced (diff ${(abs(lag) * 1000).toInt()}ms, confidence $pct%)")
+            abs(lag) <= 0.18 -> status = s("تمت المزامنة بصوت الجمهور (فرق ${(abs(lag) * 1000).toInt()}ms، ثقة $pct%)", "Synced (diff ${(abs(lag) * 1000).toInt()}ms, confidence $pct%)")
             abs(lag) > 14.0 -> status = s("الفرق كبير جدًا (${"%.1f".format(abs(lag))}ث). جرّب قناة ثانية أو إعادة التشغيل.", "Difference too large (${"%.1f".format(abs(lag))}s). Try another channel.")
             else -> startCorrection(lag)
         }

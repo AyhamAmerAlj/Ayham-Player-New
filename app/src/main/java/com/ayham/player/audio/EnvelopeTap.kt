@@ -29,6 +29,12 @@ class EnvelopeTap {
 
     private val lock = Any()
     private val env = FloatArray(CAP)
+    private val envLo = FloatArray(CAP)   // أقل من ~250Hz: هدير الجمهور
+    private val envHi = FloatArray(CAP)   // أعلى من ~3.5kHz: همس الجمهور والصافرة (الكلام ضعيف هنا)
+    private var accLo = 0.0
+    private var accHi = 0.0
+    private var l1 = 0.0; private var l2 = 0.0; private var h1 = 0.0; private var h2 = 0.0
+    private var aLo = 0.03; private var aHi = 0.37
     private var hops = 0L
     private var rate = 48000
     private var channels = 2
@@ -40,7 +46,7 @@ class EnvelopeTap {
     private var anchorPos = 0
 
     fun clear() = synchronized(lock) {
-        hops = 0; acc = 0.0; accN = 0; anchorN = 0; anchorPos = 0
+        hops = 0; acc = 0.0; accN = 0; accLo = 0.0; accHi = 0.0; anchorN = 0; anchorPos = 0
     }
 
     fun setFormat(sampleRate: Int, channelCount: Int, pcm16: Boolean) = synchronized(lock) {
@@ -48,7 +54,9 @@ class EnvelopeTap {
         if (sampleRate > 0) rate = sampleRate
         if (channelCount > 0) channels = channelCount
         framesPerHop = (rate * HOP_S).roundToInt().coerceAtLeast(1)
-        acc = 0.0; accN = 0
+        aLo = 1.0 - Math.exp(-2.0 * Math.PI * 250.0 / rate)
+        aHi = 1.0 - Math.exp(-2.0 * Math.PI * 3500.0 / rate)
+        acc = 0.0; accN = 0; accLo = 0.0; accHi = 0.0
     }
 
     /** كم ثانية من الصوت مسجّلة (بحد أقصى 80). */
@@ -65,11 +73,22 @@ class EnvelopeTap {
                 for (c in 0 until ch) s += b.getShort().toInt()
                 val v = (s / ch) / 32768.0
                 acc += v * v
+                // نطاق منخفض (مرشّحان متتاليان) ونطاق عالٍ (مرشّح تمرير عالٍ مضاعف) لعزل صوت الجمهور عن صوت المعلق
+                l1 += aLo * (v - l1); l2 += aLo * (l1 - l2)
+                accLo += l2 * l2
+                h1 += aHi * (v - h1)
+                val hp1 = v - h1
+                h2 += aHi * (hp1 - h2)
+                val hp2 = hp1 - h2
+                accHi += hp2 * hp2
                 accN++
                 if (accN >= framesPerHop) {
-                    env[(hops % CAP).toInt()] = ln(1.0 + sqrt(acc / accN) * 60.0).toFloat()
+                    val k = (hops % CAP).toInt()
+                    env[k] = ln(1.0 + sqrt(acc / accN) * 60.0).toFloat()
+                    envLo[k] = ln(1.0 + sqrt(accLo / accN) * 60.0).toFloat()
+                    envHi[k] = ln(1.0 + sqrt(accHi / accN) * 120.0).toFloat()
                     hops++
-                    acc = 0.0
+                    acc = 0.0; accLo = 0.0; accHi = 0.0
                     accN = 0
                 }
             }
@@ -96,13 +115,14 @@ class EnvelopeTap {
     }
 
     /** يملأ out بقيم الغلاف عند اللحظات t0 + i*HOP، وNaN حيث لا توجد بيانات. */
-    fun fill(t0: Double, out: FloatArray) = synchronized(lock) {
+    fun fill(t0: Double, out: FloatArray, band: Int = 0) = synchronized(lock) {
+        val src = when (band) { 1 -> envLo; 2 -> envHi; else -> env }
         val a = anchorLocked()
         val first = maxOf(0L, hops - CAP)
         for (i in out.indices) {
             if (a == null) { out[i] = Float.NaN; continue }
             val k = ((t0 + i * HOP_S - a) / HOP_S).roundToInt().toLong()
-            out[i] = if (k in first until hops) env[(k % CAP).toInt()] else Float.NaN
+            out[i] = if (k in first until hops) src[(k % CAP).toInt()] else Float.NaN
         }
     }
 }
