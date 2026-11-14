@@ -123,7 +123,13 @@ import com.ayham.player.data.PlayRequest
 import kotlinx.coroutines.delay
 import java.util.Locale
 
-private enum class Panel { MENU, SUBS, SUBURL, SUBPHONE, TRYSUB, AUDIO, EXT, SYNC, EPG }
+private enum class Panel { MENU, SUBS, SUBURL, SUBPHONE, TRYSUB, AUDIO, EXT, SYNC, EPG, MATCH }
+
+/** قنوات المباريات: نكتشفها من اسم القناة (رياضة، beIN، SSC، دوري، كأس ...). */
+private val MATCH_RE = Regex(
+    "bein|ssc|sport|alkass|al kass|dazn|espn|arryadia|match|uefa|champions|premier|laliga|la liga|bundesliga|serie a|ligue|\\bvs\\b|eurosport|setanta|viaplay|thmanyah|الكاس|رياض|ثمانية|مباراة|مباريات|كأس|دوري|كرة",
+    RegexOption.IGNORE_CASE,
+)
 
 private fun hm(sec: Long): String = java.text.SimpleDateFormat("HH:mm", Locale.US).format(java.util.Date(sec * 1000))
 
@@ -524,14 +530,31 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         if (value != null) vm.store.setAudioPref(queue[index].key, value)
     }
 
+    val matchLike = queue[index].isLive && MATCH_RE.containsMatchIn(queue[index].title)
+
+    /** تعديل مزامنة تعليق المباراة (موجب = التعليق متأخر). */
+    fun matchAdj(ms: Long, ar: Boolean) {
+        val cur0 = if (extSession.sameStream) -extSession.picDelayMs else extSession.manualMs
+        if (kotlin.math.abs(cur0 + ms) > 60_000L) { showToast(if (ar) "وصلت للحد الأقصى 60 ثانية" else "Max 60 seconds"); return }
+        val ok = runCatching {
+            if (!extSession.sameStream && extSession.player == null) {
+                val sel = tracks.groups.filter { it.type == MC.TRACK_TYPE_AUDIO }
+                    .flatMap { g -> (0 until g.length).filter { g.isTrackSelected(it) }.map { g.getTrackFormat(it) } }.firstOrNull()
+                extSession.start(com.ayham.player.data.Item(com.ayham.player.data.Kind.LIVE, queue[index].key.substringAfter(':'), queue[index].title), true, sel?.let { it.id ?: it.label })
+            }
+            if (extSession.sameStream) extSession.requestAdjust(-ms) else extSession.nudge(ms)
+        }.getOrDefault(false)
+        if (!ok) showToast(notSeekable) else persistAudioProfile()
+    }
+
     /** الاختصارات اللونية: الأصفر يقدم الصوت 200ms، والأزرق يؤخره 200ms. */
     fun syncShortcut(deltaMs: Long): Boolean {
         if (!queue[index].isLive || extSession.player == null) return false
         val oldOffset = if (extSession.sameStream) -extSession.picDelayMs else extSession.manualMs
-        val nextOffset = (oldOffset + deltaMs).coerceIn(-30_000L, 30_000L)
+        val nextOffset = (oldOffset + deltaMs).coerceIn(-60_000L, 60_000L)
         val applied = nextOffset - oldOffset
         if (applied == 0L) {
-            showToast(if (vm.lang == "ar") "وصلت للحد الأقصى 30 ثانية" else "Max 30 seconds")
+            showToast(if (vm.lang == "ar") "وصلت للحد الأقصى 60 ثانية" else "Max 60 seconds")
             return true
         }
         val ok = runCatching {
@@ -1427,7 +1450,8 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     Panel.MENU -> {
                         RText(t("settings"), 26, C.text, bold = true)
                         if (!queue[index].isLive) PanelItem(t("subtitles"), modifier = Modifier.autoFocus()) { panel = Panel.SUBS }
-                        PanelItem(t("audio_tracks"), modifier = if (queue[index].isLive) Modifier.autoFocus() else Modifier) { panel = Panel.AUDIO }
+                        if (matchLike) PanelItem(if (vm.lang == "ar") "مزامنة المباراة" else "Match sync", sub = if (vm.lang == "ar") "صوت التعليق مع الصورة" else "Commentary vs picture", modifier = Modifier.autoFocus()) { panel = Panel.MATCH }
+                        PanelItem(t("audio_tracks"), modifier = if (queue[index].isLive && !matchLike) Modifier.autoFocus() else Modifier) { panel = Panel.AUDIO }
                         if (!queue[index].isLive) {
                             PanelItem(t("speed"), sub = speedLabel(speed)) { cycleSpeed() }
                             PanelItem(t("skip_intro"), sub = t("skip_intro_sub")) { doSkip(); closePanel() }
@@ -1654,7 +1678,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             val nw = System.currentTimeMillis()
                             if (nw - lastAdj[0] < 220L) return
                             lastAdj[0] = nw
-                            if (kotlin.math.abs(commentary + ms) > 30_000L) { showToast(if (ar) "وصلت للحد الأقصى 30 ثانية" else "Max 30 seconds"); return }
+                            if (kotlin.math.abs(commentary + ms) > 60_000L) { showToast(if (ar) "وصلت للحد الأقصى 60 ثانية" else "Max 60 seconds"); return }
                             val ok = runCatching {
                                 ensureSame()
                                 if (extSession.sameStream) extSession.requestAdjust(-ms) else extSession.nudge(ms)
@@ -1847,6 +1871,51 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                 }
                             }
                             item { PanelItem(t("back")) { panel = Panel.MENU } }
+                        }
+                    }
+
+                    Panel.MATCH -> {
+                        val ar = vm.lang == "ar"
+                        val commentary = if (extSession.sameStream) -extSession.picDelayMs else extSession.manualMs
+                        val txt = when {
+                            commentary > 0 -> (if (ar) "التعليق متأخر " else "Commentary late ") + String.format(Locale.US, "%.1f", commentary / 1000f) + (if (ar) " ث" else " s")
+                            commentary < 0 -> (if (ar) "الصورة متأخرة " else "Picture late ") + String.format(Locale.US, "%.1f", -commentary / 1000f) + (if (ar) " ث" else " s")
+                            else -> if (ar) "التأخير: 0 ث" else "Delay: 0 s"
+                        }
+                        val st = extSession.status
+                        val stTxt = when {
+                            st.isNotBlank() -> (if (st.startsWith("تمت المزامنة") || st.startsWith("Synced")) "✓ " else "") + st
+                            extSession.player == null -> if (ar) "اختر قناة تعليق للمزامنة التلقائية" else "Pick a commentary channel for auto sync"
+                            extSession.autoSync -> if (ar) "المزامنة التلقائية: نسمع صوت الملعب…" else "Auto sync: listening to the stadium…"
+                            else -> if (ar) "المزامنة التلقائية متوقفة" else "Auto sync is off"
+                        }
+                        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Icon(Icons.Filled.Audiotrack, null, tint = C.accent, modifier = Modifier.size(28.dp))
+                                RText(if (ar) "مزامنة المباراة" else "Match sync", 24, C.text, bold = true)
+                            }
+                            BodyText(if (ar) "+ تأخير التعليق   − تأخير الصورة" else "+ delays commentary   − delays picture", 13, C.textDim)
+                            RText(txt, 30, if (commentary != 0L) C.accent else C.text, bold = true)
+                            BodyText(stTxt, 14, C.accent, maxLines = 3)
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                listOf("−5" to -5000L, "−1" to -1000L, "−½" to -500L, "+½" to 500L, "+1" to 1000L, "+5" to 5000L).forEachIndexed { i, (l, ms) ->
+                                    GlowButton(l, primary = ms > 0, height = 54.dp, modifier = if (i == 0) Modifier.weight(1f).autoFocus() else Modifier.weight(1f)) { matchAdj(ms, ar) }
+                                }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                GlowButton(
+                                    (if (ar) "مزامنة تلقائية: " else "Auto sync: ") + (if (extSession.autoSync && extSession.player != null) (if (ar) "تعمل" else "On") else (if (ar) "متوقفة" else "Off")),
+                                    primary = extSession.autoSync && extSession.player != null, height = 54.dp, modifier = Modifier.weight(1f),
+                                ) {
+                                    if (extSession.player == null) { panel = Panel.EXT; showToast(if (ar) "اختر قناة تعليق أولاً" else "Pick a commentary channel first") }
+                                    else { extSession.setAuto(!extSession.autoSync); vm.extAuto = extSession.autoSync; if (extSession.autoSync) extSession.resyncNow() }
+                                }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                GlowButton(if (ar) "قناة التعليق" else "Commentary", height = 54.dp, modifier = Modifier.weight(1f)) { panel = Panel.EXT }
+                                GlowButton(if (ar) "الصوت الأصلي" else "Original", height = 54.dp, modifier = Modifier.weight(1f)) { runCatching { stopExt() } }
+                                GlowButton(if (ar) "إغلاق" else "Close", height = 54.dp, modifier = Modifier.weight(1f)) { closePanel() }
+                            }
                         }
                     }
 
