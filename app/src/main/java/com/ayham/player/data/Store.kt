@@ -211,6 +211,10 @@ class Store(private val ctx: Context) {
         get() = sp.getInt("sub_pos", 1)
         set(v) { sp.edit().putInt("sub_pos", v).apply() }
 
+    var radioOn: Boolean
+        get() = sp.getBoolean("radio_on", false)
+        set(v) { sp.edit().putBoolean("radio_on", v).apply() }
+
     var subSize: Int
         get() = sp.getInt("sub_size", 1)
         set(v) { sp.edit().putInt("sub_size", v).apply() }

@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Subtitles
@@ -88,6 +89,7 @@ private val sideItems = listOf(
     SideItem(2, "movies", Icons.Filled.Movie),
     SideItem(3, "series", Icons.Filled.Tv),
     SideItem(1, "live", Icons.Filled.LiveTv),
+    SideItem(10, "radio", Icons.Filled.Radio),
     SideItem(5, "nav_fav", Icons.Filled.Favorite),
     SideItem(7, "side_continue", Icons.Filled.PlayCircle),
     SideItem(8, "side_history", Icons.Filled.History),
@@ -117,7 +119,7 @@ fun Sidebar(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusRequ
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            sideItems.forEach { s ->
+            sideItems.filter { it.tab != 10 || vm.radioOn }.forEach { s ->
                 val sel = vm.tab == s.tab
                 val shape = RoundedCornerShape(10.dp)
                 Focusable(Modifier.fillMaxWidth().then(if (sel) Modifier.focusRequester(selectedFocus) else Modifier), shape, 1.03f, onClick = { vm.selectTab(s.tab) }) { f ->
@@ -387,6 +389,7 @@ fun HomeTiles(vm: AppViewModel) {
             HomeTile(t("movies"), Icons.Filled.Movie, Modifier.weight(1f)) { vm.selectTab(2) }
             HomeTile(t("series"), Icons.Filled.Tv, Modifier.weight(1f)) { vm.selectTab(3) }
             HomeTile(t("live"), Icons.Filled.LiveTv, Modifier.weight(1f)) { vm.selectTab(1) }
+            if (vm.radioOn) HomeTile(t("radio"), Icons.Filled.Radio, Modifier.weight(1f)) { vm.selectTab(10) }
             HomeTile(t("my_list"), Icons.Filled.Favorite, Modifier.weight(1f)) { vm.selectTab(5) }
             HomeTile(if (vm.lang == "ar") "الليلة" else "Tonight", Icons.Filled.Theaters, Modifier.weight(1f)) { vm.showTonight = true }
             HomeTile(t("settings"), Icons.Filled.Settings, Modifier.weight(1f)) { vm.selectTab(6) }
@@ -652,7 +655,7 @@ fun TvTopNav(vm: AppViewModel, selectedFocus: androidx.compose.ui.focus.FocusReq
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            sideItems.forEach { si ->
+            sideItems.filter { it.tab != 10 || vm.radioOn }.forEach { si ->
                 val sel = vm.tab == si.tab
                 val shape = RoundedCornerShape(26.dp)
                 Focusable(if (sel) Modifier.focusRequester(selectedFocus) else Modifier, shape, 1.06f, onClick = { vm.selectTab(si.tab) }) { f ->

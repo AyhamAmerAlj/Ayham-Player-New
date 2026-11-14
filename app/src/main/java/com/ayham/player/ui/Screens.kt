@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Search
@@ -331,6 +332,7 @@ fun MainScreen(vm: AppViewModel) {
                     7 -> ItemsPage(vm, vm.recent, "continue_empty")
                     8 -> ItemsPage(vm, vm.history.distinctBy { it.key }, "history_empty")
                     9 -> SubsPage(vm)
+                    10 -> RadioTab(vm)
                     else -> SettingsTab(vm)
                 }
                 }
@@ -389,12 +391,13 @@ fun MainScreen(vm: AppViewModel) {
 }
 
 private val navEntries = listOf(
-    NavEntry(Icons.Filled.Home, "home"),
-    NavEntry(Icons.Filled.LiveTv, "live"),
-    NavEntry(Icons.Filled.Movie, "movies"),
-    NavEntry(Icons.Filled.Tv, "series"),
-    NavEntry(Icons.Filled.Search, "search"),
-    NavEntry(Icons.Filled.VideoLibrary, "library"),
+    NavEntry(Icons.Filled.Home, "home", 0),
+    NavEntry(Icons.Filled.LiveTv, "live", 1),
+    NavEntry(Icons.Filled.Radio, "radio", 10),
+    NavEntry(Icons.Filled.Movie, "movies", 2),
+    NavEntry(Icons.Filled.Tv, "series", 3),
+    NavEntry(Icons.Filled.Search, "search", 4),
+    NavEntry(Icons.Filled.VideoLibrary, "library", 5),
     NavEntry(Icons.Filled.Settings, "settings", 6),
 )
 
@@ -404,7 +407,7 @@ fun BottomNav(vm: AppViewModel) {
     Row(
         Modifier.fillMaxWidth().background(tc(0xFF140A26)).navigationBarsPadding().padding(vertical = 4.dp),
     ) {
-        (if (vm.isKids) navEntries.filter { it.tab != 6 } else navEntries).forEachIndexed { i0, e ->
+        (navEntries.filter { (!vm.isKids || it.tab != 6) && (it.tab != 10 || vm.radioOn) }).forEachIndexed { i0, e ->
             val i = if (e.tab >= 0) e.tab else i0
             val sel = vm.tab == i
             Column(
@@ -425,7 +428,7 @@ private data class NavEntry(val icon: ImageVector, val key: String, val tab: Int
 
 @Composable
 fun NavRail(vm: AppViewModel) {
-    val entries = if (vm.isKids) navEntries.filter { it.tab != 6 } else navEntries
+    val entries = navEntries.filter { (!vm.isKids || it.tab != 6) && (it.tab != 10 || vm.radioOn) }
     Column(
         Modifier.width(104.dp).fillMaxHeight()
             .background(Brush.verticalGradient(listOf(tc(0x552A1850), tc(0x330B0614))))
@@ -1112,6 +1115,7 @@ fun SettingsTab(vm: AppViewModel) {
                 vm.changeSaverMin(when (vm.saverMin) { 0 -> 1; 1 -> 2; 2 -> 5; else -> 0 })
             }
             Chip((if (vm.lang == "ar") "تشغيل آخر قناة عند فتح التطبيق: " else "Resume last channel on launch: ") + (if (vm.resumeLive) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), vm.resumeLive) { vm.changeResumeLive(!vm.resumeLive) }
+            Chip((if (vm.lang == "ar") "الراديو (اختياري): " else "Radio (optional): ") + (if (vm.radioOn) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), vm.radioOn) { vm.changeRadio(!vm.radioOn) }
             Chip((if (vm.lang == "ar") "الإضاءة المحيطة للأفلام: " else "Ambient glow: ") + (if (vm.ambient) (if (vm.lang == "ar") "مفعّلة" else "On") else (if (vm.lang == "ar") "مغلقة" else "Off")), vm.ambient) { vm.changeAmbient(!vm.ambient) }
             Chip((if (vm.lang == "ar") "ستارة السينما عند بدء الفيلم: " else "Cinema curtain: ") + (if (vm.curtain) (if (vm.lang == "ar") "مفعّلة" else "On") else (if (vm.lang == "ar") "مغلقة" else "Off")), vm.curtain) { vm.changeCurtain(!vm.curtain) }
             Chip((if (vm.lang == "ar") "شاشة الإيقاف السينمائية: " else "Cinematic pause screen: ") + (if (vm.pauseScreen) (if (vm.lang == "ar") "مفعّلة" else "On") else (if (vm.lang == "ar") "مغلقة" else "Off")), vm.pauseScreen) { vm.changePauseScreen(!vm.pauseScreen) }
@@ -1210,3 +1214,42 @@ fun SettingsTab(vm: AppViewModel) {
     }
 }
 
+
+
+// ============================ الراديو (اختياري) ============================
+@Composable
+fun RadioTab(vm: AppViewModel) {
+    if (vm.stateOf(Kind.LIVE) != LoadState.DONE) {
+        SectionLoader(vm, Kind.LIVE)
+        return
+    }
+    val ar = vm.lang == "ar"
+    val cats = vm.radioCats()
+    if (cats.isEmpty()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            BodyText(if (ar) "لا يوجد قسم راديو في اشتراكك" else "No radio category in your subscription", 16, C.textDim)
+        }
+        return
+    }
+    var sel by rememberSaveable { mutableStateOf(cats.first().id) }
+    if (cats.none { it.id == sel }) sel = cats.first().id
+    val pager = rememberPager(listOf(sel, vm.dataVersion), 80) { offset, limit -> vm.inCategory(Kind.LIVE, sel, limit, offset) }
+    Row(Modifier.fillMaxSize()) {
+        LazyColumn(
+            Modifier.width(if (isCompact()) 120.dp else 240.dp).fillMaxHeight(),
+            contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(cats, key = { it.id }) { c -> PanelItem(c.name, sel == c.id, "${c.count}") { sel = c.id } }
+        }
+        LazyColumn(
+            Modifier.weight(1f).fillMaxHeight(),
+            contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            item { RText(if (ar) "الراديو" else "Radio", 22, C.text, bold = true) }
+            itemsIndexed(pager.items, key = { _, it -> it.key }) { idx, ch ->
+                if (idx >= pager.items.size - 15) LaunchedEffect(pager.items.size) { pager.loadMore() }
+                PanelItem(ch.name, false) { vm.playLive(ch, LiveSource(favs = pager.items)) }
+            }
+        }
+    }
+}

@@ -36,6 +36,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -123,7 +124,7 @@ import com.ayham.player.data.PlayRequest
 import kotlinx.coroutines.delay
 import java.util.Locale
 
-private enum class Panel { MENU, SUBS, SUBURL, SUBPHONE, TRYSUB, AUDIO, EXT, SYNC, EPG, MATCH }
+private enum class Panel { MENU, SUBS, SUBURL, SUBPHONE, TRYSUB, AUDIO, EXT, SYNC, EPG, MATCH, RADIO }
 
 /** قنوات المباريات: نكتشفها من اسم القناة (رياضة، beIN، SSC، دوري، كأس ...). */
 private val MATCH_RE = Regex(
@@ -1806,6 +1807,9 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                     item { PanelItem(t("ext_audio_remove")) { stopExt() } }
                                     item { PanelItem(t("sync")) { panel = Panel.SYNC } }
                                 }
+                                if (vm.radioOn && vm.radioCats().isNotEmpty() && !searching) {
+                                    item { PanelItem(if (ar) "📻 الراديو" else "📻 Radio", sub = if (ar) "اختر إذاعة كصوت تعليق" else "Pick a station as commentary") { panel = Panel.RADIO } }
+                                }
                                 if (searching) {
                                     items(results, key = { "s" + it.key }) { ch ->
                                         PanelItem(ch.name, selected = ch.key == chosen && !extSession.sameStream) { startExt(ch) }
@@ -1853,6 +1857,9 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                     }
                                 }
                             }
+                            if (vm.radioOn && vm.radioCats().isNotEmpty() && !searching) {
+                                item { PanelItem(if (vm.lang == "ar") "📻 الراديو" else "📻 Radio", sub = if (vm.lang == "ar") "اختر إذاعة كصوت تعليق" else "Pick a station as commentary") { panel = Panel.RADIO } }
+                            }
                             if (searching) {
                                 items(results, key = { "s" + it.key }) { ch ->
                                     PanelItem(ch.name, selected = ch.key == chosen) { startExt(ch); panel = Panel.SYNC }
@@ -1871,6 +1878,27 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                 }
                             }
                             item { PanelItem(t("back")) { panel = Panel.MENU } }
+                        }
+                    }
+
+                    Panel.RADIO -> {
+                        val ar = vm.lang == "ar"
+                        val rc = vm.radioCats()
+                        var rsel by remember { mutableStateOf(rc.firstOrNull()?.id.orEmpty()) }
+                        val rpager = rememberPager(rsel, 60) { off, lim -> vm.inCategory(com.ayham.player.data.Kind.LIVE, rsel, lim, off) }
+                        val chosenR = extSession.channel()?.key
+                        RText(if (ar) "📻 الراديو" else "📻 Radio", 24, C.text, bold = true)
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+                            if (rc.size > 1) item {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                                    rc.forEach { c -> Chip(c.name, rsel == c.id) { rsel = c.id } }
+                                }
+                            }
+                            itemsIndexed(rpager.items, key = { _, it -> "rd" + it.key }) { idx, ch ->
+                                if (idx >= rpager.items.size - 15) LaunchedEffect(rpager.items.size) { rpager.loadMore() }
+                                PanelItem(ch.name, selected = ch.key == chosenR, modifier = if (idx == 0) Modifier.autoFocus() else Modifier) { startExt(ch); panel = Panel.SYNC }
+                            }
+                            item { PanelItem(t("back")) { panel = Panel.EXT } }
                         }
                     }
 
