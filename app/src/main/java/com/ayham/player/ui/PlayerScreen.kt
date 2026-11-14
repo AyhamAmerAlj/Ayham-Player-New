@@ -353,31 +353,6 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         if (changed) exo.trackSelectionParameters = p.build()
     }
 
-    fun setDelay(ms: Long, ar: Boolean) {
-        val sk = showKey()
-        val saved = vm.savedSubs(queue[index].key)
-        uiScope.launch {
-            val ok = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                var all = true
-                if (ms != 0L) saved.forEach { sv ->
-                    val f = shiftFile(sv.uri, ms)
-                    if (!f.exists()) {
-                        val out = SubTools.readText(sv.uri)?.let { SubTools.shifted(it, ms) }
-                        if (out != null) { f.parentFile?.mkdirs(); f.writeText(out) } else all = false
-                    }
-                }
-                all
-            }
-            vm.store.setSubDelay(sk, ms)
-            loadMedia(exo.currentPosition)
-            showToast(
-                if (ms == 0L) (if (ar) "التأخير: 0" else "Delay: 0")
-                else (if (ar) "تأخير الترجمة " else "Subtitle delay ") + String.format(Locale.US, "%+.1f", ms / 1000f) + (if (ar) " ث" else " s") +
-                    (if (!ok) (if (ar) " (بعض الصيغ لا تدعم)" else " (some formats unsupported)") else ""),
-            )
-        }
-    }
-
     fun loadMedia(startMs: Long, withSubs: Boolean = true) {
         val key = queue[index].key
         val b = MediaItem.Builder().setUri(queue[index].url)
@@ -413,6 +388,32 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         exo.prepare()
         exo.playWhenReady = true
     }
+
+    fun setDelay(ms: Long, ar: Boolean) {
+        val sk = showKey()
+        val saved = vm.savedSubs(queue[index].key)
+        uiScope.launch {
+            val ok = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                var all = true
+                if (ms != 0L) saved.forEach { sv ->
+                    val f = shiftFile(sv.uri, ms)
+                    if (!f.exists()) {
+                        val out = SubTools.readText(sv.uri)?.let { SubTools.shifted(it, ms) }
+                        if (out != null) { f.parentFile?.mkdirs(); f.writeText(out) } else all = false
+                    }
+                }
+                all
+            }
+            vm.store.setSubDelay(sk, ms)
+            loadMedia(exo.currentPosition)
+            showToast(
+                if (ms == 0L) (if (ar) "التأخير: 0" else "Delay: 0")
+                else (if (ar) "تأخير الترجمة " else "Subtitle delay ") + String.format(Locale.US, "%+.1f", ms / 1000f) + (if (ar) " ث" else " s") +
+                    (if (!ok) (if (ar) " (بعض الصيغ لا تدعم)" else " (some formats unsupported)") else ""),
+            )
+        }
+    }
+
 
     fun retry() {
         errorMsg = null
