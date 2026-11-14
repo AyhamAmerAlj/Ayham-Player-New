@@ -275,6 +275,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var radioOn by mutableStateOf(store.radioOn)
     fun changeRadio(v: Boolean) { radioOn = v; store.radioOn = v; if (!v && tab == 10) selectTab(0) }
     private val radioRe = Regex("radio|راديو|رادیو|إذاع|اذاع|\\bfm\\b|اف ام|إف إم", RegexOption.IGNORE_CASE)
+    /** بحث داخل محطات الراديو فقط. */
+    suspend fun searchRadio(q: String): List<Item> {
+        val ids = radioCats().map { it.id }.toSet()
+        return searchKind(Kind.LIVE, q, 400).filter { it.categoryId in ids }
+    }
     fun radioCats(): List<Category> = categories[Kind.LIVE].orEmpty().filter { radioRe.containsMatchIn(it.name) }
 
     var ambient by mutableStateOf(store.ambient)

@@ -2,8 +2,9 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "263"
+    const val id = "264"
     val ar = listOf(
+        "بحث داخل الراديو: في قسم الراديو وعند اختيار إذاعة كصوت تعليق",
         "الراديو (اختياري): فعّله من الإعدادات فيظهر قسم «راديو» مع الأفلام والمسلسلات والقنوات، ويمكنك اختيار إذاعة كصوت تعليق من قائمة الصوت الذكي",
         "مزامنة الصوت أذكى لقناتين بلغتين مختلفتين: تعتمد على أرضية صوت الجمهور وتتجاهل كلام المعلقين، مع تأكيد القياس عدة مرات قبل التصحيح",
         "تصحيح المزامنة صار بلا تقطيع: تأخير دقيق لصوت التعليق أو قفزة واحدة للصورة بدل تبطيء التشغيل",
@@ -46,6 +47,7 @@ object WhatsNew {
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "Radio search: in the Radio section and when picking a station as commentary",
         "Radio (optional): turn it on in Settings to get a Radio section next to Movies, Series and Live, and pick a station as commentary audio from Smart Audio",
         "Smarter sync across channels in different languages: it follows the crowd's sound floor and ignores the commentators' speech, confirming the measurement several times before correcting",
         "Sync correction without stutter: a precise commentary delay or a single picture jump instead of slowing playback",
@@ -93,7 +95,7 @@ object WhatsNew {
 data class Release(val id: String, val ar: List<String>, val en: List<String>)
 
 val releaseHistory = listOf(
-    Release("263", WhatsNew.ar, WhatsNew.en),
+    Release("264", WhatsNew.ar, WhatsNew.en),
     Release("237", listOf("افتتاحية سينمائية جديدة بشعار Ayham"), listOf("New cinematic opening with the Ayham logo")),
     Release("227", listOf(
         "تقييمات متعددة (IMDb وRotten Tomatoes وMetacritic وTMDB وTrakt)",

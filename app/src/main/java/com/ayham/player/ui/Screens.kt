@@ -1234,21 +1234,30 @@ fun RadioTab(vm: AppViewModel) {
     var sel by rememberSaveable { mutableStateOf(cats.first().id) }
     if (cats.none { it.id == sel }) sel = cats.first().id
     val pager = rememberPager(listOf(sel, vm.dataVersion), 80) { offset, limit -> vm.inCategory(Kind.LIVE, sel, limit, offset) }
+    var q by rememberSaveable { mutableStateOf("") }
+    var found by remember { mutableStateOf<List<Item>>(emptyList()) }
+    val searching = q.trim().length >= 2
+    LaunchedEffect(q, vm.dataVersion) {
+        delay(300)
+        found = if (q.trim().length >= 2) vm.searchRadio(q) else emptyList()
+    }
+    val shown = if (searching) found else pager.items
     Row(Modifier.fillMaxSize()) {
         LazyColumn(
             Modifier.width(if (isCompact()) 120.dp else 240.dp).fillMaxHeight(),
             contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(cats, key = { it.id }) { c -> PanelItem(c.name, sel == c.id, "${c.count}") { sel = c.id } }
+            items(cats, key = { it.id }) { c -> PanelItem(c.name, sel == c.id && !searching, "${c.count}") { sel = c.id; q = "" } }
         }
         LazyColumn(
             Modifier.weight(1f).fillMaxHeight(),
             contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            item { RText(if (ar) "الراديو" else "Radio", 22, C.text, bold = true) }
-            itemsIndexed(pager.items, key = { _, it -> it.key }) { idx, ch ->
-                if (idx >= pager.items.size - 15) LaunchedEffect(pager.items.size) { pager.loadMore() }
-                PanelItem(ch.name, false) { vm.playLive(ch, LiveSource(favs = pager.items)) }
+            item { AyhamField(q, { q = it }, if (ar) "ابحث في الراديو" else "Search radio", imeAction = ImeAction.Search) }
+            if (searching && found.isEmpty()) item { BodyText(if (ar) "لا توجد نتائج" else "No results", 14, C.textDim) }
+            itemsIndexed(shown, key = { _, it -> it.key }) { idx, ch ->
+                if (!searching && idx >= pager.items.size - 15) LaunchedEffect(pager.items.size) { pager.loadMore() }
+                PanelItem(ch.name, false) { vm.playLive(ch, LiveSource(favs = shown)) }
             }
         }
     }

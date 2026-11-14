@@ -1887,16 +1887,26 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                         var rsel by remember { mutableStateOf(rc.firstOrNull()?.id.orEmpty()) }
                         val rpager = rememberPager(rsel, 60) { off, lim -> vm.inCategory(com.ayham.player.data.Kind.LIVE, rsel, lim, off) }
                         val chosenR = extSession.channel()?.key
+                        var rq by remember { mutableStateOf("") }
+                        var rfound by remember { mutableStateOf<List<Item>>(emptyList()) }
+                        val rsearching = rq.trim().length >= 2
+                        LaunchedEffect(rq) {
+                            delay(300)
+                            rfound = if (rq.trim().length >= 2) vm.searchRadio(rq) else emptyList()
+                        }
+                        val rshown = if (rsearching) rfound else rpager.items
                         RText(if (ar) "📻 الراديو" else "📻 Radio", 24, C.text, bold = true)
+                        AyhamField(rq, { rq = it }, if (ar) "ابحث في الراديو" else "Search radio", Modifier.autoFocus(), imeAction = androidx.compose.ui.text.input.ImeAction.Search)
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
                             if (rc.size > 1) item {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                                    rc.forEach { c -> Chip(c.name, rsel == c.id) { rsel = c.id } }
+                                    rc.forEach { c -> Chip(c.name, rsel == c.id && !rsearching) { rsel = c.id; rq = "" } }
                                 }
                             }
-                            itemsIndexed(rpager.items, key = { _, it -> "rd" + it.key }) { idx, ch ->
-                                if (idx >= rpager.items.size - 15) LaunchedEffect(rpager.items.size) { rpager.loadMore() }
-                                PanelItem(ch.name, selected = ch.key == chosenR, modifier = if (idx == 0) Modifier.autoFocus() else Modifier) { startExt(ch); panel = Panel.SYNC }
+                            if (rsearching && rfound.isEmpty()) item { BodyText(if (ar) "لا توجد نتائج" else "No results", 14, C.textDim) }
+                            itemsIndexed(rshown, key = { _, it -> "rd" + it.key }) { idx, ch ->
+                                if (!rsearching && idx >= rpager.items.size - 15) LaunchedEffect(rpager.items.size) { rpager.loadMore() }
+                                PanelItem(ch.name, selected = ch.key == chosenR) { startExt(ch); panel = Panel.SYNC }
                             }
                             item { PanelItem(t("back")) { panel = Panel.EXT } }
                         }
