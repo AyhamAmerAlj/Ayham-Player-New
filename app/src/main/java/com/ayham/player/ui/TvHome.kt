@@ -44,27 +44,40 @@ fun TvHome(
 ) {
     val sH = LocalConfiguration.current.screenHeightDp
     val small = sH < 560
+    val T_continue_watching = t("continue_watching")
+    val T_hall_movies = t("hall_movies")
+    val T_hall_series = t("hall_series")
+    val T_movies = t("movies")
+    val T_my_list = t("my_list")
+    val T_rec_movies = t("rec_movies")
+    val T_rec_series = t("rec_series")
+    val T_recent_movies = t("recent_movies")
+    val T_recent_series = t("recent_series")
+    val T_series = t("series")
+    val T_trend_movies = t("trend_movies")
+    val T_trend_series = t("trend_series")
+    val T_watch_later = t("watch_later")
     val rows = remember(vm.recent, vm.favorites, vm.later, recMovies, recSeries, newMovies, newSeries, trendMovies, trendSeries, topMovies, topSeries, horrorMovies, horrorSeries) {
         val l = ArrayList<HomeRow>()
         fun add(k: String, label: String, items: List<Item>, style: RowStyle = RowStyle.PORTRAIT, min: Int = 1) {
             val d = items.filter { it.kind != Kind.LIVE }.distinctBy { it.key }
             if (d.size >= min) l.add(HomeRow(k, label, d, style))
         }
-        add("cont", t("continue_watching"), vm.recent, RowStyle.LAND)
-        add("hm", t("hall_movies"), horrorMovies, min = 3)
-        add("hs", t("hall_series"), horrorSeries, min = 3)
+        add("cont", T_continue_watching, vm.recent, RowStyle.LAND)
+        add("hm", T_hall_movies, horrorMovies, min = 3)
+        add("hs", T_hall_series, horrorSeries, min = 3)
         val top = (topMovies.take(5) + topSeries.take(5)).sortedByDescending { it.rating.toFloatOrNull() ?: 0f }
         add("top10", if (vm.lang == "ar") "أفضل 10 اليوم" else "Top 10 today", top, RowStyle.RANK, 5)
-        add("nm", t("movies") + " · " + t("recent_movies").substringBefore("(").trim(), newMovies)
-        add("ns", t("series") + " · " + t("recent_series").substringBefore("(").trim(), newSeries)
-        add("rm", t("rec_movies").substringBefore("(").trim(), recMovies, min = 4)
-        add("rs", t("rec_series").substringBefore("(").trim(), recSeries, min = 4)
-        add("tm", t("trend_movies"), trendMovies, min = 3)
-        add("ts", t("trend_series"), trendSeries, min = 3)
-        add("topm", t("movies") + " ★", topMovies, min = 3)
-        add("tops", t("series") + " ★", topSeries, min = 3)
-        add("fav", t("my_list"), vm.favorites)
-        add("later", t("watch_later"), vm.later)
+        add("nm", T_movies + " · " + T_recent_movies.substringBefore("(").trim(), newMovies)
+        add("ns", T_series + " · " + T_recent_series.substringBefore("(").trim(), newSeries)
+        add("rm", T_rec_movies.substringBefore("(").trim(), recMovies, min = 4)
+        add("rs", T_rec_series.substringBefore("(").trim(), recSeries, min = 4)
+        add("tm", T_trend_movies, trendMovies, min = 3)
+        add("ts", T_trend_series, trendSeries, min = 3)
+        add("topm", T_movies + " ★", topMovies, min = 3)
+        add("tops", T_series + " ★", topSeries, min = 3)
+        add("fav", T_my_list, vm.favorites)
+        add("later", T_watch_later, vm.later)
         l
     }
 
