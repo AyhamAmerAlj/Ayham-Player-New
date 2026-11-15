@@ -22,7 +22,8 @@ object UiSound {
     @Volatile var pack = 0
     private var ready = 0
     private var idSplash = 0
-    private const val TOTAL = 8
+    private const val TOTAL = 11
+    private val idKey = IntArray(4)
     private var idCinema = 0
     private var last = 0L
 
@@ -46,6 +47,11 @@ object UiSound {
             idSplash = p.load(fs.path, 1)
             val fc2 = File(dir, "cinema_v1.wav").also { if (!it.exists()) it.writeBytes(wav(cinemaSound())) }
             idCinema = p.load(fc2.path, 1)
+            val kk = listOf(1250.0 to 0.55, 980.0 to 0.5, 760.0 to 0.55, 640.0 to 0.6)
+            for (j in 1..3) {
+                val fk = File(dir, "key_k${j}_v1.wav").also { if (!it.exists()) it.writeBytes(wav(keyTock(kk[j - 1].first, kk[j - 1].second))) }
+                idKey[j] = p.load(fk.path, 1)
+            }
             pool = p
         }
     }
@@ -114,6 +120,37 @@ object UiSound {
             out[i] += v / 2.3 * env * 0.42
         }
         return ShortArray(n) { (out[it].coerceIn(-1.0, 1.0) * 32767).toInt().toShort() }
+    }
+
+    /** نقرة لوحة المفاتيح (قريبة من نقرة الآيفون): 0/1 حرف ورموز، 2 حذف، 3 مسافة. */
+    fun key(kind: Int = 0) {
+        if (!com.ayham.player.ui.Kbd.sound || ready < TOTAL) return
+        val n = android.os.SystemClock.uptimeMillis()
+        if (n - lastKey < 22) return
+        lastKey = n
+        val id = when (kind) { 2 -> idKey[2]; 3 -> idKey[3]; 1 -> idKey[1]; else -> idKey[1] }
+        pool?.play(id, 0.55f, 0.55f, 1, 0, 1f)
+    }
+    private var lastKey = 0L
+
+    /** نقرة خشبية قصيرة: ضربة ضجيج سريعة + نغمة جسم + هبوط تردد خفيف. */
+    private fun keyTock(f: Double, amp: Double): ShortArray {
+        val n = (SR * 0.05).toInt()
+        val out = ShortArray(n)
+        val rnd = java.util.Random(31L + f.toLong())
+        var lp = 0.0
+        var ph = 0.0
+        for (i in 0 until n) {
+            val t = i.toDouble() / SR
+            lp += 0.45 * ((rnd.nextDouble() * 2 - 1) - lp)
+            val fr = f * (1.0 + 0.35 * exp(-t * 90.0))
+            ph += 2 * PI * fr / SR
+            val body = sin(ph) * exp(-t * 105.0) + 0.45 * sin(ph * 0.5) * exp(-t * 140.0)
+            val tick = lp * exp(-t * 700.0) * 0.9
+            val env = (t / 0.0006).coerceAtMost(1.0)
+            out[i] = ((body + tick) / 1.6 * env * amp * 32767).toInt().coerceIn(-32767, 32767).toShort()
+        }
+        return out
     }
 
     fun move() { if (enabled && ready >= TOTAL && gate(55)) pool?.play(idMove[pack.coerceIn(0, 2)], 0.5f, 0.5f, 1, 0, 1f) }

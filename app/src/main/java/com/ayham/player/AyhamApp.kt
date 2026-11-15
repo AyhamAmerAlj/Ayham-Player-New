@@ -8,6 +8,11 @@ import coil.memory.MemoryCache
 
 /** إعداد خفيف لتحميل الصور: ذاكرة مؤقتة صغيرة وكاش على القرص، مناسب للشاشات الضعيفة. */
 class AyhamApp : Application(), ImageLoaderFactory {
+    override fun onCreate() {
+        super.onCreate()
+        com.ayham.player.ui.Kbd.init(this)
+    }
+
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
             .memoryCache { MemoryCache.Builder(this).maxSizePercent(0.30).build() }

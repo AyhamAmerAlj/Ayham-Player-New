@@ -397,6 +397,10 @@ fun AyhamField(
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     onDone: () -> Unit = {},
 ) {
+    if (Kbd.enabled) {
+        KbdField(value, onChange, label, modifier, password, icon, imeAction == ImeAction.Search, onDone)
+        return
+    }
     // لوحة المفاتيح الافتراضية للجهاز
     OutlinedTextField(
         value = value,

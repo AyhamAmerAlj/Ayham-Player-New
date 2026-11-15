@@ -1115,6 +1115,11 @@ fun SettingsTab(vm: AppViewModel) {
                 vm.changeSaverMin(when (vm.saverMin) { 0 -> 1; 1 -> 2; 2 -> 5; else -> 0 })
             }
             Chip((if (vm.lang == "ar") "تشغيل آخر قناة عند فتح التطبيق: " else "Resume last channel on launch: ") + (if (vm.resumeLive) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), vm.resumeLive) { vm.changeResumeLive(!vm.resumeLive) }
+            Chip((if (vm.lang == "ar") "كيبورد التطبيق (اختياري): " else "App keyboard (optional): ") + (if (Kbd.enabled) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), Kbd.enabled) { Kbd.setEnabled(!Kbd.enabled) }
+            if (Kbd.enabled) {
+                Chip((if (vm.lang == "ar") "ترتيب الأحرف: " else "Letter order: ") + (if (Kbd.abc) (if (vm.lang == "ar") "أبجدي" else "Alphabetical") else (if (vm.lang == "ar") "مثل الكيبورد العادي" else "Standard")), Kbd.abc) { Kbd.setAbc(!Kbd.abc) }
+                Chip((if (vm.lang == "ar") "صوت النقر: " else "Key click: ") + (if (Kbd.sound) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), Kbd.sound) { Kbd.setSound(!Kbd.sound) }
+            }
             Chip((if (vm.lang == "ar") "الراديو (اختياري): " else "Radio (optional): ") + (if (vm.radioOn) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), vm.radioOn) { vm.changeRadio(!vm.radioOn) }
             Chip((if (vm.lang == "ar") "الإضاءة المحيطة للأفلام: " else "Ambient glow: ") + (if (vm.ambient) (if (vm.lang == "ar") "مفعّلة" else "On") else (if (vm.lang == "ar") "مغلقة" else "Off")), vm.ambient) { vm.changeAmbient(!vm.ambient) }
             Chip((if (vm.lang == "ar") "ستارة السينما عند بدء الفيلم: " else "Cinema curtain: ") + (if (vm.curtain) (if (vm.lang == "ar") "مفعّلة" else "On") else (if (vm.lang == "ar") "مغلقة" else "Off")), vm.curtain) { vm.changeCurtain(!vm.curtain) }
