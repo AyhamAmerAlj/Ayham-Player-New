@@ -514,7 +514,8 @@ fun HomeTab(vm: AppViewModel) {
 
     val tvUi = !isCompact()
     if (tvUi) {
-        TvHome(vm, recMovies, recSeries, recentMovies, recentSeries, trendMovies, trendSeries, topMovies, topSeries, horrorMovies, horrorSeries)
+        if (Perf.on) TvHomeClassic(vm, recMovies, recSeries, recentMovies, recentSeries, trendMovies, trendSeries, topMovies, topSeries, horrorMovies, horrorSeries)
+        else TvHome(vm, recMovies, recSeries, recentMovies, recentSeries, trendMovies, trendSeries, topMovies, topSeries, horrorMovies, horrorSeries)
         return
     }
     var heroFocus by remember { mutableStateOf<Item?>(null) }

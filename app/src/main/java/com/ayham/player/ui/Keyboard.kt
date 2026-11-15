@@ -117,7 +117,7 @@ private fun KeyTile(
     }
     Box(
         modifier
-            .heightIn(min = 40.dp)
+            .heightIn(min = 26.dp)
             .graphicsLayer { scaleX = sc; scaleY = sc }
             .clip(shape)
             .background(bg)
@@ -132,7 +132,7 @@ private fun KeyTile(
         contentAlignment = Alignment.Center,
     ) {
         if (icon != null) Icon(icon, null, tint = Color.White, modifier = Modifier.padding(6.dp))
-        else if (label != null) RText(label, if (label.length > 2) 15 else 22, Color.White, bold = true, maxLines = 1)
+        else if (label != null) RText(label, if (label.length > 2) 13 else 18, Color.White, bold = true, maxLines = 1)
     }
 }
 
@@ -148,7 +148,8 @@ fun AyhamKeyboard(
     var symbols by remember { mutableStateOf(false) }
     var shift by remember { mutableStateOf(false) }
     val compact = isCompact()
-    val keyH = if (compact) 44.dp else 50.dp
+    val sHdp = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp
+    val keyH = (sHdp * 0.064f).coerceIn(30f, 46f).dp
 
     fun put(s: String) { text += s; onChange(text); if (shift) shift = false }
     fun del() { if (text.isNotEmpty()) { text = text.dropLast(1); onChange(text) } }
@@ -166,12 +167,12 @@ fun AyhamKeyboard(
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Box(Modifier.fillMaxSize().background(tc(0x99000000)), contentAlignment = Alignment.BottomCenter) {
                 Column(
-                    Modifier.widthIn(max = 1000.dp).fillMaxWidth()
+                    Modifier.widthIn(max = 820.dp).fillMaxWidth()
                         .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
                         .background(Brush.verticalGradient(listOf(tc(0xF2120B24), tc(0xFA0B0616))))
                         .border(1.dp, tc(0x338B5CF6), RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(7.dp),
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     // ---- الحقل ----
                     Row(
@@ -185,12 +186,12 @@ fun AyhamKeyboard(
                             CompositionLocalProvider(LocalLayoutDirection provides (if (lang == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr)) {
                                 RText(
                                     (if (password) "•".repeat(text.length) else text) + "▏",
-                                    24, Color.White, bold = true, maxLines = 1,
+                                    20, Color.White, bold = true, maxLines = 1,
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             }
                         }
-                        KeyTile(Modifier.width(76.dp).height(40.dp), if (lang == "ar") "مسح" else "Clear", soft = true, sound = 2) { text = ""; onChange("") }
+                        KeyTile(Modifier.width(70.dp).height(32.dp), if (lang == "ar") "مسح" else "Clear", soft = true, sound = 2) { text = ""; onChange("") }
                     }
                     // ---- اقتراحات من آخر ما كتبته ----
                     val sugg = remember(text, Kbd.recent) {
@@ -199,7 +200,7 @@ fun AyhamKeyboard(
                     if (!password && sugg.isNotEmpty()) {
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(sugg, key = { it }) { s ->
-                                KeyTile(Modifier.height(36.dp), s, soft = true) { text = s; onChange(s) }
+                                KeyTile(Modifier.height(30.dp), s, soft = true) { text = s; onChange(s) }
                             }
                         }
                     }
@@ -207,13 +208,13 @@ fun AyhamKeyboard(
                     if (symbols) {
                         val rows = listOf("1234567890", "@#\$_&-+()/", "*\"':;!?%=", ".,،؟~^[]{}")
                         rows.forEach { r ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 r.forEach { c -> KeyTile(Modifier.weight(1f).height(keyH), c.toString()) { put(c.toString()) } }
                             }
                         }
                     } else {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            "1234567890".forEach { c -> KeyTile(Modifier.weight(1f).height(keyH - 6.dp), c.toString(), soft = true) { put(c.toString()) } }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            "1234567890".forEach { c -> KeyTile(Modifier.weight(1f).height(keyH - 4.dp), c.toString(), soft = true) { put(c.toString()) } }
                         }
                         val rows = when {
                             ar && Kbd.abc -> AR_ABC
@@ -222,7 +223,7 @@ fun AyhamKeyboard(
                             else -> EN_STD
                         }
                         rows.forEachIndexed { ri, r ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 if (ri == 2 && !ar) KeyTile(Modifier.weight(1.4f).height(keyH), "⇧", accent = shift, sound = 1) { shift = !shift }
                                 r.forEachIndexed { ci, c ->
                                     val ch = if (!ar && shift) c.uppercaseChar().toString() else c.toString()
@@ -231,12 +232,12 @@ fun AyhamKeyboard(
                                 if (ri == 2) KeyTile(Modifier.weight(1.4f).height(keyH), "⌫", soft = true, sound = 2, onLong = { delWord() }) { del() }
                             }
                         }
-                        if (ar) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            AR_EXTRA.forEach { c -> KeyTile(Modifier.weight(1f).height(keyH - 6.dp), c, soft = true) { put(c) } }
+                        if (ar) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            AR_EXTRA.forEach { c -> KeyTile(Modifier.weight(1f).height(keyH - 4.dp), c, soft = true) { put(c) } }
                         }
                     }
                     // ---- الصف السفلي ----
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                         KeyTile(Modifier.weight(1.3f).height(keyH), if (symbols) "ABC" else "123", soft = true, sound = 1) { symbols = !symbols }
                         KeyTile(Modifier.weight(1.3f).height(keyH), if (ar) "EN" else "ع", soft = true, sound = 1) { ar = !ar; symbols = false }
                         KeyTile(Modifier.weight(4f).height(keyH), if (lang == "ar") "مسافة" else "space", sound = 3) { put(" ") }

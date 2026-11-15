@@ -99,80 +99,18 @@ fun TvBrowse(vm: AppViewModel, kind: Kind) {
     val kindLabel = t(if (kind == Kind.SERIES) "series" else "movies")
 
     Box(Modifier.fillMaxSize()) {
-        val bg = details?.backdrop.orEmpty().ifEmpty { item?.image.orEmpty() }
-        Crossfade(targetState = bg, modifier = Modifier.fillMaxSize(), animationSpec = tween(500), label = "tvbrowseBg") { url ->
-            val kb = remember(url) { androidx.compose.animation.core.Animatable(1f) }
-            LaunchedEffect(url) { if (!Perf.on) kb.animateTo(1.08f, tween(14_000, easing = androidx.compose.animation.core.LinearEasing)) }
-            Img(url, Modifier.fillMaxSize().graphicsLayer { scaleX = kb.value; scaleY = kb.value }, w = 1280, h = 720)
-        }
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(tc(0x990B0614), tc(0x220B0614), tc(0x990B0614)))))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to tc(0xAA0B0614), 0.3f to tc(0x000B0614), 0.5f to tc(0xBB05020B), 1f to tc(0xFF05020B))))
-        ThemeState.palette.glow?.let { g ->
-            Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(g.copy(alpha = 0.30f), Color.Transparent), center = Offset(0f, 0f), radius = 1100f)))
-        }
+        CinemaBackdrop(details?.backdrop.orEmpty().ifEmpty { item?.image.orEmpty() })
 
         Column(Modifier.fillMaxSize().padding(top = if (small) 18.dp else 30.dp, bottom = 10.dp)) {
             // ---------- التفاصيل ----------
-            Column(
+            Box(
                 Modifier.weight(1f).fillMaxWidth().padding(horizontal = 44.dp),
-                verticalArrangement = Arrangement.spacedBy(if (small) 4.dp else 8.dp, Alignment.Bottom),
+                contentAlignment = Alignment.BottomStart,
             ) {
                 if (item == null) {
                     RText(if (searching) t("no_results") else (if (ar) "لا توجد عناصر في هذا القسم" else "Nothing in this section"), 24, C.textDim, bold = true)
                 } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.clip(RoundedCornerShape(8.dp)).background(tc(0xFF6D28D9)).padding(horizontal = 12.dp, vertical = 2.dp)) {
-                            RText(kindLabel, 13, Color.White, bold = true, maxLines = 1)
-                        }
-                        val rank = top10.indexOfFirst { it.key == item.key } + 1
-                        if (rank > 0) Box(Modifier.clip(RoundedCornerShape(8.dp)).background(Brush.horizontalGradient(listOf(tc(0xFFF59E0B), tc(0xFFEF4444)))).padding(horizontal = 10.dp, vertical = 2.dp)) {
-                            RText(if (ar) "🔥 رقم $rank اليوم" else "🔥 #$rank today", 13, Color.White, bold = true, maxLines = 1)
-                        }
-                        imdb?.let { ImdbBadge(it) } ?: (details?.rating?.takeIf { it.isNotBlank() && it != "0" } ?: item.rating.takeIf { it.isNotBlank() && it != "0" })
-                            ?.let { RText("★ $it", 16, tc(0xFFF5C518), bold = true, maxLines = 1) }
-                    }
-                    RText(arName ?: item.name, if (small) 28 else 44, Color.White, bold = true, maxLines = if (small) 1 else 2, lineHeight = if (small) 34 else 52,
-                        modifier = Modifier.fillMaxWidth(0.62f))
-                    if (!small && arName != null && arName != item.name) RText(item.name, 16, tc(0xFFBDB2D6), maxLines = 1)
-                    val meta = listOfNotNull(
-                        details?.year?.takeIf { it.isNotBlank() },
-                        details?.genre?.takeIf { it.isNotBlank() }?.split(",", "/")?.take(2)?.joinToString(" · ") { it.trim() },
-                        details?.duration?.takeIf { it.isNotBlank() },
-                    ).joinToString("  •  ")
-                    if (meta.isNotEmpty() && !small) BodyText(meta, 15, tc(0xFFD9CCF5), bold = true, maxLines = 1)
-                    val plot = details?.plot.orEmpty()
-                    if (plot.isNotBlank() && sH >= 540) BodyText(plot, 15, tc(0xFFE5DEF5), maxLines = 2, modifier = Modifier.fillMaxWidth(0.5f))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                        Focusable(shape = RoundedCornerShape(26.dp), focusScale = 1.07f, onClick = {
-                            if (item.kind == Kind.MOVIE) vm.playMovie(item) else vm.openDetail(item)
-                        }) { f ->
-                            Row(
-                                Modifier.clip(RoundedCornerShape(26.dp))
-                                    .background(Brush.horizontalGradient(ThemeState.palette.stripe ?: if (f) listOf(tc(0xFFA855F7), tc(0xFF7C3AED)) else listOf(tc(0xFF8B1FD9), tc(0xFF6D28D9))))
-                                    .padding(horizontal = 24.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                RText(t("watch_now"), 17, Color.White, bold = true, maxLines = 1)
-                                Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(22.dp))
-                            }
-                        }
-                        Focusable(shape = RoundedCornerShape(26.dp), focusScale = 1.07f, onClick = { vm.openDetail(item) }) { f ->
-                            Box(Modifier.clip(RoundedCornerShape(26.dp)).background(if (f) tc(0x66FFFFFF) else tc(0x33FFFFFF)).padding(horizontal = 20.dp, vertical = 8.dp)) {
-                                RText(t("details"), 16, Color.White, bold = true, maxLines = 1)
-                            }
-                        }
-                        val inFav = vm.isIn("fav", item)
-                        Focusable(shape = RoundedCornerShape(26.dp), focusScale = 1.07f, onClick = { vm.toggle("fav", item) }) { f ->
-                            Row(
-                                Modifier.clip(RoundedCornerShape(26.dp)).background(if (f) tc(0x558B5CF6) else tc(0x33FFFFFF)).padding(horizontal = 16.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                Icon(Icons.Filled.Favorite, null, tint = if (inFav) tc(0xFFD946EF) else Color.White, modifier = Modifier.size(18.dp))
-                                RText(t("my_list"), 15, Color.White, bold = true, maxLines = 1)
-                            }
-                        }
-                    }
+                    CinemaHeroText(vm, item, details, imdb, top10.indexOfFirst { it.key == item.key } + 1, small, arName)
                 }
             }
 
@@ -212,7 +150,7 @@ fun TvBrowse(vm: AppViewModel, kind: Kind) {
             var initFocus by remember { mutableStateOf(true) }
             LaunchedEffect(Unit) { delay(700); initFocus = false }
             val posterH = (sH * (if (small) 0.24f else 0.26f)).coerceIn(100f, 200f).dp
-            val rowBlock = posterH + 22.dp + 30.dp
+            val rowBlock = posterH + 62.dp
             val others = remember(cats, sel, searching) { if (searching) emptyList() else cats.filter { it.id != sel } }
             val selLabel = when (sel) {
                 "recent", "feed" -> t(if (kind == Kind.SERIES) "recent_series" else "recent_movies").substringBefore("(").trim()
@@ -223,11 +161,11 @@ fun TvBrowse(vm: AppViewModel, kind: Kind) {
             LazyColumn(Modifier.fillMaxWidth().height(rowBlock * 1.28f)) {
                 val feed = sel == "feed" && !searching
                 if (feed && contItems.isNotEmpty()) item(key = "row_cont") {
-                    BrowseRow(if (ar) "تابع المشاهدة" else "Continue watching", contItems, posterH, onFocus = { focusItem = it }, onOpen = { vm.openDetail(it) }, first = initFocus)
+                    CinemaRow(if (ar) "تابع المشاهدة" else "Continue watching", contItems, RowStyle.LAND, posterH, 44.dp, first = initFocus, onFocus = { focusItem = it }, onOpen = { vm.openDetail(it) })
                 }
                 if (feed && top10.size >= 5) item(key = "row_top10") {
-                    RankRow(if (ar) (if (kind == Kind.SERIES) "الأعلى 10 مسلسلات" else "الأعلى 10 أفلام") else (if (kind == Kind.SERIES) "Top 10 series" else "Top 10 movies"),
-                        top10, posterH, 44.dp, onFocus = { focusItem = it }, first = initFocus && contItems.isEmpty(), onOpen = { vm.openDetail(it) })
+                    CinemaRow(if (ar) (if (kind == Kind.SERIES) "الأعلى 10 مسلسلات" else "الأعلى 10 أفلام") else (if (kind == Kind.SERIES) "Top 10 series" else "Top 10 movies"),
+                        top10, RowStyle.RANK, posterH, 44.dp, order = 1, first = initFocus && contItems.isEmpty(), onFocus = { focusItem = it }, onOpen = { vm.openDetail(it) })
                 }
                 item(key = "row_main") {
                     BrowseRow(if (searching) t("search") else if (feed) (if (ar) "أُضيف حديثًا" else "New arrivals") else selLabel, list, posterH, onFocus = { focusItem = it }, onOpen = { vm.openDetail(it) },
@@ -256,22 +194,7 @@ private fun BrowseRow(
     title: String, items: List<Item>, posterH: androidx.compose.ui.unit.Dp,
     onFocus: (Item) -> Unit, onOpen: (Item) -> Unit, first: Boolean = false, onIndex: (Int) -> Unit = {},
 ) {
-    Column(Modifier.fillMaxWidth()) {
-        RText(title, 17, C.text, bold = true, maxLines = 1, modifier = Modifier.padding(start = 44.dp, top = 6.dp, end = 44.dp))
-        LazyRow(
-            Modifier.fillMaxWidth().height(posterH + 22.dp),
-            contentPadding = PaddingValues(horizontal = 40.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            itemsIndexed(items, key = { _, it -> it.key }) { i, it ->
-                if (first && i >= items.size - 12) LaunchedEffect(items.size) { onIndex(i) }
-                PosterCard(
-                    it, Modifier.onFocusChanged { f -> if (f.hasFocus) onFocus(it) }.then(if (first && i == 0) Modifier.autoFocus() else Modifier),
-                    w = posterH * 0.68f, h = posterH, focusScale = 1.1f,
-                ) { onOpen(it) }
-            }
-        }
-    }
+    CinemaRow(title, items, RowStyle.PORTRAIT, posterH, 44.dp, first = first, onFocus = onFocus, onIndex = onIndex, onOpen = onOpen)
 }
 
 @Composable
