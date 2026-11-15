@@ -708,7 +708,7 @@ fun BrowseTab(vm: AppViewModel, kind: Kind) {
     var topItems by remember(kind, vm.dataVersion) { mutableStateOf<List<Item>>(emptyList()) }
     LaunchedEffect(kind, vm.dataVersion) {
         recentItems = vm.recentItems(kind)
-        topItems = if (isMovie) vm.topItems(kind) else emptyList()
+        topItems = vm.topItems(kind)
     }
     val featured = remember(recentItems) { recentItems.take(8).randomOrNull() }
     val compact = isCompact()
@@ -766,7 +766,7 @@ fun BrowseTab(vm: AppViewModel, kind: Kind) {
                 }
                 if (watchedHere.isNotEmpty()) item { ContentRow(t(if (isMovie) "recent_movies_w" else "recent_series_w"), watchedHere) { vm.openDetail(it) } }
                 item { ContentRow(t(if (isMovie) "recent_movies" else "recent_series"), recentItems) { vm.openDetail(it) } }
-                if (isMovie) item { ContentRow(t("top_movies"), topItems) { vm.openDetail(it) } }
+                if (topItems.size >= 5) item { RankRow(if (vm.lang == "ar") (if (isMovie) "الأعلى 10 أفلام" else "الأعلى 10 مسلسلات") else (if (isMovie) "Top 10 movies" else "Top 10 series"), topItems, 170.dp, 14.dp) { vm.openDetail(it) } }
                 items(cats, key = { it.id }, contentType = { "catrow" }) { c ->
                     LazyCategoryRow(c.name, vm.dataVersion, { vm.inCategory(kind, c.id, 16, 0) }) { vm.openDetail(it) }
                 }
@@ -1115,10 +1115,10 @@ fun SettingsTab(vm: AppViewModel) {
                 vm.changeSaverMin(when (vm.saverMin) { 0 -> 1; 1 -> 2; 2 -> 5; else -> 0 })
             }
             Chip((if (vm.lang == "ar") "تشغيل آخر قناة عند فتح التطبيق: " else "Resume last channel on launch: ") + (if (vm.resumeLive) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), vm.resumeLive) { vm.changeResumeLive(!vm.resumeLive) }
-            Chip((if (vm.lang == "ar") "كيبورد التطبيق (اختياري): " else "App keyboard (optional): ") + (if (Kbd.enabled) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), Kbd.enabled) { Kbd.setEnabled(!Kbd.enabled) }
+            Chip((if (vm.lang == "ar") "كيبورد التطبيق (اختياري): " else "App keyboard (optional): ") + (if (Kbd.enabled) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), Kbd.enabled) { Kbd.changeEnabled(!Kbd.enabled) }
             if (Kbd.enabled) {
-                Chip((if (vm.lang == "ar") "ترتيب الأحرف: " else "Letter order: ") + (if (Kbd.abc) (if (vm.lang == "ar") "أبجدي" else "Alphabetical") else (if (vm.lang == "ar") "مثل الكيبورد العادي" else "Standard")), Kbd.abc) { Kbd.setAbc(!Kbd.abc) }
-                Chip((if (vm.lang == "ar") "صوت النقر: " else "Key click: ") + (if (Kbd.sound) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), Kbd.sound) { Kbd.setSound(!Kbd.sound) }
+                Chip((if (vm.lang == "ar") "ترتيب الأحرف: " else "Letter order: ") + (if (Kbd.abc) (if (vm.lang == "ar") "أبجدي" else "Alphabetical") else (if (vm.lang == "ar") "مثل الكيبورد العادي" else "Standard")), Kbd.abc) { Kbd.changeAbc(!Kbd.abc) }
+                Chip((if (vm.lang == "ar") "صوت النقر: " else "Key click: ") + (if (Kbd.sound) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), Kbd.sound) { Kbd.changeSound(!Kbd.sound) }
             }
             Chip((if (vm.lang == "ar") "الراديو (اختياري): " else "Radio (optional): ") + (if (vm.radioOn) (if (vm.lang == "ar") "مفعّل" else "On") else (if (vm.lang == "ar") "مغلق" else "Off")), vm.radioOn) { vm.changeRadio(!vm.radioOn) }
             Chip((if (vm.lang == "ar") "الإضاءة المحيطة للأفلام: " else "Ambient glow: ") + (if (vm.ambient) (if (vm.lang == "ar") "مفعّلة" else "On") else (if (vm.lang == "ar") "مغلقة" else "Off")), vm.ambient) { vm.changeAmbient(!vm.ambient) }

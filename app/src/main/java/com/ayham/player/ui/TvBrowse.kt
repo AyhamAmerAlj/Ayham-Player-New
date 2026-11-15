@@ -57,7 +57,7 @@ fun TvBrowse(vm: AppViewModel, kind: Kind) {
     val small = sH < 440
     val ar = vm.lang == "ar"
     val cats = vm.categories[kind].orEmpty()
-    var sel by androidx.compose.runtime.saveable.rememberSaveable(kind.name + "_tvsel") { mutableStateOf("recent") }
+    var sel by androidx.compose.runtime.saveable.rememberSaveable(kind.name + "_tvsel") { mutableStateOf("feed") }
     var q by androidx.compose.runtime.saveable.rememberSaveable(kind.name + "_tvq") { mutableStateOf("") }
     var showSearch by remember { mutableStateOf(false) }
     var found by remember(kind) { mutableStateOf<List<Item>>(emptyList()) }
@@ -69,13 +69,19 @@ fun TvBrowse(vm: AppViewModel, kind: Kind) {
     }
     val pager = rememberPager(listOf(kind, sel, vm.dataVersion), 60) { off, lim ->
         when (sel) {
-            "recent" -> vm.recentItems(kind, off + lim).drop(off)
+            "recent", "feed" -> vm.recentItems(kind, off + lim).drop(off)
             "top" -> vm.topItems(kind, off + lim).drop(off)
             "all" -> vm.allItems(kind, lim, off)
             else -> vm.inCategory(kind, sel, lim, off)
         }
     }
     val list: List<Item> = if (searching) found else pager.items
+    var contItems by remember(kind, vm.dataVersion) { mutableStateOf<List<Item>>(emptyList()) }
+    var top10 by remember(kind, vm.dataVersion) { mutableStateOf<List<Item>>(emptyList()) }
+    LaunchedEffect(kind, vm.dataVersion, vm.history.size) {
+        contItems = vm.historyOf(kind).distinctBy { it.key }.take(20)
+        top10 = runCatching { vm.topItems(kind, 10) }.getOrDefault(emptyList())
+    }
     var focusItem by remember(sel, searching) { mutableStateOf<Item?>(null) }
     val item = focusItem ?: list.firstOrNull()
 
@@ -117,6 +123,10 @@ fun TvBrowse(vm: AppViewModel, kind: Kind) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.clip(RoundedCornerShape(8.dp)).background(tc(0xFF6D28D9)).padding(horizontal = 12.dp, vertical = 2.dp)) {
                             RText(kindLabel, 13, Color.White, bold = true, maxLines = 1)
+                        }
+                        val rank = top10.indexOfFirst { it.key == item.key } + 1
+                        if (rank > 0) Box(Modifier.clip(RoundedCornerShape(8.dp)).background(Brush.horizontalGradient(listOf(tc(0xFFF59E0B), tc(0xFFEF4444)))).padding(horizontal = 10.dp, vertical = 2.dp)) {
+                            RText(if (ar) "🔥 رقم $rank اليوم" else "🔥 #$rank today", 13, Color.White, bold = true, maxLines = 1)
                         }
                         imdb?.let { ImdbBadge(it) } ?: (details?.rating?.takeIf { it.isNotBlank() && it != "0" } ?: item.rating.takeIf { it.isNotBlank() && it != "0" })
                             ?.let { RText("★ $it", 16, tc(0xFFF5C518), bold = true, maxLines = 1) }
@@ -171,7 +181,7 @@ fun TvBrowse(vm: AppViewModel, kind: Kind) {
             }
 
             // ---------- الأقسام ----------
-            val fixed = listOf("recent" to t(if (kind == Kind.SERIES) "recent_series" else "recent_movies").substringBefore("(").trim(), "top" to (kindLabel + " ★"), "all" to t("all"))
+            val fixed = listOf("feed" to (if (ar) "الرئيسية" else "Home"), "recent" to t(if (kind == Kind.SERIES) "recent_series" else "recent_movies").substringBefore("(").trim(), "top" to (kindLabel + " ★"), "all" to t("all"))
             LazyRow(
                 Modifier.fillMaxWidth().padding(top = 6.dp),
                 contentPadding = PaddingValues(horizontal = 40.dp, vertical = 6.dp),
@@ -205,14 +215,23 @@ fun TvBrowse(vm: AppViewModel, kind: Kind) {
             val rowBlock = posterH + 22.dp + 30.dp
             val others = remember(cats, sel, searching) { if (searching) emptyList() else cats.filter { it.id != sel } }
             val selLabel = when (sel) {
-                "recent" -> t(if (kind == Kind.SERIES) "recent_series" else "recent_movies").substringBefore("(").trim()
+                "recent", "feed" -> t(if (kind == Kind.SERIES) "recent_series" else "recent_movies").substringBefore("(").trim()
                 "top" -> kindLabel + " ★"
                 "all" -> t("all")
                 else -> cats.firstOrNull { it.id == sel }?.name.orEmpty()
             }
             LazyColumn(Modifier.fillMaxWidth().height(rowBlock * 1.28f)) {
+                val feed = sel == "feed" && !searching
+                if (feed && contItems.isNotEmpty()) item(key = "row_cont") {
+                    BrowseRow(if (ar) "تابع المشاهدة" else "Continue watching", contItems, posterH, onFocus = { focusItem = it }, onOpen = { vm.openDetail(it) }, first = initFocus)
+                }
+                if (feed && top10.size >= 5) item(key = "row_top10") {
+                    RankRow(if (ar) (if (kind == Kind.SERIES) "الأعلى 10 مسلسلات" else "الأعلى 10 أفلام") else (if (kind == Kind.SERIES) "Top 10 series" else "Top 10 movies"),
+                        top10, posterH, 44.dp, onFocus = { focusItem = it }, first = initFocus && contItems.isEmpty(), onOpen = { vm.openDetail(it) })
+                }
                 item(key = "row_main") {
-                    BrowseRow(if (searching) t("search") else selLabel, list, posterH, onFocus = { focusItem = it }, onOpen = { vm.openDetail(it) }, first = initFocus) { i ->
+                    BrowseRow(if (searching) t("search") else if (feed) (if (ar) "أُضيف حديثًا" else "New arrivals") else selLabel, list, posterH, onFocus = { focusItem = it }, onOpen = { vm.openDetail(it) },
+                        first = initFocus && !(feed && (contItems.isNotEmpty() || top10.size >= 5))) { i ->
                         if (!searching && i >= list.size - 12) pager.loadMore()
                     }
                 }
@@ -248,7 +267,7 @@ private fun BrowseRow(
                 if (first && i >= items.size - 12) LaunchedEffect(items.size) { onIndex(i) }
                 PosterCard(
                     it, Modifier.onFocusChanged { f -> if (f.hasFocus) onFocus(it) }.then(if (first && i == 0) Modifier.autoFocus() else Modifier),
-                    w = posterH * 0.68f, h = posterH,
+                    w = posterH * 0.68f, h = posterH, focusScale = 1.1f,
                 ) { onOpen(it) }
             }
         }

@@ -106,6 +106,7 @@ fun PosterCard(
     modifier: Modifier = Modifier,
     w: Dp = Dp.Unspecified,
     h: Dp = Dp.Unspecified,
+    focusScale: Float = 1.06f,
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(14.dp)
@@ -114,7 +115,7 @@ fun PosterCard(
     val hh = if (h != Dp.Unspecified) h else if (compact) 177.dp else 198.dp
     val rating = item.rating.trim().takeIf { it.isNotBlank() && it != "0" && it != "0.0" }
 
-    Focusable(modifier = modifier.width(ww).height(hh), shape = shape, focusScale = 1.06f, onClick = onClick) { f ->
+    Focusable(modifier = modifier.width(ww).height(hh), shape = shape, focusScale = focusScale, onClick = onClick) { f ->
         if (f && item.kind != Kind.LIVE) androidx.compose.runtime.LaunchedEffect(item.key) { kotlinx.coroutines.delay(350); Prefetch.fn?.invoke(item) }
         Box(
             Modifier.fillMaxSize().clip(shape).background(C.surface)

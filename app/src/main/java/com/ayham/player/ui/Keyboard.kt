@@ -70,9 +70,9 @@ object Kbd {
         sound = p.getBoolean("kbd_snd", true)
         recent = (p.getString("kbd_recent", "") ?: "").split('\u0001').filter { it.isNotBlank() }
     }
-    fun setEnabled(v: Boolean) { enabled = v; sp?.edit()?.putBoolean("kbd_on", v)?.apply() }
-    fun setAbc(v: Boolean) { abc = v; sp?.edit()?.putBoolean("kbd_abc", v)?.apply() }
-    fun setSound(v: Boolean) { sound = v; sp?.edit()?.putBoolean("kbd_snd", v)?.apply() }
+    fun changeEnabled(v: Boolean) { enabled = v; sp?.edit()?.putBoolean("kbd_on", v)?.apply() }
+    fun changeAbc(v: Boolean) { abc = v; sp?.edit()?.putBoolean("kbd_abc", v)?.apply() }
+    fun changeSound(v: Boolean) { sound = v; sp?.edit()?.putBoolean("kbd_snd", v)?.apply() }
     fun remember(s: String) {
         val t = s.trim()
         if (t.length < 2) return
