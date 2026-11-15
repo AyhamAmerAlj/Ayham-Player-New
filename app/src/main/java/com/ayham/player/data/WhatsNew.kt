@@ -2,8 +2,10 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "264"
+    const val id = "265"
     val ar = listOf(
+        "كيبورد خاص بالتطبيق (اختياري من الإعدادات): أزرار كبيرة للريموت واللمس، عربي وإنجليزي، ترتيب عادي أو أبجدي، اقتراحات من آخر ما كتبت، وصوت نقرة ناعم",
+        "صفحة الأفلام والمسلسلات بتصميم سينمائي: «تابع المشاهدة» وصف «الأعلى 10» بأرقام كبيرة و«أُضيف حديثًا»، وبوسترات أكبر عند التركيز",
         "بحث داخل الراديو: في قسم الراديو وعند اختيار إذاعة كصوت تعليق",
         "الراديو (اختياري): فعّله من الإعدادات فيظهر قسم «راديو» مع الأفلام والمسلسلات والقنوات، ويمكنك اختيار إذاعة كصوت تعليق من قائمة الصوت الذكي",
         "مزامنة الصوت أذكى لقناتين بلغتين مختلفتين: تعتمد على أرضية صوت الجمهور وتتجاهل كلام المعلقين، مع تأكيد القياس عدة مرات قبل التصحيح",
@@ -47,6 +49,8 @@ object WhatsNew {
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "App keyboard (optional in Settings): big keys for remote and touch, Arabic and English, standard or alphabetical order, suggestions from what you typed before, and a soft key click",
+        "Movies and series page redesigned: Continue watching, a big-number Top 10 row and New arrivals, with larger posters on focus",
         "Radio search: in the Radio section and when picking a station as commentary",
         "Radio (optional): turn it on in Settings to get a Radio section next to Movies, Series and Live, and pick a station as commentary audio from Smart Audio",
         "Smarter sync across channels in different languages: it follows the crowd's sound floor and ignores the commentators' speech, confirming the measurement several times before correcting",
@@ -95,7 +99,7 @@ object WhatsNew {
 data class Release(val id: String, val ar: List<String>, val en: List<String>)
 
 val releaseHistory = listOf(
-    Release("264", WhatsNew.ar, WhatsNew.en),
+    Release("265", WhatsNew.ar, WhatsNew.en),
     Release("237", listOf("افتتاحية سينمائية جديدة بشعار Ayham"), listOf("New cinematic opening with the Ayham logo")),
     Release("227", listOf(
         "تقييمات متعددة (IMDb وRotten Tomatoes وMetacritic وTMDB وTrakt)",
