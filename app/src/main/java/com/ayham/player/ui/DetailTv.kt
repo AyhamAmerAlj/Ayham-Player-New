@@ -68,6 +68,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.imageLoader
 import coil.request.ImageRequest
 import com.ayham.player.AppViewModel
@@ -77,6 +94,7 @@ import com.ayham.player.data.Item
 import com.ayham.player.data.Kind
 import com.ayham.player.data.SeriesInfo
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** يستخرج اللون الغالب من البوستر (يميل للألوان الزاهية) ويتحرك بنعومة عند تغيّره. */
@@ -207,7 +225,27 @@ fun TvDetailBody(
                         ),
                     )
                     val plot = d?.plot.orEmpty()
-                    if (plot.isNotBlank()) BodyText(plot, 15, tc(0xFFE9E2F8), maxLines = if (sH < 560) 2 else 3, modifier = Modifier.fillMaxWidth(0.92f))
+                    var showPlot by remember(item.key) { mutableStateOf(false) }
+                    if (plot.isNotBlank()) {
+                        var more by remember(plot) { mutableStateOf(false) }
+                        Focusable(Modifier.fillMaxWidth(0.94f), RoundedCornerShape(12.dp), 1.0f, onClick = { showPlot = true }) { f ->
+                            Column(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                                    .background(if (f) tc(0x44000000) else Color.Transparent)
+                                    .border(1.5.dp, if (f) accent else Color.Transparent, RoundedCornerShape(12.dp))
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                androidx.compose.material3.Text(
+                                    plot, maxLines = if (sH < 560) 2 else 3, overflow = TextOverflow.Ellipsis,
+                                    onTextLayout = { more = it.hasVisualOverflow },
+                                    style = TextStyle(fontFamily = AppFont, fontSize = 15.sp, color = tc(0xFFE9E2F8), lineHeight = 22.sp),
+                                )
+                                if (more || f) RText((if (arL) "اقرأ القصة كاملة  ▾" else "Read the full story  ▾"), 13, accent, bold = true, maxLines = 1)
+                            }
+                        }
+                    }
+                    if (showPlot) PlotDialog(item.name, plot, accent) { showPlot = false }
                     // أزرار الإجراء: الأول بلون البوستر، والباقي أيقونات تتوسع بالاسم عند التركيز
                     val progress = if (isSeries) null else vm.progressOf(item.key)
                     val canResume = progress != null && progress.first > 10_000 && progress.first < progress.second * 0.92
@@ -243,15 +281,7 @@ fun TvDetailBody(
 
             // ---------------- التفاصيل السفلية (تتمرر) ----------------
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(horizontal = 40.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (isSeries && seasons.size > 1) item {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
-                        items(seasons.keys.toList()) { s -> Chip("${t("season")} $s", s == curSeason) { onSeason(s) } }
-                    }
-                }
-                if (isSeries) {
-                    item { RText((if (arL) "الموسم " else "Season ") + curSeason + " - " + eps.size + (if (arL) " حلقة" else " episodes"), 20, C.text, bold = true) }
-                    item { LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(vertical = 6.dp)) { items(eps.size) { i -> EpisodeCard(vm, item, eps, i) } } }
-                }
+                if (isSeries && eps.isNotEmpty()) item { TvEpisodeStudio(vm, item, seasons, curSeason, eps, accent, onSeason) }
                 item { RatingsPanel(vm, item, d?.year.orEmpty(), imdb) }
                 item {
                     val names = d?.cast.orEmpty().split(",", "،").map { it.trim() }.filter { it.length >= 3 }.take(8)
@@ -262,6 +292,140 @@ fun TvDetailBody(
                 }
                 if (franchise.size >= 2) item { ContentRow(if (arL) "أجزاء السلسلة" else "The collection", franchise.map { it.second }) { vm.openDetail(it) } }
                 if (similarItems.size >= 3) item { ContentRow(t("similar"), similarItems) { vm.openDetail(it) } }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun PlotDialog(title: String, plot: String, accent: Color, onClose: () -> Unit) {
+    val scroll = rememberScrollState()
+    val fr = remember { FocusRequester() }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    LaunchedEffect(Unit) { runCatching { fr.requestFocus() } }
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize().background(tc(0xDD05020B)), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(accent.copy(alpha = 0.30f), Color.Transparent), radius = 1100f)))
+            val shape = RoundedCornerShape(26.dp)
+            Column(
+                Modifier.fillMaxWidth(0.62f).fillMaxHeight(0.78f).clip(shape)
+                    .background(Brush.verticalGradient(listOf(tc(0xF2160A2C), tc(0xF2090414))))
+                    .border(1.5.dp, Brush.verticalGradient(listOf(accent, accent.copy(alpha = 0.15f))), shape)
+                    .padding(horizontal = 30.dp, vertical = 22.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.width(5.dp).height(26.dp).clip(RoundedCornerShape(3.dp)).background(accent))
+                    RText(title, 22, Color.White, bold = true, maxLines = 2, modifier = Modifier.weight(1f))
+                }
+                Box(
+                    Modifier.weight(1f).fillMaxWidth().focusRequester(fr).focusable()
+                        .onPreviewKeyEvent { e ->
+                            if (e.type == KeyEventType.KeyDown && (e.key == Key.DirectionDown || e.key == Key.DirectionUp)) {
+                                scope.launch { scroll.animateScrollBy(if (e.key == Key.DirectionDown) 220f else -220f) }; true
+                            } else false
+                        }
+                        .verticalScroll(scroll),
+                ) {
+                    androidx.compose.material3.Text(plot, style = TextStyle(fontFamily = AppFont, fontSize = 18.sp, color = tc(0xFFEDE7FA), lineHeight = 30.sp))
+                }
+                RText("▲▼  تمرير      OK / رجوع  إغلاق", 12, C.textDim, maxLines = 1)
+            }
+        }
+    }
+}
+
+/** استوديو الحلقات: شريط مواسم بأرقام كبيرة (يتبدل الموسم بمجرد التركيز) وتحته بكرة حلقات سينمائية. */
+@Composable
+private fun TvEpisodeStudio(
+    vm: AppViewModel, series: Item, seasons: Map<Int, List<Episode>>, curSeason: Int, eps: List<Episode>,
+    accent: Color, onSeason: (Int) -> Unit,
+) {
+    val arL = vm.lang == "ar"
+    val nHist = vm.history.size + vm.watched.size
+    fun fracOf(e: Episode): Float { val p = vm.progressOf(e.key); return if (p != null && p.second > 0) (p.first.toFloat() / p.second).coerceIn(0f, 1f) else 0f }
+    val doneBySeason = remember(seasons, nHist) { seasons.mapValues { (_, l) -> l.count { fracOf(it) > 0.92f } } }
+    val nextIdx = remember(eps, nHist) {
+        val partial = eps.indexOfFirst { val f = fracOf(it); f > 0.01f && f <= 0.92f }
+        if (partial >= 0) partial else eps.indexOfFirst { fracOf(it) <= 0.92f }.let { if (it < 0) 0 else it }
+    }
+    val done = doneBySeason[curSeason] ?: 0
+    val listState = rememberLazyListState()
+    LaunchedEffect(curSeason, nextIdx) { runCatching { listState.scrollToItem(nextIdx) } }
+
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (seasons.size > 1) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp)) {
+                items(seasons.keys.toList()) { s ->
+                    val sel = s == curSeason
+                    val total = seasons[s]?.size ?: 0
+                    val dn = doneBySeason[s] ?: 0
+                    val shape = RoundedCornerShape(16.dp)
+                    Focusable(Modifier.onFocusChanged { if (it.hasFocus && !sel) onSeason(s) }, shape, 1.08f, onClick = { onSeason(s) }) { f ->
+                        Box(
+                            Modifier.width(104.dp).height(74.dp).clip(shape)
+                                .background(if (sel) Brush.linearGradient(listOf(accent.copy(alpha = 0.95f), accent.copy(alpha = 0.45f))) else Brush.linearGradient(listOf(tc(0x66000000), tc(0x33000000))))
+                                .border(if (f) 2.dp else 1.dp, if (f) Color.White else if (sel) accent else tc(0x33FFFFFF), shape),
+                        ) {
+                            androidx.compose.material3.Text(
+                                "$s", Modifier.align(Alignment.CenterStart).padding(start = 12.dp),
+                                style = TextStyle(fontFamily = AppFont, fontSize = 44.sp, fontWeight = FontWeight.Black, color = if (sel) Color.White else tc(0x88FFFFFF)),
+                            )
+                            Column(Modifier.align(Alignment.CenterEnd).padding(end = 10.dp), horizontalAlignment = Alignment.End) {
+                                RText(if (arL) "الموسم" else "Season", 11, if (sel) Color.White else C.textDim, bold = true, maxLines = 1)
+                                RText("$total " + (if (arL) "حلقة" else "ep"), 11, if (sel) Color.White else C.textDim, maxLines = 1)
+                            }
+                            if (total > 0) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(tc(0x44000000))) {
+                                Box(Modifier.fillMaxWidth(dn.toFloat() / total).fillMaxHeight().background(Color.White.copy(alpha = if (sel) 0.95f else 0.55f)))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Row(Modifier.padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            RText((if (arL) "الموسم " else "Season ") + curSeason, 20, Color.White, bold = true)
+            RText("$done / ${eps.size} " + (if (arL) "تمت مشاهدتها" else "watched"), 14, accent, bold = true)
+            Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(tc(0x33FFFFFF))) {
+                Box(Modifier.fillMaxWidth(if (eps.isEmpty()) 0f else done.toFloat() / eps.size).fillMaxHeight().background(Brush.horizontalGradient(listOf(accent, Color.White))))
+            }
+        }
+        LazyRow(state = listState, horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)) {
+            itemsIndexed(eps, key = { _, e -> e.key }) { i, ep ->
+                val frac = fracOf(ep)
+                val isDone = frac > 0.92f
+                val shape = RoundedCornerShape(16.dp)
+                Focusable(Modifier, shape, 1.07f, onClick = { vm.playEpisodes(series, eps, i) }) { f ->
+                    Box(
+                        Modifier.width(300.dp).height(168.dp).clip(shape).background(C.surface)
+                            .border(if (f) 2.5.dp else 1.dp, if (f) Brush.horizontalGradient(listOf(accent, Color.White)) else Brush.horizontalGradient(listOf(tc(0x22FFFFFF), tc(0x22FFFFFF))), shape),
+                    ) {
+                        Img(ep.image.ifEmpty { series.image }, Modifier.fillMaxSize(), w = 480, h = 270)
+                        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.25f to Color.Transparent, 1f to tc(if (f) 0xF2000000 else 0xDD000000))))
+                        androidx.compose.material3.Text(
+                            "${ep.num}", Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = if (f) 52.dp else 20.dp),
+                            style = TextStyle(fontFamily = AppFont, fontSize = 46.sp, fontWeight = FontWeight.Black, color = Color.Transparent, drawStyle = Stroke(width = 5f)),
+                        )
+                        androidx.compose.material3.Text(
+                            "${ep.num}", Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = if (f) 52.dp else 20.dp),
+                            style = TextStyle(fontFamily = AppFont, fontSize = 46.sp, fontWeight = FontWeight.Black, color = accent.copy(alpha = 0.55f)),
+                        )
+                        Column(Modifier.align(Alignment.BottomEnd).fillMaxWidth(0.72f).padding(end = 12.dp, bottom = 12.dp), horizontalAlignment = Alignment.End) {
+                            BodyText(ep.title.ifBlank { "${t("episode")} ${ep.num}" }, 13, Color.White, bold = true, maxLines = if (f) 1 else 2)
+                            if (f && ep.plot.isNotBlank()) BodyText(ep.plot, 11, tc(0xFFD9D0EE), maxLines = 2)
+                            if (ep.duration.isNotBlank()) BodyText(ep.duration, 11, accent, bold = true, maxLines = 1)
+                        }
+                        if (f) Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.align(Alignment.TopCenter).padding(top = 22.dp).size(40.dp).background(accent.copy(alpha = 0.85f), RoundedCornerShape(50)).padding(6.dp))
+                        if (i == nextIdx && !isDone) Box(Modifier.align(Alignment.TopStart).padding(10.dp).clip(RoundedCornerShape(8.dp)).background(accent).padding(horizontal = 9.dp, vertical = 2.dp)) {
+                            RText(if (frac > 0.01f) (if (arL) "أكمل" else "Resume") else (if (arL) "التالية" else "Up next"), 11, Color.White, bold = true, maxLines = 1)
+                        }
+                        if (isDone) Icon(Icons.Filled.CheckCircle, null, tint = C.ok, modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).size(24.dp))
+                        if (frac > 0.01f && !isDone) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(tc(0x66000000))) {
+                            Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(accent))
+                        }
+                    }
+                }
             }
         }
     }

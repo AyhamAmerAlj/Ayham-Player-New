@@ -2,8 +2,10 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "267"
+    const val id = "268"
     val ar = listOf(
+        "القصة تُقرأ كاملة: اضغط على الملخص في صفحة العمل فتفتح لوحة سينمائية بنص كامل قابل للتمرير بدون أن تؤثر على التصميم",
+        "استوديو الحلقات: شريط مواسم بأرقام كبيرة (يتبدل الموسم بمجرد التركيز) مع تقدم كل موسم، وبكرة حلقات بصور كبيرة وأرقام سينمائية وقصة الحلقة عند التركيز وشارة «التالية/أكمل» مع تمرير تلقائي لها",
         "صفحة الفيلم والمسلسل للشاشات بتصميم سينمائي جديد: البوستر يظهر كاملًا بتوهج، والألوان والإضاءة تتغير حسب لون البوستر، وأيقونات أوضح، والمعلومات والأزرار ثابتة لا تختفي عند النزول",
         "واجهة سينمائية جديدة للتلفاز: الرئيسية والأفلام والمسلسلات ببانر كبير يتبدل بسلاسة مع العمل المحدد، وصفوف تدخل بحركة ناعمة (تابع المشاهدة بشكل أفقي، أفضل 10 بأرقام كبيرة، ومقترحات)",
         "الكيبورد صار أصغر ويتكيف مع حجم الشاشة",
@@ -52,6 +54,8 @@ object WhatsNew {
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "Read the full story: press the summary on a title page to open a cinematic panel with the whole, scrollable text without disturbing the layout",
+        "Episode studio: a season strip with big numerals (focus switches the season) showing each season's progress, and an episode reel with large stills, cinematic numbers, the episode plot on focus, an Up next / Resume badge and auto-scroll to it",
         "New cinematic movie/series page for TVs: the full poster with a glow, colors and lighting that follow the poster, clearer icons, and a fixed header so the title and buttons never scroll away",
         "New cinematic TV interface: Home, Movies and Series now have a big hero banner that changes smoothly with the selected title, and rows that glide in (landscape Continue Watching, Top 10 with big numerals, picks for you)",
         "The on-screen keyboard is smaller and adapts to your screen size",
@@ -105,7 +109,7 @@ object WhatsNew {
 data class Release(val id: String, val ar: List<String>, val en: List<String>)
 
 val releaseHistory = listOf(
-    Release("267", WhatsNew.ar, WhatsNew.en),
+    Release("268", WhatsNew.ar, WhatsNew.en),
     Release("237", listOf("افتتاحية سينمائية جديدة بشعار Ayham"), listOf("New cinematic opening with the Ayham logo")),
     Release("227", listOf(
         "تقييمات متعددة (IMDb وRotten Tomatoes وMetacritic وTMDB وTrakt)",
