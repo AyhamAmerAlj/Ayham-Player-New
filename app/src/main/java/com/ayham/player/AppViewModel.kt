@@ -282,9 +282,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun radioCats(): List<Category> = categories[Kind.LIVE].orEmpty().filter { radioRe.containsMatchIn(it.name) }
 
-    var ambient by mutableStateOf(store.ambient)
+    var ambient by mutableStateOf(store.ambient && !com.ayham.player.ui.Perf.on)
     fun changeAmbient(v: Boolean) { ambient = v; store.ambient = v }
-    var curtain by mutableStateOf(store.curtain)
+    var curtain by mutableStateOf(store.curtain && !com.ayham.player.ui.Perf.on)
     fun changeCurtain(v: Boolean) { curtain = v; store.curtain = v }
     var pauseScreen by mutableStateOf(store.pauseScreen)
     fun changePauseScreen(v: Boolean) { pauseScreen = v; store.pauseScreen = v }
@@ -659,7 +659,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             reloadFromStore()
             tab = if (p.type == "KIDS" || p.type == "GUEST") 0 else store.lastTab.coerceIn(0, 5)
             profileReady = true
-            welcome = if (showWelcome) p else null
+            welcome = if (showWelcome && !com.ayham.player.ui.Perf.on) p else null
             resumeTried = false
             lastActive = android.os.SystemClock.uptimeMillis()
             applyRestriction()
@@ -677,7 +677,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         liveFormat = store.liveFormat; maxRes = store.maxRes; liveLayout = store.liveLayout
         matchCard = store.matchCard; vodLayout = store.vodLayout
         saverMin = store.saverMin; resumeLive = store.resumeLive; liveShift = store.liveShift
-        ambient = store.ambient; curtain = store.curtain; pauseScreen = store.pauseScreen
+        ambient = store.ambient && !com.ayham.player.ui.Perf.on; curtain = store.curtain && !com.ayham.player.ui.Perf.on; pauseScreen = store.pauseScreen
         subStyle = store.subStyle; subSize = store.subSize
         favorites = store.loadList("fav"); later = store.loadList("later"); watched = store.loadList("watched")
         recent = store.loadList("recent"); history = store.loadList("history")

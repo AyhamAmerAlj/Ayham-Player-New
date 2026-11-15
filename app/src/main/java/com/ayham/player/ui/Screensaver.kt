@@ -62,7 +62,7 @@ fun Screensaver(vm: AppViewModel) {
             Crossfade(targetState = idx, animationSpec = tween(1600), label = "saver") { i ->
                 val cur = items[i % items.size]
                 val sc = remember { Animatable(0f) }
-                LaunchedEffect(Unit) { sc.animateTo(1f, tween(11_000, easing = LinearEasing)) }
+                LaunchedEffect(Unit) { if (!Perf.on) sc.animateTo(1f, tween(11_000, easing = LinearEasing)) }
                 Box(Modifier.fillMaxSize()) {
                     Img(cur.image, Modifier.fillMaxSize().blur(36.dp).alpha(0.45f).graphicsLayer { val s = 1.15f + 0.1f * sc.value; scaleX = s; scaleY = s }, w = 400, h = 600)
                     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x99000000), Color.Transparent, Color(0xCC000000)))))

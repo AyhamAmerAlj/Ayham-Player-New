@@ -319,8 +319,8 @@ fun MainScreen(vm: AppViewModel) {
     val content: @Composable (Modifier) -> Unit = { mod ->
         Box(mod) {
             androidx.compose.runtime.key(vm.tab) {
-                val fade = remember { androidx.compose.animation.core.Animatable(0f) }
-                LaunchedEffect(Unit) { fade.animateTo(1f, androidx.compose.animation.core.tween(240)) }
+                val fade = remember { androidx.compose.animation.core.Animatable(if (Perf.on) 1f else 0f) }
+                LaunchedEffect(Unit) { if (!Perf.on) fade.animateTo(1f, androidx.compose.animation.core.tween(240)) }
                 Box(Modifier.fillMaxSize().graphicsLayer { alpha = fade.value; translationY = (1f - fade.value) * 18f }) {
                 when (vm.tab) {
                     0 -> HomeTab(vm)

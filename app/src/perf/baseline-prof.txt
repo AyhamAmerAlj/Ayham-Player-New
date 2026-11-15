@@ -1,0 +1,10 @@
+HSPLandroidx/compose/**;->**(**)**
+HSPLandroidx/activity/**;->**(**)**
+HSPLandroidx/lifecycle/**;->**(**)**
+HSPLandroidx/media3/**;->**(**)**
+HSPLcoil/**;->**(**)**
+HSPLcom/ayham/player/**;->**(**)**
+Landroidx/compose/**;
+Landroidx/media3/**;
+Lcoil/**;
+Lcom/ayham/player/**;

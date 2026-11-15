@@ -170,12 +170,15 @@ fun Focusable(
 ) {
     var focused by remember { mutableStateOf(false) }
     val longFired = remember { booleanArrayOf(false) }
-    val sc by animateFloatAsState(if (focused) focusScale else 1f, spring(dampingRatio = 0.72f, stiffness = 420f), label = "sc")
+    val sc by animateFloatAsState(
+        if (focused) (if (Perf.on) minOf(focusScale, 1.04f) else focusScale) else 1f,
+        if (Perf.on) androidx.compose.animation.core.tween(90) else spring(dampingRatio = 0.72f, stiffness = 420f), label = "sc",
+    )
     Box(
         modifier = modifier
             .graphicsLayer { scaleX = sc; scaleY = sc }
             .then(
-                if (focused) Modifier.border(2.5.dp, C.glow, shape)
+                if (focused) (if (Perf.on) Modifier.border(2.5.dp, C.accent, shape) else Modifier.border(2.5.dp, C.glow, shape))
                 else Modifier.border(1.dp, tc(0x22FFFFFF), shape)
             )
             .onFocusChanged { if (it.isFocused && !focused) UiSound.move(); focused = it.isFocused }

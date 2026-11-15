@@ -2510,7 +2510,7 @@ private fun PauseCinema(
     det: com.ayham.player.data.Details?, info: com.ayham.player.data.SeriesInfo?, ar: Boolean, remainMs: Long,
 ) {
     val z = remember { androidx.compose.animation.core.Animatable(1f) }
-    LaunchedEffect(Unit) { z.animateTo(1.12f, androidx.compose.animation.core.tween(30_000, easing = androidx.compose.animation.core.LinearEasing)) }
+    LaunchedEffect(Unit) { if (!Perf.on) z.animateTo(1.12f, androidx.compose.animation.core.tween(30_000, easing = androidx.compose.animation.core.LinearEasing)) }
     val isSeries = item?.kind == com.ayham.player.data.Kind.SERIES
     val epM = if (isSeries) Regex("""S(\d+)E(\d+)\s*(.*)$""").find(title) else null
     val epPlot = epM?.let { m -> info?.seasons?.get(m.groupValues[1].toInt())?.firstOrNull { it.num == m.groupValues[2].toInt() }?.plot }

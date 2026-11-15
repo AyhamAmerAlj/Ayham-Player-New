@@ -91,12 +91,11 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
     var actorSel by remember { mutableStateOf<String?>(null) }
     actorSel?.let { ActorDialog(vm, it) { actorSel = null } }
     Box(Modifier.fillMaxSize().background(C.bg)) {
-        val kb = androidx.compose.animation.core.rememberInfiniteTransition(label = "kb")
-        val kz by kb.animateFloat(
+        val kz: Float = if (Perf.on) 1f else androidx.compose.animation.core.rememberInfiniteTransition(label = "kb").animateFloat(
             1f, 1.09f,
             androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(22_000, easing = androidx.compose.animation.core.LinearEasing), androidx.compose.animation.core.RepeatMode.Reverse),
             label = "kz",
-        )
+        ).value
         if (compact) Img(bg, Modifier.fillMaxSize().graphicsLayer { scaleX = kz; scaleY = kz }, w = 960, h = 540)
         else Box(Modifier.fillMaxWidth().fillMaxHeight(0.68f).clipToBounds()) { Img(bg, Modifier.fillMaxSize().graphicsLayer { scaleX = kz; scaleY = kz }, w = 1280, h = 720) }
         if (compact) Box(

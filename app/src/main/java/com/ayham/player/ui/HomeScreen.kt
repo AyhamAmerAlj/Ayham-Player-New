@@ -705,7 +705,7 @@ fun TvHero(vm: AppViewModel, items: List<Item>, focusItem: Item? = null) {
         Crossfade(targetState = bg, modifier = Modifier.fillMaxSize(), animationSpec = tween(450), label = "heroBg") { url ->
             // تقريب بطيء جدًا (Ken Burns) لإعطاء حياة للخلفية بدون تكلفة تُذكر
             val kb = remember(url) { androidx.compose.animation.core.Animatable(1f) }
-            LaunchedEffect(url) { kb.animateTo(1.09f, tween(14_000, easing = androidx.compose.animation.core.LinearEasing)) }
+            LaunchedEffect(url) { if (!Perf.on) kb.animateTo(1.09f, tween(14_000, easing = androidx.compose.animation.core.LinearEasing)) }
             Img(url, Modifier.fillMaxSize().graphicsLayer { scaleX = kb.value; scaleY = kb.value }, w = 1280, h = 720)
         }
         Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(tc(0x660B0614), tc(0x110B0614), tc(0xCC0B0614)))))

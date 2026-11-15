@@ -1,0 +1,54 @@
+name: Build private Xiaomi A2 APK
+
+# نسخة خاصة بوضع أداء خفيف: تُبنى عند الدفع إلى فرع xiaomi أو يدويًا، ولا تُنشر كـ latest ولا يراها المحدّث.
+on:
+  push:
+    branches: [xiaomi]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Version code (أعلى من الإصدارات العادية حتى لا يعرض المحدّث تحديثًا يستبدلها)
+        run: echo "VERSION_CODE=$((GITHUB_RUN_NUMBER + 1000000))" >> "$GITHUB_ENV"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Build perf APK
+        env:
+          LICENSE_URL: ${{ vars.LICENSE_URL }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: |
+          set +e
+          gradle :app:assemblePerf --no-daemon --stacktrace > build.log 2>&1
+          code=$?
+          tail -n 5 build.log
+          if [ $code -ne 0 ]; then
+            grep -E "^e: |error:|What went wrong|Caused by|Could not|Unresolved|Execution failed" -A2 build.log | sed 's#file:///home/runner/work/[^/]*/[^/]*/##' | cut -c1-300 | head -120 > errors.txt
+            split -l 14 errors.txt chunk_
+            n=0
+            for f in chunk_*; do
+              n=$((n+1))
+              [ $n -gt 9 ] && break
+              MSG=$(sed 's/%/%25/g' "$f" | sed ':a;N;$!ba;s/\n/%0A/g')
+              echo "::error title=BUILD ERRORS part $n::$MSG"
+            done
+          fi
+          exit $code
+      - run: cp app/build/outputs/apk/perf/app-perf.apk AyhamPlayer-Xiaomi.apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: xiaomi
+          name: Xiaomi A2 (private)
+          prerelease: true
+          make_latest: false
+          files: AyhamPlayer-Xiaomi.apk

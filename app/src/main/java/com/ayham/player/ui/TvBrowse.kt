@@ -96,7 +96,7 @@ fun TvBrowse(vm: AppViewModel, kind: Kind) {
         val bg = details?.backdrop.orEmpty().ifEmpty { item?.image.orEmpty() }
         Crossfade(targetState = bg, modifier = Modifier.fillMaxSize(), animationSpec = tween(500), label = "tvbrowseBg") { url ->
             val kb = remember(url) { androidx.compose.animation.core.Animatable(1f) }
-            LaunchedEffect(url) { kb.animateTo(1.08f, tween(14_000, easing = androidx.compose.animation.core.LinearEasing)) }
+            LaunchedEffect(url) { if (!Perf.on) kb.animateTo(1.08f, tween(14_000, easing = androidx.compose.animation.core.LinearEasing)) }
             Img(url, Modifier.fillMaxSize().graphicsLayer { scaleX = kb.value; scaleY = kb.value }, w = 1280, h = 720)
         }
         Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(tc(0x990B0614), tc(0x220B0614), tc(0x990B0614)))))

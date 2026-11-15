@@ -14,6 +14,7 @@ android {
         targetSdk = 34
         buildConfigField("String", "LICENSE_URL", "\"" + (System.getenv("LICENSE_URL") ?: "").filter { it.code in 33..126 && it != '"' && it != '\\' } + "\"")
         buildConfigField("String", "TMDB_KEY", "\"" + (System.getenv("TMDB_API_KEY") ?: "").filter { it.isLetterOrDigit() } + "\"")
+        buildConfigField("boolean", "PERF", "false")
         versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
         versionName = "1.0." + (System.getenv("VERSION_CODE") ?: "0")
     }
@@ -35,6 +36,13 @@ android {
         }
         debug {
             signingConfig = signingConfigs.getByName("release")
+        }
+        // نسخة خاصة بشاشة معيّنة (وضع أداء خفيف): لا تُنشر كتحديث للمستخدمين
+        create("perf") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("release")
+            matchingFallbacks += "release"
+            buildConfigField("boolean", "PERF", "true")
         }
     }
 
