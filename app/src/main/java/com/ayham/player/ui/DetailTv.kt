@@ -323,7 +323,7 @@ private fun PlotDialog(title: String, plot: String, accent: Color, onClose: () -
                     Modifier.weight(1f).fillMaxWidth().focusRequester(fr).focusable()
                         .onPreviewKeyEvent { e ->
                             if (e.type == KeyEventType.KeyDown && (e.key == Key.DirectionDown || e.key == Key.DirectionUp)) {
-                                scope.launch { scroll.animateScrollBy(if (e.key == Key.DirectionDown) 220f else -220f) }; true
+                                scope.launch { scroll.animateScrollTo((scroll.value + (if (e.key == Key.DirectionDown) 220 else -220)).coerceAtLeast(0)) }; true
                             } else false
                         }
                         .verticalScroll(scroll),
