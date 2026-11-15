@@ -91,6 +91,10 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
     var actorSel by remember { mutableStateOf<String?>(null) }
     actorSel?.let { ActorDialog(vm, it) { actorSel = null } }
     Box(Modifier.fillMaxSize().background(C.bg)) {
+        if (!compact && !Perf.on) TvDetailBody(
+            vm, item, d, imdb, info, seasons, curSeason, eps, versions, similarItems, franchise,
+            onSeason = { season = it }, onVersions = { showVersions = true }, onActor = { actorSel = it },
+        ) else {
         val kz: Float = if (Perf.on) 1f else androidx.compose.animation.core.rememberInfiniteTransition(label = "kb").animateFloat(
             1f, 1.09f,
             androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(22_000, easing = androidx.compose.animation.core.LinearEasing), androidx.compose.animation.core.RepeatMode.Reverse),
@@ -226,6 +230,7 @@ fun DetailScreen(vm: AppViewModel, item: Item) {
                 item { ContentRow(t("similar"), similarItems) { vm.openDetail(it) } }
             }
         }
+        }
         if (showVersions && versions.size > 1) {
             androidx.compose.ui.window.Dialog(
                 onDismissRequest = { showVersions = false },
@@ -345,7 +350,7 @@ private fun EpisodeRow(vm: AppViewModel, series: Item, eps: List<Episode>, i: In
 }
 
 @Composable
-private fun EpisodeCard(vm: AppViewModel, series: Item, eps: List<Episode>, i: Int) {
+internal fun EpisodeCard(vm: AppViewModel, series: Item, eps: List<Episode>, i: Int) {
     val ep = eps[i]
     val shape = RoundedCornerShape(14.dp)
     val prog = vm.progressOf(ep.key)
