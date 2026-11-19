@@ -12,7 +12,7 @@ const srv = http.createServer((req, res) => {
   if (p === '/player_api.php') {
     if (u.searchParams.get('username') !== 'user1' || u.searchParams.get('password') !== 'pass1') { res.writeHead(401); return res.end('{}'); }
     switch (u.searchParams.get('action')) {
-      case null: return J({ user_info: { username: 'user1', password: 'pass1', status: 'Active', exp_date: '1900000000', max_connections: '2', active_cons: '0' }, server_info: { url: 'x' } });
+      case null: return J({ user_info: { auth: 1, username: 'user1', password: 'pass1', status: 'Active', exp_date: '1900000000', max_connections: '2', active_cons: '0' }, server_info: { url: 'x' } });
       case 'get_live_categories': return J([{ category_id: '1', category_name: 'عام' }]);
       case 'get_live_streams': return J(live);
       case 'get_vod_categories': return J([{ category_id: '2', category_name: 'أكشن' }]);

@@ -175,7 +175,7 @@ export async function handle(req, env, fetcher = fetch) {
     const q = new URLSearchParams();
     const action = u.searchParams.get('action') || '';
     if (action && !/^[a-z_]+$/.test(action)) return json({ ok: false, err: 'bad' }, 400);
-    for (const k of ['category_id', 'vod_id', 'series_id']) { const v = u.searchParams.get(k); if (v && /^[0-9A-Za-z_-]{1,20}$/.test(v)) q.set(k, v); }
+    for (const k of ['category_id', 'vod_id', 'series_id', 'stream_id', 'limit']) { const v = u.searchParams.get(k); if (v && /^[0-9A-Za-z_-]{1,20}$/.test(v)) q.set(k, v); }
     const target = acct.url + '/player_api.php?username=' + encodeURIComponent(acct.user) + '&password=' + encodeURIComponent(acct.pass) + (action ? '&action=' + action : '') + (q.toString() ? '&' + q.toString() : '');
     const r = await fetchUpstream(env, req, target, fetcher);
     if (r.status >= 400 && r.status !== 401) {
