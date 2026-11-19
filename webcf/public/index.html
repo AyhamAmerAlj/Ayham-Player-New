@@ -13,7 +13,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="icon" href="/icon-192.png">
-<link rel="stylesheet" href="/app.css?v=2">
+<link rel="stylesheet" href="/app.css?v=3">
 </head>
 <body>
 
@@ -29,6 +29,19 @@
   </form>
 </div>
 
+<div id="setup" class="hide">
+  <img class="lg" src="/icon-512.png" alt="" style="width:84px;border-radius:22px">
+  <h1 style="font-size:24px">بيانات الاشتراك</h1>
+  <div class="tg">أدخل رابط السيرفر واسم المستخدم وكلمة المرور من مزوّد اشتراكك. تُحفظ مشفّرة على الخادم فقط.</div>
+  <form class="card" id="sf" autocomplete="off">
+    <div class="f"><input id="s-url" type="url" placeholder="http://server:8080" dir="ltr" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url"></div>
+    <div class="f"><input id="s-user" type="text" placeholder="اسم المستخدم" dir="ltr" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    <div class="f"><input id="s-pass" type="password" placeholder="كلمة مرور الاشتراك" dir="ltr" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    <div class="msg" id="smsg"></div>
+    <button class="btn press" id="sbtn" type="submit">حفظ والدخول</button>
+    <button class="bs press" id="scancel" type="button" style="justify-content:center">رجوع</button>
+  </form>
+</div>
 <div class="top hide" id="top"></div>
 <div id="app" class="hide"><div id="view"></div></div>
 <nav id="nav" class="hide"></nav>
@@ -73,6 +86,6 @@
   <div class="err hide" id="p-err"></div>
 </div>
 <input type="file" id="subfile" accept=".srt,.vtt,.txt,text/plain,text/vtt" class="hide">
-<script src="/app.js?v=2"></script>
+<script src="/app.js?v=3"></script>
 </body>
 </html>

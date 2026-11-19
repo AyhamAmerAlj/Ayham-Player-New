@@ -84,6 +84,7 @@ async function api(action,extra){
   let r;
   try{r=await fetch('/x'+(action?'?action='+action+(extra||''):''))}catch(e){const x=new Error('net');x.code='net';throw x}
   if(r.status===401){const x=new Error('auth');x.code='auth';throw x}
+  if(r.status===409){showSetup('');const x=new Error('setup');x.code='setup';throw x}
   if(r.status===503){const x=new Error('cfg');x.code='cfg';throw x}
   if(r.status===502){const x=new Error('upstream');x.code='upstream';try{const j=await r.json();x.st=j.status;x.dg=[j.server,j.snip].filter(Boolean).join(' | ')}catch(e){}throw x}
   if(!r.ok){const x=new Error('http'+r.status);x.code='http';throw x}
@@ -252,10 +253,41 @@ $('#lf').addEventListener('submit',async ev=>{
   if(r.status===503){m.textContent=t('cfg');return}
   if(!r.ok){let e='';try{e=(await r.json()).err}catch(x){}
     m.textContent=lang==='ar'?'كلمة المرور غير صحيحة.':'Wrong password.';return}
-  try{const j=await api('');if(!j.ok){m.textContent='السيرفر رفض بيانات الاشتراك المخزّنة.';return}ST.acct=j}
-  catch(e){m.textContent=errText(e);return}
+  await afterAuth();
+});
+async function afterAuth(){
+  try{const j=await (await fetch('/me')).json();if(j.setup)return showSetup('');}catch(e){}
+  startApp();
+}
+let setupBack=false;
+function showSetup(msg){
+  $('#app').classList.add('hide');$('#nav').classList.add('hide');$('#top').classList.add('hide');$('#login').classList.add('hide');
+  $('#setup').classList.remove('hide');$('#smsg').textContent=msg||'';
+  $('#scancel').classList.toggle('hide',!setupBack);authed=false;
+}
+$('#sf').addEventListener('submit',async ev=>{
+  ev.preventDefault();
+  const m=$('#smsg'),b=$('#sbtn');
+  const url=$('#s-url').value.trim(),user=$('#s-user').value.trim(),pass=$('#s-pass').value;
+  if(!/^https?:\/\//i.test(url)){m.textContent='الرابط يجب أن يبدأ بـ http:// أو https://';return}
+  if(!user||!pass){m.textContent='اكتب اسم المستخدم وكلمة المرور.';return}
+  b.disabled=true;b.textContent='…';m.textContent='';
+  let r,j={};
+  try{r=await fetch('/setup',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url,user,pass})});try{j=await r.json()}catch(e){}}
+  catch(e){m.textContent=t('net');b.disabled=false;b.textContent=t('login');return}
+  b.disabled=false;b.textContent=lang==='ar'?'حفظ والدخول':'Save & sign in';
+  if(!r.ok){
+    m.textContent=j.err==='wrong_creds'?'اسم المستخدم أو كلمة المرور غير صحيحة لهذا الاشتراك.'
+      :j.err==='bad_url'?'هذا الرابط غير مسموح (عنوان محلي أو داخلي).'
+      :j.err==='upstream'?'تعذّر الوصول للسيرفر من الخادم. تأكد من الرابط والمنفذ (مثل :8080).'
+      :'تحقق من البيانات وحاول مرة أخرى.';
+    return;
+  }
+  setupBack=false;$('#setup').classList.add('hide');
+  $('#sf').reset();
   startApp();
 });
+$('#scancel').onclick=()=>{$('#setup').classList.add('hide');startApp()};
 async function logout(){try{await fetch('/logout',{method:'POST'})}catch(e){}ST.cats={};ST.data={};ST.idx={};ST.loaded={};await DB.clear();closeAllLayers();showLogin('')}
 
 /* ================= الهيكل + التنقل ================= */
@@ -889,10 +921,11 @@ function sheetSubs(){
 /* ================= القائمة + إجراءات ================= */
 async function openMenu(){
   let acct='';try{const j=ST.acct||await api('');ST.acct=j;const ex=+j.exp;acct='<div class="it" style="cursor:default"><span>'+t('sub')+'</span><small>'+esc(j.status||'')+(ex?' · '+t('exp')+' '+new Date(ex*1000).toLocaleDateString(lang==='ar'?'ar':'en'):'')+(j.max?' · '+t('conn')+' '+esc(j.max):'')+'</small></div>'}catch(e){}
-  openSheet2('<h4>'+t('menu')+'</h4>'+acct+'<button class="it" data-m="lang"><span>'+t('lang')+'</span><small>'+(lang==='ar'?'العربية ⇄ English':'English ⇄ العربية')+'</small></button><button class="it" data-m="refresh"><span>'+t('refresh')+'</span></button><button class="it" data-m="out" style="color:var(--bad)"><span>'+t('logout')+'</span></button>',d=>{
+  openSheet2('<h4>'+t('menu')+'</h4>'+acct+'<button class="it" data-m="lang"><span>'+t('lang')+'</span><small>'+(lang==='ar'?'العربية ⇄ English':'English ⇄ العربية')+'</small></button><button class="it" data-m="setup"><span>'+(lang==='ar'?'تغيير بيانات الاشتراك':'Change subscription details')+'</span></button><button class="it" data-m="refresh"><span>'+t('refresh')+'</span></button><button class="it" data-m="out" style="color:var(--bad)"><span>'+t('logout')+'</span></button>',d=>{
     $$('[data-m]',d).forEach(b=>b.onclick=async()=>{
       const m=b.dataset.m;
       if(m==='lang'){lang=lang==='ar'?'en':'ar';store.set('lang',lang);d._close();applyLang();renderTop();go(ST.tab)}
+      else if(m==='setup'){d._close();setupBack=true;showSetup('')}
       else if(m==='refresh'){d._close();await DB.clear();ST.loaded={};ST.data={};ST.idx={};ST.info={};go(ST.tab)}
       else if(m==='out'){d._close();if(confirm(lang==='ar'?'تسجيل الخروج من هذا الجهاز؟':'Sign out of this device?'))logout()}
     });
@@ -936,7 +969,7 @@ if(!V.webkitShowPlaybackTargetPicker){const ab=$('#p-air');if(ab)ab.classList.ad
 applyLang();
 (async()=>{
   try{const r=await fetch('/me');
-    if(r.ok){try{ST.acct=await api('')}catch(e){}return startApp()}
+    if(r.ok){const j=await r.json();if(j.setup)return showSetup('');return startApp()}
     if(r.status===503)return showLogin(t('cfg'));
   }catch(e){}
   showLogin('');

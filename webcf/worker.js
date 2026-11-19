@@ -4,6 +4,7 @@
 const enc = new TextEncoder();
 const json = (o, s = 200, h = {}) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...h } });
 const COOKIE = 'ap_s';
+const XCOOKIE = 'ap_x'; // بيانات الاشتراك (مشفّرة بـ AES-GCM على الخادم)
 const DAYS = 90;
 
 export function badHost(h) {
@@ -22,7 +23,7 @@ const ownerPw = (env) => (env.ACCESS_PASSWORD && String(env.ACCESS_PASSWORD).len
 // سيرفر الاشتراك: يأتي مع كل كود من لوحة الأدمن (لكل زبون سيرفره)، أو من أسرار الموقع كاحتياط.
 const envAcct = (env) => (env.XTREAM_URL && env.XTREAM_USER && env.XTREAM_PASS ? { url: String(env.XTREAM_URL).replace(/\/+$/, ''), user: String(env.XTREAM_USER), pass: String(env.XTREAM_PASS) } : null);
 const hasSecret = (env) => !!(env.SESSION_SECRET || env.LINK_KEY || ownerPw(env));
-function configured(env) { return !!(ownerPw(env) && envAcct(env)); }
+function configured(env) { return !!ownerPw(env); }
 const secret = (env) => env.SESSION_SECRET || ('k|' + (env.LINK_KEY || '') + '|' + (env.ACCESS_PASSWORD || ''));
 
 async function hmac(env, msg) {
@@ -49,6 +50,24 @@ async function licCheck(env, code, dev) {
 }
 const acctFrom = (r) => (r.srv && r.srv.url ? { url: String(r.srv.url).replace(/\/+$/, ''), user: String(r.srv.user || ''), pass: String(r.srv.pass || '') } : null);
 const licCache = new Map(); // كود+جهاز -> {t, acct} لتخفيف الاتصال بالترخيص (4 دقائق)
+const hex = (b) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+const unhex = (s) => Uint8Array.from(s.match(/../g).map((h) => parseInt(h, 16)));
+async function xKey(env) { return crypto.subtle.importKey('raw', await crypto.subtle.digest('SHA-256', enc.encode(secret(env) + '|xt')), { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']); }
+async function sealCreds(env, obj) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await xKey(env), enc.encode(JSON.stringify(obj))));
+  return hex(iv) + '.' + hex(ct);
+}
+async function openCreds(env, req) {
+  const m = (req.headers.get('cookie') || '').match(new RegExp('(?:^|;\\s*)' + XCOOKIE + '=([0-9a-f.]+)'));
+  if (!m) return null;
+  try {
+    const [iv, ct] = m[1].split('.');
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unhex(iv) }, await xKey(env), unhex(ct));
+    const o = JSON.parse(new TextDecoder().decode(pt));
+    return o && o.url ? { url: String(o.url), user: String(o.user), pass: String(o.pass) } : null;
+  } catch (e) { return null; }
+}
 // يرجع بيانات الحساب إن كانت الجلسة صالحة، وإلا null. acct.url فارغ = لا يوجد سيرفر.
 async function validSession(env, req) {
   const m = (req.headers.get('cookie') || '').match(new RegExp('(?:^|;\\s*)' + COOKIE + '=([^;]+)'));
@@ -56,8 +75,8 @@ async function validSession(env, req) {
   const [exp, sub, dev, sig] = decodeURIComponent(m[1]).split('.');
   if (!exp || !sub || !dev || !sig || +exp < Date.now()) return null;
   if (!safeEq(sig, await hmac(env, 'sess|' + exp + '|' + sub + '|' + dev))) return null;
-  if (sub !== 'O') return null; // أكواد التفعيل أُلغيت: الدخول بكلمة المرور فقط
-  return ownerPw(env) ? envAcct(env) : null;
+  if (sub !== 'O' || !ownerPw(env)) return null; // أكواد التفعيل أُلغيت: الدخول بكلمة المرور فقط
+  return (await openCreds(env, req)) || envAcct(env) || { url: '' };
   const k = sub + '|' + dev, c = licCache.get(k);
   if (c && Date.now() - c.t < 240000) return c.acct;
   const r = await licCheck(env, sub, dev);
@@ -132,7 +151,7 @@ export async function handle(req, env, fetcher = fetch) {
   const u = new URL(req.url);
   const p = u.pathname;
   const ro = req.method === 'GET' || req.method === 'HEAD';
-  if (!['/login', '/logout', '/me', '/x', '/s', '/i', '/p'].some((x) => p === x || p.startsWith(x + '/'))) return null; // ملفات ثابتة
+  if (!['/login', '/logout', '/me', '/setup', '/x', '/s', '/i', '/p'].some((x) => p === x || p.startsWith(x + '/'))) return null; // ملفات ثابتة
   if (!configured(env)) return json({ ok: false, err: 'not_configured' }, 503);
 
   if (p === '/login') {
@@ -142,7 +161,12 @@ export async function handle(req, env, fetcher = fetch) {
     if (ownerPw(env) && safeEq(normSecret(b.password), normSecret(ownerPw(env)))) return json({ ok: true }, 200, cookie(await makeSession(env)));
     await sleep(1200); return json({ ok: false, err: 'wrong' }, 401);
   }
-  if (p === '/logout') return json({ ok: true }, 200, { 'set-cookie': COOKIE + '=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax' });
+  if (p === '/logout') {
+    const lo = json({ ok: true });
+    lo.headers.append('set-cookie', COOKIE + '=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax');
+    lo.headers.append('set-cookie', XCOOKIE + '=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax');
+    return lo;
+  }
 
   // مسار موقّع من الوسيط نفسه (لقطع البث): لا يحتاج كوكي لكنه لا يُزوَّر.
   if (p === '/p') {
@@ -154,7 +178,28 @@ export async function handle(req, env, fetcher = fetch) {
 
   const acct = await validSession(env, req);
   if (!acct) return json({ ok: false, err: 'auth' }, 401);
-  if (p === '/me') return json({ ok: true });
+  if (p === '/me') return json({ ok: true, setup: !acct.url });
+  if (p === '/setup') {
+    // حفظ بيانات الاشتراك (رابط + مستخدم + كلمة مرور) بعد التحقق منها مع السيرفر نفسه
+    if (req.method !== 'POST') return json({ ok: false }, 405);
+    let b = {}; try { b = JSON.parse((await req.text()).slice(0, 2048)); } catch (e) { /* */ }
+    const url = String(b.url || '').trim().replace(/\/+$/, '');
+    const user = String(b.user || '').trim(), pass = String(b.pass || '');
+    let host = ''; try { host = new URL(url).hostname; } catch (e) { /* */ }
+    if (!/^https?:\/\//i.test(url) || !host || !user || !pass || url.length > 300) return json({ ok: false, err: 'bad' }, 400);
+    if (badHost(host)) return json({ ok: false, err: 'bad_url' }, 400);
+    let j = null;
+    try {
+      const r = await fetcher(url + '/player_api.php?username=' + encodeURIComponent(user) + '&password=' + encodeURIComponent(pass), { headers: { 'user-agent': UAS[0] }, redirect: 'manual' });
+      if (r.status === 401 || r.status === 403) return json({ ok: false, err: 'wrong_creds' }, 403);
+      if (r.status !== 200) return json({ ok: false, err: 'upstream', status: r.status }, 502);
+      j = await r.json();
+    } catch (e) { return json({ ok: false, err: 'upstream' }, 502); }
+    if (!j || !j.user_info || String(j.user_info.auth) !== '1') return json({ ok: false, err: 'wrong_creds' }, 403);
+    const sealed = await sealCreds(env, { url, user, pass });
+    return json({ ok: true, status: j.user_info.status || '', exp: j.user_info.exp_date || '', max: j.user_info.max_connections || '' }, 200,
+      { 'set-cookie': XCOOKIE + '=' + sealed + '; Path=/; Max-Age=' + DAYS * 86400 + '; HttpOnly; Secure; SameSite=Lax' });
+  }
   if (!ro) return json({ ok: false }, 405);
   if (!acct.url && p !== '/i') return json({ ok: false, err: 'no_server' }, 409);
 
