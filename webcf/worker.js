@@ -22,7 +22,7 @@ const ownerPw = (env) => (env.ACCESS_PASSWORD && String(env.ACCESS_PASSWORD).len
 // سيرفر الاشتراك: يأتي مع كل كود من لوحة الأدمن (لكل زبون سيرفره)، أو من أسرار الموقع كاحتياط.
 const envAcct = (env) => (env.XTREAM_URL && env.XTREAM_USER && env.XTREAM_PASS ? { url: String(env.XTREAM_URL).replace(/\/+$/, ''), user: String(env.XTREAM_USER), pass: String(env.XTREAM_PASS) } : null);
 const hasSecret = (env) => !!(env.SESSION_SECRET || env.LINK_KEY || ownerPw(env));
-function configured(env) { return hasSecret(env) && !!(env.LICENSE || (ownerPw(env) && envAcct(env))); }
+function configured(env) { return !!(ownerPw(env) && envAcct(env)); }
 const secret = (env) => env.SESSION_SECRET || ('k|' + (env.LINK_KEY || '') + '|' + (env.ACCESS_PASSWORD || ''));
 
 async function hmac(env, msg) {
@@ -56,8 +56,8 @@ async function validSession(env, req) {
   const [exp, sub, dev, sig] = decodeURIComponent(m[1]).split('.');
   if (!exp || !sub || !dev || !sig || +exp < Date.now()) return null;
   if (!safeEq(sig, await hmac(env, 'sess|' + exp + '|' + sub + '|' + dev))) return null;
-  if (sub === 'O') return ownerPw(env) ? (envAcct(env) || { url: '' }) : null;
-  if (!env.LICENSE) return null;
+  if (sub !== 'O') return null; // أكواد التفعيل أُلغيت: الدخول بكلمة المرور فقط
+  return ownerPw(env) ? envAcct(env) : null;
   const k = sub + '|' + dev, c = licCache.get(k);
   if (c && Date.now() - c.t < 240000) return c.acct;
   const r = await licCheck(env, sub, dev);
@@ -140,18 +140,6 @@ export async function handle(req, env, fetcher = fetch) {
     let b = {}; try { b = JSON.parse((await req.text()).slice(0, 512)); } catch (e) { /* */ }
     const cookie = (tok) => ({ 'set-cookie': COOKIE + '=' + encodeURIComponent(tok) + '; Path=/; Max-Age=' + DAYS * 86400 + '; HttpOnly; Secure; SameSite=Lax' });
     if (ownerPw(env) && safeEq(normSecret(b.password), normSecret(ownerPw(env)))) return json({ ok: true }, 200, cookie(await makeSession(env)));
-    const code = normCode(b.password), dev = normDev(b.device) || 'x';
-    if (env.LICENSE && code.length === 12) {
-      const r = await licCheck(env, code, dev);
-      if (r.ok && r.web) {
-        const acct = acctFrom(r) || envAcct(env);
-        if (!acct) return json({ ok: false, err: 'no_server' }, 403);
-        licCache.set(code + '|' + dev, { t: Date.now(), acct });
-        return json({ ok: true }, 200, cookie(await makeSession(env, code, dev)));
-      }
-      if (r.ok) { await sleep(800); return json({ ok: false, err: 'not_web' }, 403); }
-      if (r.err === 'revoked' || r.err === 'devices_full' || r.err === 'busy') return json({ ok: false, err: r.err }, 403);
-    }
     await sleep(1200); return json({ ok: false, err: 'wrong' }, 401);
   }
   if (p === '/logout') return json({ ok: true }, 200, { 'set-cookie': COOKIE + '=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax' });

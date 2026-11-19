@@ -13,7 +13,7 @@ const fake = async (url, init) => {
   return new Response('nf', { status: 404 });
 };
 const LICENSE = { fetch: async (rq) => { const b = JSON.parse(await rq.text()); if (rq.headers.get('x-link') !== 'lk') return new Response('{"ok":false}'); return new Response(JSON.stringify(b.code === 'AAAAAAAAAAAA' ? { ok: true, web: true, srv: { url: 'http://iptv.example:8080', user: 'usr', pass: 'pw123' } } : { ok: false, err: 'invalid' })); } };
-const srv = makeServer({ env: { LICENSE, LINK_KEY: 'lk' }, fetcher: fake });
+const srv = makeServer({ env: { ACCESS_PASSWORD: 'correct-horse-battery', XTREAM_URL: 'http://iptv.example:8080', XTREAM_USER: 'usr', XTREAM_PASS: 'pw123' }, fetcher: fake });
 await new Promise((r) => srv.listen(0, r));
 const port = srv.address().port;
 const call = (path, { method = 'GET', body, cookie, headers = {} } = {}) => new Promise((res, rej) => {
@@ -22,9 +22,9 @@ const call = (path, { method = 'GET', body, cookie, headers = {} } = {}) => new 
 });
 await ok('static index served', async () => { const r = await call('/'); assert.equal(r.status, 200); assert.match(r.text, /Ayham Player/); assert.match(r.headers['content-type'], /text\/html/); });
 await ok('path traversal blocked', async () => { assert.equal((await call('/..%2f..%2fserver.js')).status, 404); });
-await ok('wrong code rejected', async () => { const r = await call('/login', { method: 'POST', body: JSON.stringify({ password: 'ZZZZ-ZZZZ-ZZZZ', device: 'd1' }) }); assert.equal(r.status, 401); });
+await ok('wrong code rejected', async () => { const r = await call('/login', { method: 'POST', body: JSON.stringify({ password: 'nope-nope-nope', device: 'd1' }) }); assert.equal(r.status, 401); });
 let cookie;
-await ok('valid code logs in, cookie httponly secure', async () => { const r = await call('/login', { method: 'POST', body: JSON.stringify({ password: 'aaaa-aaaa-aaaa', device: 'd1' }) }); assert.equal(r.status, 200); const c = [].concat(r.headers['set-cookie'])[0]; assert.match(c, /HttpOnly/); assert.match(c, /Secure/); cookie = c.split(';')[0]; });
+await ok('valid code logs in, cookie httponly secure', async () => { const r = await call('/login', { method: 'POST', body: JSON.stringify({ password: 'correct-horse-battery', device: 'd1' }) }); assert.equal(r.status, 200); const c = [].concat(r.headers['set-cookie'])[0]; assert.match(c, /HttpOnly/); assert.match(c, /Secure/); cookie = c.split(';')[0]; });
 await ok('api works, password never returned', async () => { const r = await call('/x', { cookie }); assert.equal(r.status, 200); assert.ok(!r.text.includes('SECRET') && !r.text.includes('pw123')); assert.equal(JSON.parse(r.text).ok, true); });
 await ok('no cookie -> 401', async () => { assert.equal((await call('/x')).status, 401); });
 await ok('HLS rewrite + signed segment fetch (no cookie needed for segment)', async () => { const r = await call('/s/live/1.m3u8', { cookie }); assert.equal(r.status, 200); assert.ok(!r.text.includes('pw123')); const seg = r.text.split('\n').find((l) => l.startsWith('/p?')); assert.ok(seg); const s = await call(seg); assert.equal(s.text, 'TSDATA'); assert.equal((await call(seg.replace(/s=[0-9a-f]+/, 's=' + '0'.repeat(64)))).status, 403); });

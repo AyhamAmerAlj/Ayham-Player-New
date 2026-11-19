@@ -17,7 +17,7 @@ ar:{home:'الرئيسية',movies:'الأفلام',series:'المسلسلات',
  cont:'تابع المشاهدة',top10m:'أفضل 10 أفلام',top10s:'أفضل 10 مسلسلات',newm:'أُضيفت حديثًا · أفلام',news:'أُضيفت حديثًا · مسلسلات',all:'الكل',more:'عرض المزيد',
  loading:'جارٍ التحميل…',retry:'إعادة المحاولة',empty:'لا توجد عناصر.',newest:'الأحدث',rated:'الأعلى تقييمًا',az:'أ - ي',season:'الموسم',ep:'حلقة',eps:'حلقات',
  cast:'طاقم التمثيل',similar:'مشابه لما شاهدت',read:'اقرأ المزيد',less:'أقل',addl:'أضف لقائمتي',inl:'في قائمتي',watched:'تمت مشاهدتها',upnext:'التالية',cres:'أكمل',
- login:'دخول',code:'كود التفعيل',tag:'كل ما تحب مشاهدته في مكان واحد',enter:'اكتب كود التفعيل.',
+ login:'دخول',code:'كلمة المرور',tag:'كل ما تحب مشاهدته في مكان واحد',enter:'اكتب كلمة المرور.',
  menu:'الإعدادات',lang:'اللغة',logout:'تسجيل الخروج',refresh:'تحديث القوائم',sub:'الاشتراك',active:'فعّال',exp:'ينتهي',conn:'اتصالات',
  srch_ph:'ابحث عن فيلم أو مسلسل أو قناة',srch_min:'اكتب حرفين على الأقل.',srch_none:'لا توجد نتائج.',searching:'جارٍ البحث…',
  subs:'الترجمة',off:'إيقاف',file:'اختيار ملف ترجمة…',delay:'تأخير الترجمة',audio:'الصوت',speed:'السرعة',pip:'نافذة',air:'AirPlay',fs:'ملء الشاشة',
@@ -31,7 +31,7 @@ en:{home:'Home',movies:'Movies',series:'Series',live:'Live',mylist:'My List',sea
  cont:'Continue Watching',top10m:'Top 10 Movies',top10s:'Top 10 Series',newm:'New · Movies',news:'New · Series',all:'All',more:'Show more',
  loading:'Loading…',retry:'Retry',empty:'Nothing here.',newest:'Newest',rated:'Top rated',az:'A - Z',season:'Season',ep:'ep',eps:'episodes',
  cast:'Cast',similar:'More like this',read:'Read more',less:'Less',addl:'Add to list',inl:'In my list',watched:'Watched',upnext:'Up next',cres:'Resume',
- login:'Sign in',code:'Activation code',tag:'Everything you love, in one place',enter:'Enter your activation code.',
+ login:'Sign in',code:'Password',tag:'Everything you love, in one place',enter:'Enter your password.',
  menu:'Settings',lang:'Language',logout:'Sign out',refresh:'Refresh lists',sub:'Subscription',active:'Active',exp:'Expires',conn:'Connections',
  srch_ph:'Search movies, series or channels',srch_min:'Type at least 2 letters.',srch_none:'No results.',searching:'Searching…',
  subs:'Subtitles',off:'Off',file:'Choose subtitle file…',delay:'Subtitle delay',audio:'Audio',speed:'Speed',pip:'PiP',air:'AirPlay',fs:'Fullscreen',
@@ -251,7 +251,7 @@ $('#lf').addEventListener('submit',async ev=>{
   b.disabled=false;b.textContent=t('login');
   if(r.status===503){m.textContent=t('cfg');return}
   if(!r.ok){let e='';try{e=(await r.json()).err}catch(x){}
-    m.textContent={not_web:'هذا الكود غير مفعّل للموقع.',revoked:'هذا الكود مُلغى.',devices_full:'وصل الكود لأقصى عدد أجهزة.',busy:'الكود مستخدم الآن على جهاز آخر، جرّب بعد قليل.',no_server:'لم يُربط سيرفر بهذا الكود بعد.'}[e]||'الكود غير صحيح.';return}
+    m.textContent=lang==='ar'?'كلمة المرور غير صحيحة.':'Wrong password.';return}
   try{const j=await api('');if(!j.ok){m.textContent='السيرفر رفض بيانات الاشتراك المخزّنة.';return}ST.acct=j}
   catch(e){m.textContent=errText(e);return}
   startApp();
