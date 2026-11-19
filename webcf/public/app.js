@@ -132,14 +132,21 @@ function parseName(n){
   return{name:s||String(n||''),year,tags:g};
 }
 const AR_NORM=s=>String(s||'').toLowerCase().replace(/[ً-ٰٟـ]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ؤ/g,'و').replace(/ئ/g,'ي');
+class Item{
+  constructor(k,id,full,img,rating,added,cat,ext,num){this.k=k;this.id=id;this.full=full;this.img=img;this.rating=rating;this.added=added;this.cat=cat;this.ext=ext;this.num=num}
+  get _p(){return this.__p||(this.__p=parseName(this.full))}
+  get name(){return this._p.name}
+  get year(){return this._p.year}
+  get tags(){return this._p.tags}
+  get nn(){return this.__n!==undefined?this.__n:(this.__n=AR_NORM(this.full))}
+}
 function norm(k,raw){
-  const c=KINDS[k];const p=parseName(raw.name||raw.title);
+  const c=KINDS[k];
   let r=parseFloat(raw.rating);if(!(r>0)){const f=parseFloat(raw.rating_5based);r=f>0?f*2:0}
   if(r>10)r=0;
-  return{k,id:String(raw[c.idk]),name:p.name,full:raw.name||'',year:p.year,tags:p.tags,img:raw[c.img]||'',rating:r,
-    added:+(raw.added||raw.last_modified||0)||0,cat:String(raw.category_id||''),ext:raw.container_extension||'',num:+raw.num||0,nn:AR_NORM(raw.name||'')};
+  return new Item(k,String(raw[c.idk]),raw.name||raw.title||'',raw[c.img]||'',r,+(raw.added||raw.last_modified||0)||0,String(raw.category_id||''),raw.container_extension||'',+raw.num||0);
 }
-const ST={tab:'home',cats:{},data:{},idx:{},loaded:{},catSel:{movie:'all',series:'all',live:null},sort:{movie:'new',series:'new'},info:{},hue:{},acct:null};
+const ST={tab:'home',byAdded:{},cats:{},data:{},idx:{},loaded:{},catSel:{movie:'all',series:'all',live:null},sort:{movie:'new',series:'new'},info:{},hue:{},acct:null};
 const DAY=864e5/1000;
 const isNew=it=>it.added&&(now()/1000-it.added)<14*DAY;
 async function ensure(k){
@@ -147,27 +154,27 @@ async function ensure(k){
   if(ST.loading&&ST.loading[k])return ST.loading[k];
   ST.loading=ST.loading||{};
   ST.loading[k]=(async()=>{
-    const [cs,ls]=await Promise.all([cachedApi(KINDS[k].cat,'',60*60*1000),cachedApi(KINDS[k].list,'')]);
+    const [cs,ls]=await Promise.all([cachedApi(KINDS[k].cat,'',60*60*1000),api(KINDS[k].list)]);
     ST.cats[k]=Array.isArray(cs)?cs:[];
     const arr=(Array.isArray(ls)?ls:[]).map(r=>norm(k,r));
-    ST.data[k]=arr;const m=new Map();for(const it of arr)m.set(it.id,it);ST.idx[k]=m;ST.loaded[k]=true;
+    ST.data[k]=arr;ST.byAdded[k]=arr.slice().sort((x,y)=>y.added-x.added);const m=new Map();for(const it of arr)m.set(it.id,it);ST.idx[k]=m;ST.loaded[k]=true;
   })();
   try{await ST.loading[k]}finally{delete ST.loading[k]}
 }
 
 /* ================= قائمتي + التقدم ================= */
-const favs=()=>store.get('fav2',[]);
+let _fav=null;const favs=()=>_fav||(_fav=store.get('fav2',[]));
 const isFav=(k,id)=>favs().some(f=>f.k===k&&String(f.id)===String(id));
 function toggleFav(it){
   const f=favs();const i=f.findIndex(x=>x.k===it.k&&String(x.id)===String(it.id));
   if(i>=0)f.splice(i,1);else f.unshift({k:it.k,id:it.id,name:it.name,img:it.img,ext:it.ext,at:now()});
-  store.set('fav2',f.slice(0,400));return i<0;
+  _fav=f.slice(0,400);store.set('fav2',_fav);return i<0;
 }
-const getPr=()=>store.get('pr2',{});
+let _pr=null;const getPr=()=>_pr||(_pr=store.get('pr2',{}));
 function savePrEntry(e){
   const pr=getPr();pr[e.key]=e;
   const ks=Object.keys(pr);if(ks.length>120){ks.sort((a,b)=>pr[a].at-pr[b].at).slice(0,ks.length-120).forEach(k=>delete pr[k])}
-  store.set('pr2',pr);
+  _pr=pr;store.set('pr2',pr);
 }
 const fracOf=key=>{const p=getPr()[key];return p&&p.d>0?Math.min(1,p.t/p.d):0};
 function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.body.appendChild(e);setTimeout(()=>e.remove(),2400)}
@@ -309,7 +316,7 @@ function startApp(){
   }
   preload();
 }
-async function preload(){try{await Promise.all([ensure('movie'),ensure('series')]);ensure('live').catch(()=>{})}catch(e){}}
+async function preload(){try{await Promise.all([ensure('movie'),ensure('series')])}catch(e){}}
 function go(tab){
   ST.tab=tab;renderNav();renderTop();window.scrollTo(0,0);stopHero();
   const v=$('#view');v.style.animation='none';v.offsetHeight;v.style.animation='';
@@ -328,7 +335,7 @@ function retryBox(e,fn){
 /* ================= الرئيسية ================= */
 let heroTimer=0;
 function stopHero(){clearInterval(heroTimer);heroTimer=0}
-function recentPool(arr,n){return arr.slice().sort((a,b)=>b.added-a.added).slice(0,n)}
+function recentPool(arr,n){const c=arr===ST.data.movie?ST.byAdded.movie:arr===ST.data.series?ST.byAdded.series:null;return(c||arr.slice().sort((a,b)=>b.added-a.added)).slice(0,n)}
 function topRated(arr,n,pool){
   const p=recentPool(arr,pool||700).filter(x=>x.rating>=5&&x.img);
   return p.sort((a,b)=>b.rating-a.rating||b.added-a.added).slice(0,n);
@@ -340,7 +347,7 @@ async function viewHome(){
   if(ST.tab!=='home')return;
   const M=ST.data.movie,S=ST.data.series;
   const top10m=topRated(M,10),top10s=topRated(S,10);
-  const heroPool=recentPool(M.concat(S),500).filter(x=>x.rating>=6&&x.img&&!x.tags.q!==undefined).slice(0,60);
+  const heroPool=recentPool(M,300).concat(recentPool(S,300)).filter(x=>x.rating>=6&&x.img).sort((p,q)=>q.added-p.added).slice(0,60);
   const heroItems=[];const seen=new Set();
   // مزيج: أعلى تقييمًا من الأحدث، متنوّع بين أفلام ومسلسلات
   for(const x of heroPool.sort((a,b)=>b.rating-a.rating)){if(seen.has(x.name))continue;seen.add(x.name);heroItems.push(x);if(heroItems.length>=6)break}
@@ -509,16 +516,22 @@ async function runSearch(raw){
   if(AR_NORM(raw).replace(/\s/g,'').length<2){out.innerHTML='<div class="empty">'+t('srch_min')+'</div>';return}
   out.innerHTML='<div class="empty">'+t('searching')+'</div>';
   try{
-    await Promise.all(['movie','series','live'].map(ensure));
-    if(!$('#q')||AR_NORM($('#q').value)!==AR_NORM(raw))return;
-    let h='';
-    for(const k of['movie','series','live']){
-      const res=ST.data[k].filter(it=>toks.every(x=>it.nn.includes(x)));
-      res.sort((a,b)=>(b.nn.startsWith(toks[0])?1:0)-(a.nn.startsWith(toks[0])?1:0)||b.added-a.added);
-      const top=res.slice(0,60);
-      if(top.length)h+='<div class="rowt"><span>'+t(k==='movie'?'movies':k==='series'?'series':'live')+' ('+res.length+')</span></div>'+(k==='live'?'<div style="padding-top:8px">'+top.map(liveRow).join('')+'</div>':'<div class="grid">'+top.map(it=>tile(it)).join('')+'</div>');
-    }
-    out.innerHTML=h||'<div class="empty">'+t('srch_none')+'</div>';
+    const same=()=>$('#q')&&AR_NORM($('#q').value)===AR_NORM(raw);
+    const paint=()=>{
+      let h='';
+      for(const k of['movie','series','live']){
+        if(!ST.loaded[k])continue;
+        const res=ST.data[k].filter(it=>toks.every(x=>it.nn.includes(x)));
+        res.sort((a,b)=>(b.nn.startsWith(toks[0])?1:0)-(a.nn.startsWith(toks[0])?1:0)||b.added-a.added);
+        const top=res.slice(0,40);
+        if(top.length)h+='<div class="rowt"><span>'+t(k==='movie'?'movies':k==='series'?'series':'live')+' ('+res.length+')</span></div>'+(k==='live'?'<div style="padding-top:8px">'+top.map(liveRow).join('')+'</div>':'<div class="grid">'+top.map(it=>tile(it)).join('')+'</div>');
+      }
+      out.innerHTML=h||'<div class="empty">'+(ST.loaded.live?t('srch_none'):t('searching'))+'</div>';
+    };
+    await Promise.all([ensure('movie'),ensure('series')]);
+    if(!same())return;
+    paint();                                   // أفلام ومسلسلات أولًا (سريع)
+    if(!ST.loaded.live){await ensure('live').catch(()=>{});if(!same())return;paint()}
   }catch(e){out.innerHTML='<div class="empty">'+esc(errText(e))+'</div>'}
 }
 
@@ -541,7 +554,7 @@ async function getInfo(it){
 }
 function minsOf(d){if(!d)return'';const m=/^(\d+):(\d+)/.exec(d);if(m)return(+m[1]?+m[1]+(lang==='ar'?'س ':'h '):'')+(+m[2]?+m[2]+(lang==='ar'?'د':'m'):'');return/^\d+$/.test(d)?d+(lang==='ar'?' د':'m'):String(d)}
 function similarTo(it){
-  const tok=it.nn.split(/\s+/).filter(x=>x.length>2).slice(0,3);
+  const tok=String(it.nn||AR_NORM(it.name)).split(/\s+/).filter(x=>x.length>2).slice(0,3);
   const pool=ST.data[it.k]||[];
   const sc=pool.filter(x=>x.id!==it.id&&x.cat===it.cat&&x.img).map(x=>({x,s:tok.reduce((a,w)=>a+(x.nn.includes(w)?2:0),0)+x.rating*0.1+(x.added/1e10)}));
   return sc.sort((a,b)=>b.s-a.s).slice(0,18).map(o=>o.x);
@@ -661,6 +674,33 @@ function perr(msg,retry){
   const e=$('#p-err');e.innerHTML='<div>'+msg+'</div>'+(retry?'<button class="bp press" id="p-retry" style="height:42px;font-size:15px">'+t('retry')+'</button>':'');e.classList.remove('hide');$('#p-spin').classList.add('hide');
   const r=$('#p-retry');if(r)r.onclick=()=>{e.classList.add('hide');loadSrc(true)};
 }
+function showExternal(msg){
+  if(!P)return;
+  const e=$('#p-err');$('#p-spin').classList.add('hide');
+  const ar=lang==='ar';
+  e.innerHTML='<div>'+msg+'</div><div class="xb">'+
+    '<button class="bp press" data-x="vlc">▶ '+(ar?'تشغيل في VLC':'Play in VLC')+'</button>'+
+    '<button class="bs press" data-x="infuse">'+(ar?'تشغيل في Infuse':'Play in Infuse')+'</button>'+
+    '<button class="bs press" data-x="copy">'+(ar?'نسخ الرابط':'Copy link')+'</button>'+
+    '<button class="bs press" data-x="retry">'+t('retry')+'</button></div>'+
+    '<small style="color:var(--dim)">'+(ar?'ثبّت VLC أو Infuse مجانًا من App Store، فهما يشغّلان MKV وكل الصيغ.':'Install VLC or Infuse from the App Store; they play MKV and every format.')+'</small>';
+  e.classList.remove('hide');
+}
+async function directLink(){
+  const m=/\/s\/(movie|series)\/([^/.]+)\.([a-z0-9]+)$/i.exec(P.urls[0]);
+  if(!m)throw new Error('no');
+  const r=await fetch('/link?kind='+m[1]+'&id='+m[2]+'&ext='+encodeURIComponent(m[3]));
+  const j=await r.json();if(!j.ok)throw new Error('no');return j.url;
+}
+$('#p-err').addEventListener('click',async ev=>{
+  const b=ev.target.closest('[data-x]');if(!b||!P)return;ev.stopPropagation();
+  const x=b.dataset.x;
+  if(x==='retry'){$('#p-err').classList.add('hide');P.ui=0;P.retries=0;P.forceHere=true;return loadSrc(true)}
+  let url;try{url=await directLink()}catch(e){return toast(lang==='ar'?'تعذّر تجهيز الرابط.':'Could not prepare the link.')}
+  if(x==='vlc')location.href='vlc-x-callback://x-callback-url/stream?url='+encodeURIComponent(url);
+  else if(x==='infuse')location.href='infuse://x-callback-url/play?url='+encodeURIComponent(url);
+  else if(x==='copy'){try{await navigator.clipboard.writeText(url);toast(lang==='ar'?'تم نسخ الرابط':'Link copied')}catch(e){prompt(lang==='ar'?'انسخ الرابط:':'Copy the link:',url)}}
+});
 function loadHlsLib(){return new Promise((res,rej)=>{if(window.Hls)return res();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s)})}
 function teardown(){
   if(hls){try{hls.destroy()}catch(e){}hls=null}
@@ -695,7 +735,7 @@ function onFail(){
   if(P.ui+1<P.urls.length){P.ui++;P.retries=0;return loadSrc()}   // جرّب امتدادًا آخر (mp4 / m3u8)
   const c=V.error&&V.error.code;
   if(P.live){if(P.retries++<3){setTimeout(()=>loadSrc(),1800);return}return perr(t('livefail'),true)}
-  perr(c===4||c===3?t('unsupported'):t('vidfail'),true);
+  showExternal(c===4||c===3?t('unsupported'):t('vidfail'));
 }
 function startPlayer(o){
   teardown();
@@ -725,6 +765,11 @@ function startPlayer(o){
       navigator.mediaSession.setActionHandler('previoustrack',o.list&&o.list.length>1?()=>liveStep(-1):null);
     }
   }catch(e){}
+  const ext0=((P.urls[0]||'').match(/\.([a-z0-9]+)$/i)||[])[1]||'';
+  if(!live&&!/^(mp4|m4v|mov|m3u8)$/i.test(ext0)){
+    showExternal((lang==='ar'?'هذا العمل بصيغة ':'This title is in ')+ext0.toUpperCase()+(lang==='ar'?' ولا يشغّلها سفاري على الآيفون مباشرة. شغّله في تطبيق VLC أو Infuse، أو جرّب هنا.':' which Safari on iPhone cannot play directly. Open it in VLC or Infuse, or try here.'));
+    return;
+  }
   loadSrc();
 }
 function seekBy(d){if(!P||P.live||!isFinite(V.duration))return;V.currentTime=Math.max(0,Math.min(V.duration-1,V.currentTime+d))}

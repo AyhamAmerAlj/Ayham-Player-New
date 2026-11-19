@@ -151,7 +151,7 @@ export async function handle(req, env, fetcher = fetch) {
   const u = new URL(req.url);
   const p = u.pathname;
   const ro = req.method === 'GET' || req.method === 'HEAD';
-  if (!['/login', '/logout', '/me', '/setup', '/x', '/s', '/i', '/p'].some((x) => p === x || p.startsWith(x + '/'))) return null; // ملفات ثابتة
+  if (!['/login', '/logout', '/me', '/setup', '/link', '/x', '/s', '/i', '/p'].some((x) => p === x || p.startsWith(x + '/'))) return null; // ملفات ثابتة
   if (!configured(env)) return json({ ok: false, err: 'not_configured' }, 503);
 
   if (p === '/login') {
@@ -223,6 +223,12 @@ export async function handle(req, env, fetcher = fetch) {
       try { const j = await r.json(); const ui = j.user_info || {}; return json({ ok: String(ui.auth) === '1', status: ui.status || '', exp: ui.exp_date || '', max: ui.max_connections || '' }); } catch (e) { return json({ ok: false, err: 'json' }, 502); }
     }
     return r;
+  }
+  if (p === '/link') {
+    // رابط مباشر لفيلم/حلقة لتشغيله في تطبيق خارجي (VLC/Infuse) عند ضغط المستخدم فقط
+    const kind = u.searchParams.get('kind') || '', id = u.searchParams.get('id') || '', ext = u.searchParams.get('ext') || '';
+    if (!/^(movie|series)$/.test(kind) || !/^[0-9A-Za-z_-]{1,20}$/.test(id) || !/^[a-z0-9]{2,5}$/.test(ext)) return json({ ok: false, err: 'bad' }, 400);
+    return json({ ok: true, url: acct.url + '/' + kind + '/' + cred(acct) + '/' + id + '.' + ext });
   }
   if (p === '/i') {
     const t = u.searchParams.get('u') || '';

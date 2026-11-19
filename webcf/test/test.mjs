@@ -82,6 +82,15 @@ await ok('403 retries with other user-agents; persistent 403 -> 502 with status'
     const me = await (await R3('/me', { headers: { cookie: 'ap_s=' + encodeURIComponent(sess) + '; ' + xc } })).json();
     assert.equal(me.setup, false);
   });
+  await ok('link returns direct url only for owner and valid input', async () => {
+    const h = { cookie: 'ap_s=' + encodeURIComponent(sess) };
+    const lr = await R3('/setup', { method: 'POST', headers: { ...h, 'content-type': 'application/json' }, body: JSON.stringify({ url: 'http://iptv.example:8080', user: 'usr', pass: 'pw123' }) });
+    const xc = sealedCookie(lr).split(';')[0];
+    const ok1 = await (await R3('/link?kind=movie&id=55&ext=mkv', { headers: { cookie: h.cookie + '; ' + xc } })).json();
+    assert.equal(ok1.url, 'http://iptv.example:8080/movie/usr/pw123/55.mkv');
+    assert.equal((await R3('/link?kind=live&id=55&ext=mkv', { headers: { cookie: h.cookie + '; ' + xc } })).status, 400);
+    assert.equal((await R3('/link?kind=movie&id=55&ext=mkv')).status, 401);
+  });
   await ok('tampered creds cookie is rejected', async () => {
     const r = await R3('/x?action=get_vod_streams', { headers: { cookie: 'ap_s=' + encodeURIComponent(sess) + '; ap_x=' + '00'.repeat(12) + '.' + 'ab'.repeat(20) } });
     assert.equal(r.status, 409);
