@@ -680,6 +680,7 @@ function showExternal(msg){
   const ar=lang==='ar';
   e.innerHTML='<div>'+msg+'</div><div class="xb">'+
     '<button class="bp press" data-x="vlc">▶ '+(ar?'تشغيل في VLC':'Play in VLC')+'</button>'+
+    '<button class="bs press" data-x="vlcd">'+(ar?'VLC برابط مباشر (إن لم يعمل الأول)':'VLC direct link (if the first fails)')+'</button>'+
     '<button class="bs press" data-x="infuse">'+(ar?'تشغيل في Infuse':'Play in Infuse')+'</button>'+
     '<button class="bs press" data-x="copy">'+(ar?'نسخ الرابط':'Copy link')+'</button>'+
     '<button class="bs press" data-x="retry">'+t('retry')+'</button></div>'+
@@ -690,14 +691,16 @@ async function directLink(){
   const m=/\/s\/(movie|series)\/([^/.]+)\.([a-z0-9]+)$/i.exec(P.urls[0]);
   if(!m)throw new Error('no');
   const r=await fetch('/link?kind='+m[1]+'&id='+m[2]+'&ext='+encodeURIComponent(m[3]));
-  const j=await r.json();if(!j.ok)throw new Error('no');return j.url;
+  const j=await r.json();if(!j.ok)throw new Error('no');return j;
 }
 $('#p-err').addEventListener('click',async ev=>{
   const b=ev.target.closest('[data-x]');if(!b||!P)return;ev.stopPropagation();
   const x=b.dataset.x;
   if(x==='retry'){$('#p-err').classList.add('hide');P.ui=0;P.retries=0;P.forceHere=true;return loadSrc(true)}
-  let url;try{url=await directLink()}catch(e){return toast(lang==='ar'?'تعذّر تجهيز الرابط.':'Could not prepare the link.')}
+  let L;try{L=await directLink()}catch(e){return toast(lang==='ar'?'تعذّر تجهيز الرابط.':'Could not prepare the link.')}
+  const url=L.proxy||L.url;            // الافتراضي: عبر الموقع (يتجاوز حجب السيرفر لتطبيقات خارجية)
   if(x==='vlc')location.href='vlc-x-callback://x-callback-url/stream?url='+encodeURIComponent(url);
+  else if(x==='vlcd')location.href='vlc-x-callback://x-callback-url/stream?url='+encodeURIComponent(L.url);
   else if(x==='infuse')location.href='infuse://x-callback-url/play?url='+encodeURIComponent(url);
   else if(x==='copy'){try{await navigator.clipboard.writeText(url);toast(lang==='ar'?'تم نسخ الرابط':'Link copied')}catch(e){prompt(lang==='ar'?'انسخ الرابط:':'Copy the link:',url)}}
 });

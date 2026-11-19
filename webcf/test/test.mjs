@@ -88,6 +88,8 @@ await ok('403 retries with other user-agents; persistent 403 -> 502 with status'
     const xc = sealedCookie(lr).split(';')[0];
     const ok1 = await (await R3('/link?kind=movie&id=55&ext=mkv', { headers: { cookie: h.cookie + '; ' + xc } })).json();
     assert.equal(ok1.url, 'http://iptv.example:8080/movie/usr/pw123/55.mkv');
+    assert.match(ok1.proxy, /^https:\/\/w\/p\?u=/);
+    const pr = await R3(new URL(ok1.proxy).pathname + new URL(ok1.proxy).search); assert.notEqual(pr.status, 403);
     assert.equal((await R3('/link?kind=live&id=55&ext=mkv', { headers: { cookie: h.cookie + '; ' + xc } })).status, 400);
     assert.equal((await R3('/link?kind=movie&id=55&ext=mkv')).status, 401);
   });

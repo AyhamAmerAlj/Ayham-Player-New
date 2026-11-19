@@ -228,7 +228,8 @@ export async function handle(req, env, fetcher = fetch) {
     // رابط مباشر لفيلم/حلقة لتشغيله في تطبيق خارجي (VLC/Infuse) عند ضغط المستخدم فقط
     const kind = u.searchParams.get('kind') || '', id = u.searchParams.get('id') || '', ext = u.searchParams.get('ext') || '';
     if (!/^(movie|series)$/.test(kind) || !/^[0-9A-Za-z_-]{1,20}$/.test(id) || !/^[a-z0-9]{2,5}$/.test(ext)) return json({ ok: false, err: 'bad' }, 400);
-    return json({ ok: true, url: acct.url + '/' + kind + '/' + cred(acct) + '/' + id + '.' + ext });
+    const direct = acct.url + '/' + kind + '/' + cred(acct) + '/' + id + '.' + ext;
+    return json({ ok: true, url: direct, proxy: u.origin + (await px(env, direct)) });
   }
   if (p === '/i') {
     const t = u.searchParams.get('u') || '';
