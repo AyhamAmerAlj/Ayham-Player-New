@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: ayham-web
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: echo ok
+    startCommand: node webnode/server.js
+    envVars:
+      - key: ACCESS_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
