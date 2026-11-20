@@ -683,7 +683,8 @@ function showExternal(msg){
     '<button class="bs press" data-x="vlcd">'+(ar?'VLC برابط مباشر (إن لم يعمل الأول)':'VLC direct link (if the first fails)')+'</button>'+
     '<button class="bs press" data-x="infuse">'+(ar?'تشغيل في Infuse':'Play in Infuse')+'</button>'+
     '<button class="bs press" data-x="copy">'+(ar?'نسخ الرابط':'Copy link')+'</button>'+
-    '<button class="bs press" data-x="retry">'+t('retry')+'</button></div>'+
+    '<button class="bs press" data-x="diag">'+(ar?'🔍 فحص المصدر (لمعرفة السبب)':'🔍 Check source (find the cause)')+'</button>'+
+    '<button class="bs press" data-x="retry">'+t('retry')+'</button></div><pre id="diag" style="white-space:pre-wrap;direction:ltr;text-align:left;font-size:12px;margin:8px 0"></pre>'+
     '<small style="color:var(--dim)">'+(ar?'ثبّت VLC أو Infuse مجانًا من App Store، فهما يشغّلان MKV وكل الصيغ.':'Install VLC or Infuse from the App Store; they play MKV and every format.')+'</small>';
   e.classList.remove('hide');
 }
@@ -697,6 +698,14 @@ $('#p-err').addEventListener('click',async ev=>{
   const b=ev.target.closest('[data-x]');if(!b||!P)return;ev.stopPropagation();
   const x=b.dataset.x;
   if(x==='retry'){$('#p-err').classList.add('hide');P.ui=0;P.retries=0;P.forceHere=true;return loadSrc(true)}
+  if(x==='diag'){
+    const d=$('#diag');d.textContent='...';
+    try{const m=/\/s\/(movie|series)\/([^/.]+)\.([a-z0-9]+)$/i.exec(P.urls[0]);
+      const j=await(await fetch('/diag?kind='+m[1]+'&id='+m[2]+'&ext='+m[3])).json();
+      const rows=j.out||[];const good=rows.some(o=>(o.status===200||o.status===206)&&o.bytes>0&&!/text|html|json/i.test(o.type));
+      d.textContent=rows.map(o=>o.ua+' → '+o.status+' '+o.type+' '+o.bytes+'B').join('\n')+'\n'+(good?(lang==='ar'?'المصدر يرد بفيديو سليم من السيرفر.':'Source returns valid video.'):(lang==='ar'?'السيرفر لا يعطي الفيديو (محظور/منتهي/حد الاتصالات). المشكلة من الاشتراك لا من الموقع.':'Server does not return video (blocked/expired/connection limit).'))}
+    catch(e){d.textContent='error'}
+    return}
   let L;try{L=await directLink()}catch(e){return toast(lang==='ar'?'تعذّر تجهيز الرابط.':'Could not prepare the link.')}
   const url=L.proxy||L.url;            // الافتراضي: عبر الموقع (يتجاوز حجب السيرفر لتطبيقات خارجية)
   if(x==='vlc')location.href='vlc-x-callback://x-callback-url/stream?url='+encodeURIComponent(url);

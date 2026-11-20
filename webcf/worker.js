@@ -151,7 +151,7 @@ export async function handle(req, env, fetcher = fetch) {
   const u = new URL(req.url);
   const p = u.pathname;
   const ro = req.method === 'GET' || req.method === 'HEAD';
-  if (!['/login', '/logout', '/me', '/setup', '/link', '/x', '/s', '/i', '/p'].some((x) => p === x || p.startsWith(x + '/'))) return null; // ملفات ثابتة
+  if (!['/login', '/logout', '/me', '/setup', '/link', '/diag', '/x', '/s', '/i', '/p'].some((x) => p === x || p.startsWith(x + '/'))) return null; // ملفات ثابتة
   if (!configured(env)) return json({ ok: false, err: 'not_configured' }, 503);
 
   if (p === '/login') {
@@ -169,7 +169,7 @@ export async function handle(req, env, fetcher = fetch) {
   }
 
   // مسار موقّع من الوسيط نفسه (لقطع البث): لا يحتاج كوكي لكنه لا يُزوَّر.
-  if (p === '/p') {
+  if (p === '/p' || p.startsWith('/p/')) {
     if (!ro) return json({ ok: false }, 405);
     const t = u.searchParams.get('u') || '';
     if (!safeEq(u.searchParams.get('s'), await hmac(env, 'u|' + t))) return json({ ok: false, err: 'sig' }, 403);
@@ -229,7 +229,22 @@ export async function handle(req, env, fetcher = fetch) {
     const kind = u.searchParams.get('kind') || '', id = u.searchParams.get('id') || '', ext = u.searchParams.get('ext') || '';
     if (!/^(movie|series)$/.test(kind) || !/^[0-9A-Za-z_-]{1,20}$/.test(id) || !/^[a-z0-9]{2,5}$/.test(ext)) return json({ ok: false, err: 'bad' }, 400);
     const direct = acct.url + '/' + kind + '/' + cred(acct) + '/' + id + '.' + ext;
-    return json({ ok: true, url: direct, proxy: u.origin + (await px(env, direct)) });
+    return json({ ok: true, url: direct, proxy: u.origin + (await px(env, direct)).replace('/p?', '/p/video.' + ext + '?') });
+  }
+  if (p === '/diag') {
+    // فحص المصدر: ماذا يردّ السيرفر فعلًا على طلب بدء التشغيل؟ (يساعد على معرفة سبب الشاشة السوداء)
+    const kind = u.searchParams.get('kind') || '', id = u.searchParams.get('id') || '', ext = u.searchParams.get('ext') || '';
+    if (!/^(movie|series)$/.test(kind) || !/^[0-9A-Za-z_-]{1,20}$/.test(id) || !/^[a-z0-9]{2,5}$/.test(ext)) return json({ ok: false, err: 'bad' }, 400);
+    const target = acct.url + '/' + kind + '/' + cred(acct) + '/' + id + '.' + ext;
+    const out = [];
+    for (const ua of UAS) {
+      try {
+        const r = await fetcher(target, { headers: { 'user-agent': ua, range: 'bytes=0-1023' }, redirect: 'follow' });
+        const b = r.body ? (await r.arrayBuffer()).byteLength : 0;
+        out.push({ ua: ua.split(' ')[0], status: r.status, type: r.headers.get('content-type') || '', bytes: b });
+      } catch (e) { out.push({ ua: ua.split(' ')[0], status: 0, type: 'net_error', bytes: 0 }); }
+    }
+    return json({ ok: true, out });
   }
   if (p === '/i') {
     const t = u.searchParams.get('u') || '';
