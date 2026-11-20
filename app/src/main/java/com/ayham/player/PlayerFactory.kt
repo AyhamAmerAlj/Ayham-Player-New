@@ -17,14 +17,27 @@ import com.ayham.player.audio.TapAudioSink
 
 /** مصنع واحد للمشغّل: نفس الإعدادات الخفيفة للمشغّل الكبير والمصغّر. */
 object PlayerFactory {
-    fun create(ctx: Context, maxRes: Int, tap: EnvelopeTap? = null, pcmOnly: Boolean = false, delayProcessor: com.ayham.player.audio.DelayAudioProcessor? = null, lite: Boolean = false): ExoPlayer {
+    fun create(ctx: Context, maxRes: Int, tap: EnvelopeTap? = null, pcmOnly: Boolean = false, delayProcessor: com.ayham.player.audio.DelayAudioProcessor? = null, lite: Boolean = false, live: Boolean = false): ExoPlayer {
         val http = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
             .setUserAgent("AyhamPlayer/1.0")
             .setConnectTimeoutMs(20_000)
             .setReadTimeoutMs(30_000)
         // قناة التعليق (lite): مخزن أصغر حتى لا تزاحم القناة الرئيسية على الشبكة والذاكرة وتسبب تقطيعًا
-        val lc = (if (lite) DefaultLoadControl.Builder()
+        // البث المباشر: مخزن أكبر (ثبات أهم من القرب من البث) + OkHttp (اتصال أمتن مع إعادة محاولة تلقائية)
+        val liveClient = okhttp3.OkHttpClient.Builder()
+            .retryOnConnectionFailure(true)
+            .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .connectionPool(okhttp3.ConnectionPool(4, 5, java.util.concurrent.TimeUnit.MINUTES))
+            .build()
+        val liveHttp = androidx.media3.datasource.okhttp.OkHttpDataSource.Factory(liveClient).setUserAgent("AyhamPlayer/1.0")
+        val lc = (if (live && !lite) DefaultLoadControl.Builder()
+            .setBufferDurationsMs(45_000, 90_000, 4_000, 15_000)
+            .setTargetBufferBytes(96 * 1024 * 1024)
+            .setPrioritizeTimeOverSizeThresholds(false)
+            .setBackBuffer(10_000, false)
+        else if (lite) DefaultLoadControl.Builder()
             .setBufferDurationsMs(12_000, 24_000, 2_500, 6_000)
             .setTargetBufferBytes(16 * 1024 * 1024)
             .setPrioritizeTimeOverSizeThresholds(false)
@@ -59,8 +72,13 @@ object PlayerFactory {
                 return if (tap != null) TapAudioSink(builtSink, tap) else builtSink
             }
         }.setEnableDecoderFallback(true)
+        // مجرى TS الخام من سيرفرات IPTV: أعلام تحسّن اكتشاف الإطارات وتقلّل التقطيع/التشويه
+        val extractors = androidx.media3.extractor.DefaultExtractorsFactory()
+            .setTsExtractorFlags(androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS)
+            .setConstantBitrateSeekingEnabled(false)
+        val dsf = if (live) DefaultDataSource.Factory(ctx, liveHttp) else DefaultDataSource.Factory(ctx, http)
         val p = ExoPlayer.Builder(ctx, renderers)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(DefaultDataSource.Factory(ctx, http)).setLoadErrorHandlingPolicy(androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy(8)))
+            .setMediaSourceFactory(DefaultMediaSourceFactory(dsf, extractors).setLoadErrorHandlingPolicy(androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy(8)))
             .setLoadControl(lc)
             .setSeekBackIncrementMs(10_000)
             .setSeekForwardIncrementMs(10_000)
