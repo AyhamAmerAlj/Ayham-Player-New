@@ -218,6 +218,9 @@ fun LoginScreen(vm: AppViewModel) {
     var user by rememberSaveable { mutableStateOf(saved?.user ?: "") }
     var pass by rememberSaveable { mutableStateOf(saved?.pass ?: "") }
     val ar = vm.lang == "ar"
+    // طريقتان اختياريتان: (1) هوست + مستخدم + كلمة مرور، (2) مستخدم + كلمة مرور فقط (سيرفر افتراضي من النسخة)
+    val simpleOk = vm.defaultHosts.isNotEmpty()
+    var simple by rememberSaveable { mutableStateOf(simpleOk && (saved == null || vm.defaultHosts.any { com.ayham.player.data.XtreamApi.normalizeServer(it) == saved.server })) }
     Box(
         Modifier.fillMaxSize().background(
             Brush.radialGradient(listOf(tc(0xFF3B1A86), C.bg), radius = 1500f),
@@ -226,7 +229,7 @@ fun LoginScreen(vm: AppViewModel) {
         val ctx = androidx.compose.ui.platform.LocalContext.current
         val tv = remember { isTvDevice(ctx) }
         val compact = isCompact()
-        val step = if (server.isBlank()) 0 else if (user.isBlank()) 1 else if (pass.isBlank()) 2 else 3
+        val step = if (simple) (if (user.isBlank()) 1 else if (pass.isBlank()) 2 else 3) else if (server.isBlank()) 0 else if (user.isBlank()) 1 else if (pass.isBlank()) 2 else 3
         val form: @Composable (Modifier) -> Unit = { mod ->
             Column(
                 mod.clip(RoundedCornerShape(28.dp))
@@ -240,17 +243,25 @@ fun LoginScreen(vm: AppViewModel) {
                     Chip("العربية", vm.lang == "ar") { vm.changeLang("ar") }
                     Chip("English", vm.lang == "en") { vm.changeLang("en") }
                 }
+                if (simpleOk) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Chip(if (ar) "مستخدم وكلمة مرور" else "Username & password", simple) { simple = true }
+                        Chip(if (ar) "مع الهوست" else "With host", !simple) { simple = false }
+                    }
+                }
                 LoginSteps(step.coerceAtMost(2), ar)
-                AyhamField(server, { server = it }, t("server"), if (tv) Modifier.autoFocus() else Modifier, icon = androidx.compose.material.icons.Icons.Filled.Language)
-                BodyText(t("server_hint"), 12, C.textDim)
-                AyhamField(user, { user = it }, t("username"), icon = androidx.compose.material.icons.Icons.Filled.Person)
+                if (!simple) {
+                    AyhamField(server, { server = it }, t("server"), if (tv) Modifier.autoFocus() else Modifier, icon = androidx.compose.material.icons.Icons.Filled.Language)
+                    BodyText(t("server_hint"), 12, C.textDim)
+                }
+                AyhamField(user, { user = it }, t("username"), if (tv && simple) Modifier.autoFocus() else Modifier, icon = androidx.compose.material.icons.Icons.Filled.Person)
                 AyhamField(pass, { pass = it }, t("password"), password = true, imeAction = ImeAction.Done, icon = androidx.compose.material.icons.Icons.Filled.Lock) {
-                    vm.connect(server, user, pass)
+                    if (simple) vm.connectSimple(user, pass) else vm.connect(server, user, pass)
                 }
                 val err = vm.error
                 if (err != null) BodyText(err, 14, C.danger)
                 GlowButton(t("connect"), primary = true, height = 54.dp, modifier = Modifier.fillMaxWidth()) {
-                    vm.connect(server, user, pass)
+                    if (simple) vm.connectSimple(user, pass) else vm.connect(server, user, pass)
                 }
             }
         }

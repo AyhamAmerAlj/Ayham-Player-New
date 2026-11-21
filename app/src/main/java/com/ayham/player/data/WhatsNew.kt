@@ -2,8 +2,9 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "273"
+    const val id = "285"
     val ar = listOf(
+        "تسجيل الدخول بطريقتين اختياريتين: (1) هوست + اسم مستخدم + كلمة مرور، أو (2) اسم مستخدم وكلمة مرور فقط ويتصل التطبيق بالسيرفر تلقائيًا",
         "القنوات المباشرة أثبت بكثير: مخزن أكبر وتحمّل أفضل لتذبذب الشبكة، واتصال أمتن مع إعادة محاولة تلقائية، وتحسين قراءة بث TS الخام لتقليل التقطيع والتشويه",
         "القصة تُقرأ كاملة: اضغط على الملخص في صفحة العمل فتفتح لوحة سينمائية بنص كامل قابل للتمرير بدون أن تؤثر على التصميم",
         "استوديو الحلقات: شريط مواسم بأرقام كبيرة (يتبدل الموسم بمجرد التركيز) مع تقدم كل موسم، وبكرة حلقات بصور كبيرة وأرقام سينمائية وقصة الحلقة عند التركيز وشارة «التالية/أكمل» مع تمرير تلقائي لها",
@@ -55,6 +56,7 @@ object WhatsNew {
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "Two optional ways to sign in: (1) host + username + password, or (2) username and password only, the app connects to the server automatically",
         "Much smoother live channels: bigger buffer, better tolerance to network jitter, a sturdier connection with automatic retry, and improved raw TS parsing to reduce stutter and glitches",
         "Read the full story: press the summary on a title page to open a cinematic panel with the whole, scrollable text without disturbing the layout",
         "Episode studio: a season strip with big numerals (focus switches the season) showing each season's progress, and an episode reel with large stills, cinematic numbers, the episode plot on focus, an Up next / Resume badge and auto-scroll to it",
@@ -111,7 +113,7 @@ object WhatsNew {
 data class Release(val id: String, val ar: List<String>, val en: List<String>)
 
 val releaseHistory = listOf(
-    Release("273", WhatsNew.ar, WhatsNew.en),
+    Release("285", WhatsNew.ar, WhatsNew.en),
     Release("237", listOf("افتتاحية سينمائية جديدة بشعار Ayham"), listOf("New cinematic opening with the Ayham logo")),
     Release("227", listOf(
         "تقييمات متعددة (IMDb وRotten Tomatoes وMetacritic وTMDB وTrakt)",

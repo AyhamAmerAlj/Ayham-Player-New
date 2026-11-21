@@ -338,6 +338,35 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** السيرفرات الافتراضية (مفصولة بفاصلة) لوضع «اسم مستخدم وكلمة مرور فقط». */
+    val defaultHosts: List<String> = com.ayham.player.BuildConfig.DEFAULT_HOST.split(',', ';', ' ').map { it.trim() }.filter { it.isNotEmpty() }
+
+    /** الدخول بدون هوست: نجرّب السيرفرات الافتراضية بالترتيب ونكمل مع أول سيرفر يقبل البيانات. */
+    fun connectSimple(user: String, pass: String) {
+        if (phase == Phase.LOADING) return
+        if (user.isBlank() || pass.isBlank()) { error = tr("fill_all"); phase = Phase.LOGIN; return }
+        if (defaultHosts.isEmpty()) { error = if (lang == "ar") "هذه النسخة غير مرتبطة بسيرفر افتراضي، استخدم الدخول مع الهوست" else "No default server in this build, use the host login"; return }
+        error = null
+        phase = Phase.LOADING
+        viewModelScope.launch {
+            var found: String? = null
+            var wrongCreds = false
+            for (h in defaultHosts) {
+                val s = XtreamApi.normalizeServer(h)
+                try {
+                    withContext(Dispatchers.IO) { XtreamApi(Account(s, user.trim(), pass.trim())).login() }
+                    found = s; break
+                } catch (e: Exception) {
+                    if ((e.message ?: "").contains("غير صحيحة")) wrongCreds = true
+                }
+            }
+            phase = Phase.LOGIN
+            if (found != null) connect(found, user, pass)
+            else error = if (lang == "ar") (if (wrongCreds) "اسم المستخدم أو كلمة المرور غير صحيحة" else "تعذّر الاتصال بالسيرفر، تأكد من الإنترنت وحاول مجددًا")
+                         else (if (wrongCreds) "Wrong username or password" else "Could not reach the server, check your connection and retry")
+        }
+    }
+
     fun connect(serverRaw: String, user: String, pass: String) {
         if (phase == Phase.LOADING) return
         val server = XtreamApi.normalizeServer(serverRaw)
