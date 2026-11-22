@@ -339,20 +339,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** السيرفرات الافتراضية (مفصولة بفاصلة) لوضع «اسم مستخدم وكلمة مرور فقط». */
-    val defaultHosts: List<String> = com.ayham.player.BuildConfig.DEFAULT_HOST.split(',', ';', ' ').map { it.trim() }.filter { it.isNotEmpty() }
+    private val builtInHosts: List<String> = com.ayham.player.BuildConfig.DEFAULT_HOST.split(',', ';', ' ').map { it.trim() }.filter { it.isNotEmpty() }
+    /** المرشحون للدخول بالاسم والرمز: سيرفرات سبق استخدامها على الجهاز ثم الافتراضية المدمجة. */
+    fun candidateHosts(): List<String> = (store.knownHosts() + builtInHosts).map { XtreamApi.normalizeServer(it) }.filter { it.isNotEmpty() }.distinct()
 
     /** الدخول بدون هوست: نجرّب السيرفرات الافتراضية بالترتيب ونكمل مع أول سيرفر يقبل البيانات. */
     fun connectSimple(user: String, pass: String) {
         if (phase == Phase.LOADING) return
         if (user.isBlank() || pass.isBlank()) { error = tr("fill_all"); phase = Phase.LOGIN; return }
-        if (defaultHosts.isEmpty()) { error = if (lang == "ar") "هذه النسخة غير مرتبطة بسيرفر افتراضي، استخدم الدخول مع الهوست" else "No default server in this build, use the host login"; return }
+        val hosts = candidateHosts()
+        if (hosts.isEmpty()) { error = if (lang == "ar") "لا يوجد سيرفر محفوظ بعد: سجّل مرة واحدة بالهوست، وبعدها يكفيك الاسم والرمز" else "No saved server yet: sign in once with the host, then username and password are enough"; return }
         error = null
         phase = Phase.LOADING
         viewModelScope.launch {
             var found: String? = null
             var wrongCreds = false
-            for (h in defaultHosts) {
-                val s = XtreamApi.normalizeServer(h)
+            for (s in hosts) {
                 try {
                     withContext(Dispatchers.IO) { XtreamApi(Account(s, user.trim(), pass.trim())).login() }
                     found = s; break
@@ -393,6 +395,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 withContext(Dispatchers.IO) { db.setMeta("acc", key) }
                 store.saveAccount(acc)
+                store.rememberHost(server)
                 savedAccount = acc
                 api = a
                 sectionState.clear()

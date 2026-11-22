@@ -219,8 +219,8 @@ fun LoginScreen(vm: AppViewModel) {
     var pass by rememberSaveable { mutableStateOf(saved?.pass ?: "") }
     val ar = vm.lang == "ar"
     // طريقتان اختياريتان: (1) هوست + مستخدم + كلمة مرور، (2) مستخدم + كلمة مرور فقط (سيرفر افتراضي من النسخة)
-    val simpleOk = vm.defaultHosts.isNotEmpty()
-    var simple by rememberSaveable { mutableStateOf(simpleOk && (saved == null || vm.defaultHosts.any { com.ayham.player.data.XtreamApi.normalizeServer(it) == saved.server })) }
+    val simpleOk = true
+    var simple by rememberSaveable { mutableStateOf(vm.candidateHosts().isNotEmpty()) }
     Box(
         Modifier.fillMaxSize().background(
             Brush.radialGradient(listOf(tc(0xFF3B1A86), C.bg), radius = 1500f),
@@ -280,7 +280,7 @@ fun LoginScreen(vm: AppViewModel) {
                 ThemeState.palette.tagline?.let { RText(it, if (compact) 16 else 22, C.gold, bold = true) }
                 ThemeState.palette.taglineSub?.let { BodyText(it, if (compact) 11 else 14, C.textDim) }
                 // رمز QR فقط للتلفاز (تدخل البيانات من هاتفك)
-                if (tv) { Spacer(Modifier.height(10.dp)); QrLoginCard { s, u, p -> vm.connect(s, u, p) } }
+                if (tv) { Spacer(Modifier.height(10.dp)); QrLoginCard { s, u, p -> if (s.isBlank()) vm.connectSimple(u, p) else vm.connect(s, u, p) } }
             }
         }
         if (compact) {

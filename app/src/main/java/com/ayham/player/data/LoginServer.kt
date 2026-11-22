@@ -111,11 +111,11 @@ class LoginServer(
                         u.getQueryParameter("password")?.let { pass = it }
                     }
                 }
-                if (server.isNotEmpty() && user.isNotEmpty() && pass.isNotEmpty()) {
+                if (user.isNotEmpty() && pass.isNotEmpty()) {
                     respond(out, DONE_PAGE)
                     onCreds.invoke(server, user, pass)
                 } else {
-                    respond(out, FORM_PAGE.replace("<!--ERR-->", "<p class=e>عبّي كل الحقول أو الصق الرابط الكامل</p>"))
+                    respond(out, FORM_PAGE.replace("<!--ERR-->", "<p class=e>عبّي اسم المستخدم وكلمة المرور (والسيرفر إن لزم) أو الصق الرابط الكامل</p>"))
                 }
             } else {
                 respond(out, if (onUpload != null && onCreds == null) (if (photoMode) PHOTO_PAGE else SUB_PAGE) else FORM_PAGE)
@@ -167,7 +167,7 @@ button{width:100%;padding:15px;border:0;border-radius:24px;background:#8B5CF6;co
 <label>الصق رابط الاشتراك الكامل (اختياري)</label>
 <input name=link placeholder="http://server:port/get.php?username=...&password=..." dir=ltr>
 <p class=s>— أو عبّي الحقول —</p>
-<label>عنوان السيرفر</label><input name=server placeholder="http://example.com:8080" dir=ltr autocapitalize=off>
+<label>عنوان السيرفر (اختياري: اتركه فارغًا لاستخدام سيرفر محفوظ بالتطبيق)</label><input name=server placeholder="http://example.com:8080" dir=ltr autocapitalize=off>
 <label>اسم المستخدم</label><input name=user dir=ltr autocapitalize=off>
 <label>كلمة المرور</label><input name=pass dir=ltr autocapitalize=off>
 <button type=submit>إرسال للشاشة</button>

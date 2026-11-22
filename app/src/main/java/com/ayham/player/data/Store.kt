@@ -98,6 +98,13 @@ class Store(private val ctx: Context) {
     fun loadAccount(): Account? =
         gsp.getString("account", null)?.let { runCatching { gson.fromJson(it, Account::class.java) }.getOrNull() }
 
+    /** سيرفرات استُخدمت سابقًا على هذا الجهاز (الأحدث أولًا): تُستخدم في الدخول بالاسم والرمز فقط. */
+    fun knownHosts(): List<String> = (gsp.getString("known_hosts", "") ?: "").split('\n').filter { it.isNotBlank() }
+    fun rememberHost(h: String) {
+        val l = (listOf(h) + knownHosts()).distinct().take(8)
+        gsp.edit().putString("known_hosts", l.joinToString("\n")).apply()
+    }
+
     fun saveAccount(a: Account?) {
         gsp.edit().apply {
             if (a == null) remove("account") else putString("account", gson.toJson(a))
