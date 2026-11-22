@@ -2,8 +2,9 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "287"
+    const val id = "288"
     val ar = listOf(
+        "إصلاح تقطيع أفلام ومسلسلات 4K: فك الترميز بالعتاد أولًا، طابور كودك غير متزامن، مخزن أكبر، وإيقاف التقاط الإضاءة المحيطة تلقائيًا مع 4K لأنها كانت تسبب تعليقة دورية",
         "ثيم جديد: «أحمر دموي» بخلفيات سوداء بصبغة دم وأحمر قاني متوهج، من الإعدادات ← الثيم",
         "تسجيل الدخول بطريقتين تختار بينهما: (1) هوست + اسم مستخدم + كلمة مرور، أو (2) اسم مستخدم وكلمة مرور فقط (يستخدم سيرفرًا سبق حفظه على الجهاز)، وتعمل أيضًا عبر رمز QR من الهاتف",
         "القنوات المباشرة أثبت بكثير: مخزن أكبر وتحمّل أفضل لتذبذب الشبكة، واتصال أمتن مع إعادة محاولة تلقائية، وتحسين قراءة بث TS الخام لتقليل التقطيع والتشويه",
@@ -57,6 +58,7 @@ object WhatsNew {
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "Fixed 4K movie/series stutter: hardware decoding first, async codec queueing, bigger buffer, and ambient-glow capture is skipped for 4K because it caused periodic hitches",
         "New theme: \"Blood Red\" with blood-tinted blacks and a glowing crimson, from Settings > Theme",
         "Two ways to sign in, your choice: (1) host + username + password, or (2) username and password only (uses a server saved on the device), also works via the phone QR code",
         "Much smoother live channels: bigger buffer, better tolerance to network jitter, a sturdier connection with automatic retry, and improved raw TS parsing to reduce stutter and glitches",
@@ -115,7 +117,7 @@ object WhatsNew {
 data class Release(val id: String, val ar: List<String>, val en: List<String>)
 
 val releaseHistory = listOf(
-    Release("287", WhatsNew.ar, WhatsNew.en),
+    Release("288", WhatsNew.ar, WhatsNew.en),
     Release("237", listOf("افتتاحية سينمائية جديدة بشعار Ayham"), listOf("New cinematic opening with the Ayham logo")),
     Release("227", listOf(
         "تقييمات متعددة (IMDb وRotten Tomatoes وMetacritic وTMDB وTrakt)",

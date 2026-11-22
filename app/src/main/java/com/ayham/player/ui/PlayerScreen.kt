@@ -892,6 +892,8 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     LaunchedEffect(isPlaying, vm.ambient, index) {
         if (!vm.ambient || queue[index].isLive || android.os.Build.VERSION.SDK_INT < 26) return@LaunchedEffect
         while (isPlaying) {
+            // 4K: التقاط الصورة من السطح يسبب تعليقة كل بضع ثوانٍ، فنتخطاه (الأشرطة تبقى سوداء)
+            if (exo.videoSize.height > 1080) { delay(5000); continue }
             val sv = pv?.videoSurfaceView as? android.view.SurfaceView
             if (sv != null && sv.width > 0 && sv.holder.surface.isValid) {
                 val bmp = android.graphics.Bitmap.createBitmap(16, 9, android.graphics.Bitmap.Config.ARGB_8888)

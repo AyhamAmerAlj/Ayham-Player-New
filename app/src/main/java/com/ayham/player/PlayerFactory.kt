@@ -43,8 +43,8 @@ object PlayerFactory {
             .setPrioritizeTimeOverSizeThresholds(false)
             .setBackBuffer(15_000, false)
         else DefaultLoadControl.Builder()
-            .setBufferDurationsMs(30_000, 60_000, 2_500, 8_000)
-            .setTargetBufferBytes(80 * 1024 * 1024)
+            .setBufferDurationsMs(40_000, 80_000, 2_500, 10_000)
+            .setTargetBufferBytes(140 * 1024 * 1024)
             .setPrioritizeTimeOverSizeThresholds(false)
             .setBackBuffer(20_000, false))
             .build()
@@ -72,6 +72,12 @@ object PlayerFactory {
                 return if (tap != null) TapAudioSink(builtSink, tap) else builtSink
             }
         }.setEnableDecoderFallback(true)
+            // فك الترميز بالعتاد أولًا دائمًا (البرمجي بطيء جدًا مع 4K/HEVC) + طابور كودك غير متزامن يقلّل إسقاط الإطارات
+            .setMediaCodecSelector { mime, secure, tunneling ->
+                androidx.media3.exoplayer.mediacodec.MediaCodecSelector.DEFAULT.getDecoderInfos(mime, secure, tunneling)
+                    .sortedBy { if (it.softwareOnly || !it.hardwareAccelerated) 1 else 0 }
+            }
+            .forceEnableMediaCodecAsynchronousQueueing()
         // مجرى TS الخام من سيرفرات IPTV: أعلام تحسّن اكتشاف الإطارات وتقلّل التقطيع/التشويه
         val extractors = androidx.media3.extractor.DefaultExtractorsFactory()
             .setTsExtractorFlags(androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS)
