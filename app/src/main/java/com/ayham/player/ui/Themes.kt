@@ -48,6 +48,7 @@ object Themes {
     const val ROYAL = "royal"
     const val VIC11 = "vic11"
     const val CY19 = "cy19"
+    const val BLOOD = "blood"
 
     val original = Palette(
         id = ORIGINAL,
@@ -229,7 +230,34 @@ object Themes {
         glow = Color(0xFF5B3DF5),
     )
 
-    val all: List<Palette> = listOf(original, barcelona, dark, light, ayham, royal, vic11, cy19)
+    /** الأحمر الدموي: خلفيات سوداء بصبغة دم، أحمر قاني للأساسي ووهج قرمزي، وذهبي خافت للتمييز. */
+    private val bloodRemap: Map<Long, Long> = mapOf(
+        0x030106L to 0x050102L, 0x05020BL to 0x080204L, 0x06020DL to 0x080204L, 0x080414L to 0x0B0305L,
+        0x0A0418L to 0x0C0406L, 0x0A0518L to 0x0C0406L, 0x0B0614L to 0x0B0305L, 0x0B0616L to 0x0B0305L,
+        0x0E0820L to 0x15060AL, 0x0F0720L to 0x15060AL, 0x120A24L to 0x1A070CL, 0x120A26L to 0x1A070CL,
+        0x140A26L to 0x1A070CL, 0x140A2BL to 0x1A070CL, 0x1A0B3AL to 0x240A10L, 0x1B0D3DL to 0x260B12L,
+        0x1C1033L to 0x2A0A10L, 0x2A1260L to 0x3D0E17L, 0x2A1850L to 0x3F0E18L, 0x3B1A7AL to 0x55121FL,
+        0x3B1A86L to 0x5A1422L,
+        0x5B21B6L to 0x7A0410L, 0x6D28D9L to 0x8F0614L, 0x7C3AEDL to 0xA30818L, 0x8B5CF6L to 0xB30B1CL,
+        0x8B1FD9L to 0x8F0614L, 0x9F67FFL to 0xE02A3EL, 0xA855F7L to 0xCC1A2EL, 0xA78BFAL to 0xFF5A6AL,
+        0xC4A1FFL to 0xFF8A94L, 0xD946EFL to 0xFF1E3CL, 0xE879F9L to 0xFF4D5EL,
+        0xA99BC4L to 0xC9A3A8L, 0xBDB2D6L to 0xDDBFC3L, 0xD9CCF5L to 0xF0D8DAL, 0xE5DEF5L to 0xF7E6E8L,
+        0xF5F0FFL to 0xFFF4F5L,
+        0xF5C518L to 0xE8B04AL,
+    )
+
+    val blood = Palette(
+        id = BLOOD,
+        bg = Color(0xFF0B0305), bg2 = Color(0xFF1A070C), surface = Color(0xFF2A0A10), surfaceHi = Color(0xFF3F0E18),
+        primary = Color(0xFFB30B1C), primaryLight = Color(0xFFFF8A94), accent = Color(0xFFFF1E3C),
+        text = Color(0xFFFFF4F5), textDim = Color(0xFFC9A3A8), danger = Color(0xFFFFB347), ok = Color(0xFF5EEAD4),
+        remap = bloodRemap,
+        stripe = listOf(Color(0xFF7A0410), Color(0xFFFF1E3C)),
+        gold = Color(0xFFE8B04A),
+        glow = Color(0xFFB30B1C),
+    )
+
+    val all: List<Palette> = listOf(original, barcelona, dark, light, ayham, royal, vic11, cy19, blood)
 
     fun byId(id: String): Palette = all.firstOrNull { it.id == id } ?: original
 }

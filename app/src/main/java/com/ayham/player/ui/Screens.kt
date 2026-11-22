@@ -1028,6 +1028,7 @@ fun SettingsTab(vm: AppViewModel) {
             Chip("Royal White", ThemeState.id == Themes.ROYAL) { vm.changeTheme(Themes.ROYAL) }
             Chip("VIC11", ThemeState.id == Themes.VIC11) { vm.changeTheme(Themes.VIC11) }
             Chip("CY19", ThemeState.id == Themes.CY19) { vm.changeTheme(Themes.CY19) }
+            Chip(if (ar) "أحمر دموي" else "Blood Red", ThemeState.id == Themes.BLOOD) { vm.changeTheme(Themes.BLOOD) }
         }
         ThemeState.palette.tagline?.let { tl ->
             RText(tl, 20, C.gold, bold = true)
