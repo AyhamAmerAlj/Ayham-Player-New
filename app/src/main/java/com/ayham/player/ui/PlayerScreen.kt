@@ -1476,6 +1476,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             }
                         }
                         PanelItem(t("smart_audio"), selected = extName != null, sub = extName) { panel = Panel.EXT }
+                        if (queue[index].isLive) PanelItem(if (vm.lang == "ar") "🎙 ملفات التعليق" else "🎙 Commentary files", selected = extSession.isFile, sub = if (extSession.isFile) extName else (if (vm.lang == "ar") "ملفات صوتية محفوظة بالتطبيق" else "Audio files saved in the app")) { panel = Panel.FILES }
                         if (extName != null) PanelItem(t("sync")) { panel = Panel.SYNC }
                         PanelItem(t("aspect"), sub = aspectLabels[aspect]) {
                             aspect = (aspect + 1) % 3
@@ -1942,7 +1943,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                     }
                                 }
                             }
-                            item { PanelItem(t("back")) { panel = Panel.EXT } }
+                            item { PanelItem(t("back")) { panel = Panel.MENU } }
                         }
                     }
 
