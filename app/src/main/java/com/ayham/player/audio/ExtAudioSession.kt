@@ -79,6 +79,9 @@ class ExtAudioSession(
     private val extTap = EnvelopeTap()
     val delayProcessor = DelayAudioProcessor()
     private var current: Item? = null
+    /** مسار ملف تعليق محلي (إن كان المصدر ملفًا محفوظًا بدل قناة). */
+    private var fileUri: String? = null
+    val isFile: Boolean get() = fileUri != null
     private var attempts = 0
     private var playing = true
     private var reconnecting = false
@@ -125,8 +128,26 @@ class ExtAudioSession(
     }
 
     // ------------------------------------------------------------------ تشغيل/إيقاف
-    fun start(item: Item, same: Boolean = false, trackKey: String? = null) {
+    /** تشغيل ملف تعليق محفوظ داخل التطبيق بنفس مسار القناة (نفس المزامنة التلقائية). */
+    fun startFile(f: java.io.File) {
         if (released) return
+        startCommon(Item(com.ayham.player.data.Kind.LIVE, "file:" + f.name, "🎙 " + f.nameWithoutExtension), false, null, android.net.Uri.fromFile(f).toString())
+    }
+
+    /** قفز داخل ملف التعليق (للوصول لقرب لحظة البث قبل أن تضبطها المزامنة التلقائية: ±15 ث). */
+    fun seekFile(delta: Long) {
+        val p = player ?: return
+        if (fileUri == null) return
+        resetSpeeds(); resetMeasure()
+        p.seekTo((p.currentPosition + delta).coerceAtLeast(0L))
+        status = s("جارٍ إعادة المزامنة بعد القفز…", "Re-syncing after the jump…")
+    }
+
+    fun start(item: Item, same: Boolean = false, trackKey: String? = null) = startCommon(item, same, trackKey, null)
+
+    private fun startCommon(item: Item, same: Boolean, trackKey: String?, file: String?) {
+        if (released) return
+        fileUri = file
         suspended = false
         sameStream = same
         wantTrack = if (same) trackKey else null
@@ -137,7 +158,7 @@ class ExtAudioSession(
         attempts = 0
         delayMs = 0
         manualMs = 0
-        if (maxConnections in 1..1) {
+        if (file == null && maxConnections in 1..1) {
             status = s(
                 "تنبيه: اشتراكك يسمح باتصال واحد فقط. تشغيل قناتين معًا قد يقطعه السيرفر بعد قليل.",
                 "Warning: your plan allows only 1 connection. Two streams at once may get cut.",
@@ -151,7 +172,7 @@ class ExtAudioSession(
 
     private fun build() {
         val item = current ?: return
-        val url = urlOf(item)
+        val url = fileUri ?: urlOf(item)
         if (url.isEmpty()) return
         releasePlayer()
         extTap.clear()
@@ -310,7 +331,7 @@ class ExtAudioSession(
 
     fun resume() {
         val c = current ?: return
-        if (suspended) start(c, sameStream, wantTrack)
+        if (suspended) startCommon(c, sameStream, wantTrack, fileUri)
     }
 
     /** إيقاف المسار الخارجي نهائيًا (وننسى القناة). */
@@ -330,6 +351,7 @@ class ExtAudioSession(
         mainTap.clear()
         applyMainMute(false)
         current = null
+        fileUri = null
         name = null
         pip = false
         status = ""
@@ -377,7 +399,10 @@ class ExtAudioSession(
         resetSpeeds()
         resetMeasure()
         offMoment = false
-        if (p != null) {
+        if (p != null && fileUri != null) {
+            p.volume = volume
+            status = s("جارٍ إعادة المزامنة…", "Re-syncing…")
+        } else if (p != null) {
             p.volume = volume
             p.seekToDefaultPosition()
             status = s("رجعت للبث المباشر، جارٍ إعادة المزامنة…", "Back to live, re-syncing…")

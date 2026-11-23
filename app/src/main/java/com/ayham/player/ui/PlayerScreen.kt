@@ -124,7 +124,7 @@ import com.ayham.player.data.PlayRequest
 import kotlinx.coroutines.delay
 import java.util.Locale
 
-private enum class Panel { MENU, SUBS, SUBURL, SUBPHONE, TRYSUB, AUDIO, EXT, SYNC, EPG, MATCH, RADIO }
+private enum class Panel { MENU, SUBS, SUBURL, SUBPHONE, TRYSUB, AUDIO, EXT, SYNC, EPG, MATCH, RADIO, FILES }
 
 /** قنوات المباريات: نكتشفها من اسم القناة (رياضة، beIN، SSC، دوري، كأس ...). */
 private val MATCH_RE = Regex(
@@ -525,7 +525,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         val offset = if (extSession.sameStream) -extSession.picDelayMs else extSession.manualMs
         val value = if (extSession.sameStream) {
             "s\t" + (extSession.wantTrack ?: "") + "\t" + offset + "\t\t"
-        } else if (extSession.player != null && channel != null) {
+        } else if (extSession.player != null && channel != null && !extSession.isFile) {
             "e\t\t" + offset + "\t" + (channel.id ?: "") + "\t" + channel.name
         } else null
         if (value != null) vm.store.setAudioPref(queue[index].key, value)
@@ -1809,7 +1809,10 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                     item { PanelItem(t("ext_audio_remove")) { stopExt() } }
                                     item { PanelItem(t("sync")) { panel = Panel.SYNC } }
                                 }
-                                if (vm.radioOn && vm.radioCats().isNotEmpty() && !searching) {
+                                if (!searching && vm.lang.isNotEmpty()) {
+                                item { PanelItem(if (vm.lang == "ar") "🎙 ملفات التعليق (محفوظة في التطبيق)" else "🎙 Commentary files (saved in the app)", sub = if (vm.lang == "ar") "أضف ملفًا صوتيًا من هاتفك عبر QR" else "Add an audio file from your phone via QR") { panel = Panel.FILES } }
+                            }
+                            if (vm.radioOn && vm.radioCats().isNotEmpty() && !searching) {
                                     item { PanelItem(if (ar) "📻 الراديو" else "📻 Radio", sub = if (ar) "اختر إذاعة كصوت تعليق" else "Pick a station as commentary") { panel = Panel.RADIO } }
                                 }
                                 if (searching) {
@@ -1880,6 +1883,66 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                 }
                             }
                             item { PanelItem(t("back")) { panel = Panel.MENU } }
+                        }
+                    }
+
+                    Panel.FILES -> {
+                        val ar = vm.lang == "ar"
+                        var files by remember { mutableStateOf(com.ayham.player.data.CommentaryLib.list(ctx)) }
+                        var showQr by remember { mutableStateOf(false) }
+                        var url by remember { mutableStateOf<String?>(null) }
+                        DisposableEffect(showQr) {
+                            if (!showQr) return@DisposableEffect onDispose { }
+                            val main = android.os.Handler(android.os.Looper.getMainLooper())
+                            val srv = com.ayham.player.data.LoginServer(onAudio = { name, len, input ->
+                                val f = com.ayham.player.data.CommentaryLib.save(ctx, name, len, input)
+                                main.post {
+                                    files = com.ayham.player.data.CommentaryLib.list(ctx)
+                                    showToast(if (f != null) (if (ar) "تم حفظ الملف ✓" else "File saved ✓") else (if (ar) "فشل الحفظ: صيغة غير مدعومة أو أكبر من 400MB" else "Save failed: unsupported format or over 400MB"))
+                                }
+                                f != null
+                            })
+                            val ip = com.ayham.player.data.LoginServer.localIp()
+                            if (ip != null && srv.start()) url = "http://$ip:${srv.port}"
+                            onDispose { srv.stop(); url = null }
+                        }
+                        RText(if (ar) "🎙 ملفات التعليق" else "🎙 Commentary files", 26, C.text, bold = true)
+                        BodyText(if (ar) "الملفات تبقى محفوظة بالتطبيق. المزامنة التلقائية تعمل عليها كالقنوات (ضمن ±15 ثانية، استخدم أزرار القفز للتقريب)." else "Files stay saved in the app. Auto sync works on them like channels (within ±15 s, use the jump buttons to get close).", 13, C.textDim, maxLines = 4)
+                        if (extSession.isFile) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                listOf("−5m" to -300_000L, "−1m" to -60_000L, "−10s" to -10_000L, "+10s" to 10_000L, "+1m" to 60_000L, "+5m" to 300_000L).forEach { (l, ms) ->
+                                    GlowButton(l, height = 50.dp, modifier = Modifier.weight(1f)) { extSession.seekFile(ms) }
+                                }
+                            }
+                        }
+                        if (showQr) {
+                            val u = url
+                            if (u != null) {
+                                val bmp = remember(u) { qrBitmap(u) }
+                                Box(Modifier.clip(RoundedCornerShape(16.dp)).background(Color.White).padding(10.dp).align(Alignment.CenterHorizontally)) {
+                                    androidx.compose.foundation.Image(bmp.asImageBitmap(), null, Modifier.size(200.dp))
+                                }
+                                BodyText(u, 14, C.primaryLight, modifier = Modifier.align(Alignment.CenterHorizontally))
+                            } else RText(t("qr_fail"), 16, C.danger)
+                        }
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+                            item { PanelItem(if (showQr) (if (ar) "إخفاء الـQR" else "Hide QR") else (if (ar) "➕ إضافة ملف عبر QR" else "➕ Add a file via QR")) { showQr = !showQr } }
+                            if (files.isEmpty()) item { BodyText(if (ar) "لا توجد ملفات محفوظة بعد" else "No saved files yet", 14, C.textDim) }
+                            items(files, key = { "cf" + it.name }) { f ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Box(Modifier.weight(1f)) {
+                                        PanelItem(f.nameWithoutExtension, sub = com.ayham.player.data.CommentaryLib.sizeText(f), selected = extSession.isFile && extSession.name?.endsWith(f.nameWithoutExtension) == true) {
+                                            extSession.startFile(f); panel = Panel.SYNC
+                                        }
+                                    }
+                                    GlowButton("🗑", height = 50.dp) {
+                                        if (extSession.isFile && extSession.name?.endsWith(f.nameWithoutExtension) == true) stopExt()
+                                        com.ayham.player.data.CommentaryLib.delete(f)
+                                        files = com.ayham.player.data.CommentaryLib.list(ctx)
+                                    }
+                                }
+                            }
+                            item { PanelItem(t("back")) { panel = Panel.EXT } }
                         }
                     }
 
