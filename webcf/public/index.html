@@ -37,6 +37,8 @@
     <div class="f"><input id="s-url" type="url" placeholder="http://server:8080" dir="ltr" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url"></div>
     <div class="f"><input id="s-user" type="text" placeholder="اسم المستخدم" dir="ltr" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
     <div class="f"><input id="s-pass" type="password" placeholder="كلمة مرور الاشتراك" dir="ltr" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    <label class="bs press" style="justify-content:center;cursor:pointer;margin:6px 0">📄 استيراد من ملف (cfg · txt · m3u · json)
+      <input id="s-file" type="file" accept=".cfg,.conf,.ini,.txt,.m3u,.m3u8,.json,text/*" style="display:none"></label>
     <div class="msg" id="smsg"></div>
     <button class="btn press" id="sbtn" type="submit">حفظ والدخول</button>
     <button class="bs press" id="scancel" type="button" style="justify-content:center">رجوع</button>
@@ -86,6 +88,6 @@
   <div class="err hide" id="p-err"></div>
 </div>
 <input type="file" id="subfile" accept=".srt,.vtt,.txt,text/plain,text/vtt" class="hide">
-<script src="/app.js?v=6"></script>
+<script src="/app.js?v=7"></script>
 </body>
 </html>

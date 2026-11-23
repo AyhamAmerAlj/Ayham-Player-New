@@ -272,6 +272,39 @@ function showSetup(msg){
   $('#setup').classList.remove('hide');$('#smsg').textContent=msg||'';
   $('#scancel').classList.toggle('hide',!setupBack);authed=false;
 }
+// استيراد بيانات الاشتراك من ملف cfg/txt/m3u/json: نبحث عن الهوست والمستخدم وكلمة المرور بعدة صيغ شائعة
+function parseSubFile(txt){
+  let url='',user='',pass='';
+  const m3u=/(https?:\/\/[^\s"'<>]+?)\/(?:get|player_api|panel_api)\.php\?[^\s"'<>]*?username=([^&\s"'<>]+)[^\s"'<>]*?password=([^&\s"'<>]+)/i.exec(txt)
+    ||/(https?:\/\/[^\s"'<>]+?)\/(?:get|player_api|panel_api)\.php\?[^\s"'<>]*?password=([^&\s"'<>]+)[^\s"'<>]*?username=([^&\s"'<>]+)/i.exec(txt);
+  if(m3u){url=m3u[1];const a=m3u[2],b=m3u[3];if(/password=/i.test(m3u[0])&&m3u[0].search(/password=/i)<m3u[0].search(/username=/i)){pass=a;user=b}else{user=a;pass=b}}
+  if(!url||!user||!pass){
+    const kv={};
+    for(const ln of txt.split(/\r?\n/)){
+      const x=/^\s*["']?([A-Za-z_ .-]{2,24})["']?\s*[:=]\s*["']?(.*?)["']?\s*,?\s*$/.exec(ln);
+      if(x)kv[x[1].toLowerCase().replace(/[\s._-]/g,'')]=x[2].trim();
+    }
+    const pick=(...ks)=>{for(const k of ks)if(kv[k])return kv[k];return ''};
+    url=url||pick('host','server','url','serverurl','portal','address','dns','link','baseurl');
+    user=user||pick('username','user','login','usr','name','account');
+    pass=pass||pick('password','pass','pwd','passwd','secret');
+  }
+  if(!url){const u=/(https?:\/\/[A-Za-z0-9.\-]+(?::\d+)?)/.exec(txt);if(u)url=u[1]}
+  if(url&&!/^https?:\/\//i.test(url))url='http://'+url;
+  try{url=new URL(url).origin}catch(e){url=url.replace(/\/+$/,'')}
+  return {url,user,pass};
+}
+$('#s-file').addEventListener('change',async ev=>{
+  const f=ev.target.files[0],m=$('#smsg');ev.target.value='';
+  if(!f)return;
+  if(f.size>1024*1024){m.textContent='الملف كبير جدًا';return}
+  try{
+    const r=parseSubFile(await f.text());
+    if(r.url)$('#s-url').value=r.url;if(r.user)$('#s-user').value=r.user;if(r.pass)$('#s-pass').value=r.pass;
+    const miss=[!r.url&&'الرابط',!r.user&&'اسم المستخدم',!r.pass&&'كلمة المرور'].filter(Boolean);
+    m.textContent=miss.length?('قرأت الملف لكن ما لقيت: '+miss.join('، ')+'. أكملها يدويًا'):'تم قراءة الملف ✓ راجع البيانات ثم اضغط حفظ';
+  }catch(e){m.textContent='تعذّر قراءة الملف'}
+});
 $('#sf').addEventListener('submit',async ev=>{
   ev.preventDefault();
   const m=$('#smsg'),b=$('#sbtn');
