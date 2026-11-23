@@ -80,7 +80,7 @@ class LoginServer(
                 c.soTimeout = 30_000
                 val q = first.substringAfter("name=", "").substringBefore(" ").substringBefore("&")
                 val name = runCatching { URLDecoder.decode(q, "UTF-8") }.getOrDefault("commentary.mp3")
-                val ok = runCatching { onAudio.invoke(name, lenL, input) }.getOrDefault(false)
+                val ok = runCatching { onAudio!!.invoke(name, lenL, input) }.getOrDefault(false)
                 respond(out, if (ok) "ok" else "fail")
             } else if (first.startsWith("POST /sub") && onUpload != null && len in 1..6_000_000) {
                 val buf = ByteArray(len)
