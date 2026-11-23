@@ -173,6 +173,24 @@ button{width:100%;padding:15px;border:0;border-radius:24px;background:#8B5CF6;co
         private const val FORM_PAGE = """<!doctype html><html dir=rtl lang=ar><head>$STYLE<title>Ayham Player</title></head><body><div class=c>
 <h1>Ayham Player</h1><!--ERR-->
 <form method=post action=/login>
+<label>أو اختر ملف الاشتراك (cfg · txt · m3u · json · أي صيغة نصية)</label>
+<input id=pf type=file onchange="rd(this)">
+<p id=pm class=s></p>
+<script>
+function rd(i){var f=i.files[0];if(!f)return;var r=new FileReader();r.onload=function(){
+ var t=String(r.result||''),u='',us='',pw='',m;
+ m=/(https?:\/\/[^\s"'<>]+?)\/(?:get|player_api|panel_api)\.php\?[^\s"'<>]*/i.exec(t);
+ if(m){u=m[1];var a=/username=([^&\s"'<>]+)/i.exec(m[0]),b=/password=([^&\s"'<>]+)/i.exec(m[0]);if(a)us=a[1];if(b)pw=b[1];}
+ if(!u||!us||!pw){var kv={};t.split(/\r?\n/).forEach(function(l){var x=/^\s*["']?([A-Za-z_ .-]{2,24})["']?\s*[:=]\s*["']?(.*?)["']?\s*,?\s*$/.exec(l);if(x)kv[x[1].toLowerCase().replace(/[\s._-]/g,'')]=x[2].trim();});
+  function pk(a){for(var j=0;j<a.length;j++)if(kv[a[j]])return kv[a[j]];return''}
+  u=u||pk(['host','server','url','serverurl','portal','address','dns','link','baseurl']);us=us||pk(['username','user','login','usr','name','account']);pw=pw||pk(['password','pass','pwd','passwd','secret']);}
+ if(!u){var h=/(https?:\/\/[A-Za-z0-9.\-]+(?::\d+)?)/.exec(t);if(h)u=h[1]}
+ if(u&&!/^https?:\/\//i.test(u))u='http://'+u;
+ try{u=new URL(u).origin}catch(e){}
+ var f=document.forms[0];if(u)f.server.value=u;if(us)f.user.value=us;if(pw)f.pass.value=pw;
+ document.getElementById('pm').textContent=(u||us||pw)?'تم قراءة الملف ✓ راجع الحقول ثم أرسل':'ما لقيت بيانات بالملف، عبّها يدويًا';
+};r.readAsText(f);}
+</script>
 <label>الصق رابط الاشتراك الكامل (اختياري)</label>
 <input name=link placeholder="http://server:port/get.php?username=...&password=..." dir=ltr>
 <p class=s>— أو عبّي الحقول —</p>
@@ -202,8 +220,8 @@ async function send(){
 
         private const val AUDIO_PAGE = """<!doctype html><html dir=rtl lang=ar><head>$STYLE<title>Ayham Player</title></head><body><div class=c>
 <h1>إرسال ملف تعليق صوتي</h1>
-<p class=s>اختر ملف الصوت (mp3 · m4a · aac · wav · ogg · opus · flac) وسيُحفظ داخل التطبيق</p>
-<input id=f type=file accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac,.mka">
+<p class=s>اختر الملف (أي صيغة: mp3 · m4a · aac · wav · ogg · flac · cfg …) وسيُحفظ داخل التطبيق</p>
+<input id=f type=file>
 <button onclick="send()">إرسال للشاشة</button>
 <p id=m class=s></p>
 <script>
@@ -212,7 +230,7 @@ function send(){
  if(!f){m.textContent='اختر ملفًا أولًا';return}
  var x=new XMLHttpRequest(); x.open('POST','/audio?name='+encodeURIComponent(f.name));
  x.upload.onprogress=function(e){if(e.lengthComputable)m.textContent='جارٍ الإرسال '+Math.round(e.loaded*100/e.total)+'%'};
- x.onload=function(){m.textContent=(x.status==200&&x.responseText=='ok')?'تم الإرسال ✓ ارجع للشاشة':'فشل الحفظ (تأكد من الصيغة وأن الحجم أقل من 400MB)'};
+ x.onload=function(){m.textContent=(x.status==200&&x.responseText=='ok')?'تم الإرسال ✓ ارجع للشاشة':'فشل الحفظ (الحجم الأقصى 400MB)'};
  x.onerror=function(){m.textContent='فشل الإرسال'}; x.send(f);
 }
 </script></div></body></html>"""

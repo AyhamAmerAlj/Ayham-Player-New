@@ -1899,7 +1899,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                 val f = com.ayham.player.data.CommentaryLib.save(ctx, name, len, input)
                                 main.post {
                                     files = com.ayham.player.data.CommentaryLib.list(ctx)
-                                    showToast(if (f != null) (if (ar) "تم حفظ الملف ✓" else "File saved ✓") else (if (ar) "فشل الحفظ: صيغة غير مدعومة أو أكبر من 400MB" else "Save failed: unsupported format or over 400MB"))
+                                    showToast(if (f != null) (if (ar) "تم حفظ الملف ✓" else "File saved ✓") else (if (ar) "فشل الحفظ: أكبر من 400MB أو الحفظ فشل" else "Save failed: over 400MB or save failed"))
                                 }
                                 f != null
                             })

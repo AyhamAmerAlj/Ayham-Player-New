@@ -14,12 +14,13 @@ object CommentaryLib {
     fun list(ctx: Context): List<File> =
         dir(ctx).listFiles { f -> f.isFile && !f.name.endsWith(".part") }?.sortedByDescending { it.lastModified() } ?: emptyList()
 
-    fun isAudioName(name: String) = name.substringAfterLast('.', "").lowercase() in EXTS
+    /** أي صيغة مقبولة (تشمل cfg وغيرها). */
+    fun isAudioName(@Suppress("UNUSED_PARAMETER") name: String) = true
 
     private fun clean(name: String): String {
         val base = name.substringAfterLast('/').substringAfterLast('\\')
         val c = base.replace(Regex("[^\\p{L}\\p{N}._ \\-()]"), "_").trim().take(80)
-        return c.ifBlank { "commentary.mp3" }
+        return c.ifBlank { "commentary.bin" }.let { if (it.contains('.')) it else "$it.bin" }
     }
 
     /** يحفظ الملف من مجرى الاتصال مباشرة على القرص. يرجع الملف أو null عند الفشل. */
