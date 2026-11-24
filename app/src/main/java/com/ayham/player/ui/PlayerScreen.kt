@@ -125,7 +125,7 @@ import com.ayham.player.data.PlayRequest
 import kotlinx.coroutines.delay
 import java.util.Locale
 
-private enum class Panel { MENU, SUBS, SUBURL, SUBPHONE, TRYSUB, AUDIO, EPG, COLORS }
+private enum class Panel { MENU, SUBS, SUBURL, SUBPHONE, TRYSUB, AUDIO, EPG, COLORS, STATS }
 
 /** قنوات المباريات: نكتشفها من اسم القناة (رياضة، beIN، SSC، دوري، كأس ...). */
 private val MATCH_RE = Regex(
@@ -494,6 +494,27 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
 
     fun togglePlay() {
         if (exo.isPlaying || exo.playWhenReady) exo.pause() else exo.play()
+    }
+
+    // إحصاءات التشغيل (تشخيص التقطيع: فك الترميز أم الشبكة أم السيرفر)
+    var stDropped by remember { mutableIntStateOf(0) }
+    var stStalls by remember { mutableIntStateOf(0) }
+    var stDecoder by remember { mutableStateOf("") }
+    var stBw by remember { mutableLongStateOf(0L) }
+    DisposableEffect(exo) {
+        stDropped = 0; stStalls = 0; stDecoder = ""
+        var ready = false
+        val al = object : androidx.media3.exoplayer.analytics.AnalyticsListener {
+            override fun onDroppedVideoFrames(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, droppedFrames: Int, elapsedMs: Long) { stDropped += droppedFrames }
+            override fun onVideoDecoderInitialized(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, decoderName: String, initializedTimestampMs: Long, initializationDurationMs: Long) { stDecoder = decoderName }
+            override fun onBandwidthEstimate(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, totalLoadTimeMs: Int, totalBytesLoaded: Long, bitrateEstimate: Long) { stBw = bitrateEstimate }
+            override fun onPlaybackStateChanged(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, state: Int) {
+                if (state == Player.STATE_READY) ready = true
+                else if (state == Player.STATE_BUFFERING && ready) { stStalls++; ready = false }
+            }
+        }
+        exo.addAnalyticsListener(al)
+        onDispose { exo.removeAnalyticsListener(al) }
     }
 
     /** ميزة ألوان المباراة للرياضة حصرًا: قنوات مباشرة يدل اسمها على رياضة/مباراة. */
@@ -1306,6 +1327,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     Panel.MENU -> {
                         RText(t("settings"), 26, C.text, bold = true)
                         if (!queue[index].isLive) PanelItem(t("subtitles"), modifier = Modifier.autoFocus()) { panel = Panel.SUBS }
+                        PanelItem(if (vm.lang == "ar") "📊 حالة التشغيل (تشخيص التقطيع)" else "📊 Playback stats (stutter diagnosis)") { panel = Panel.STATS }
                         if (sportLike) PanelItem(if (vm.lang == "ar") "🎨 ألوان المباراة" else "🎨 Match colors", selected = colorOn, modifier = Modifier.autoFocus()) { panel = Panel.COLORS }
                         if (!queue[index].isLive) PanelItem(t("audio_tracks")) { panel = Panel.AUDIO }
                         if (!queue[index].isLive) {
@@ -1533,6 +1555,42 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                             }
                             item { PanelItem(t("back")) { closePanel() } }
                         }
+                    }
+
+                    Panel.STATS -> {
+                        val ar = vm.lang == "ar"
+                        var tick by remember { mutableIntStateOf(0) }
+                        LaunchedEffect(Unit) { while (true) { delay(1000); tick++ } }
+                        val vf = exo.videoFormat
+                        val bufS = ((exo.bufferedPosition - exo.currentPosition).coerceAtLeast(0L) / 1000f)
+                        val sw = stDecoder.startsWith("OMX.google", true) || stDecoder.startsWith("c2.android", true) || stDecoder.contains("sw", true) && stDecoder.contains("dec", true)
+                        val vbr = vf?.bitrate?.takeIf { it > 0 } ?: 0
+                        val bwM = stBw / 1_000_000f
+                        val verdict = when {
+                            sw -> if (ar) "⚠ فك الترميز برمجي (بطيء): جهازك لا يفك هذا الفيديو بالعتاد. اختر دقة أقل من الإعدادات." else "⚠ Software decoding: pick a lower resolution."
+                            stDropped > 60 -> if (ar) "⚠ إطارات كثيرة تُسقط: الجهاز ضعيف على هذا الفيديو (دقة/ترميز ثقيل). جرّب دقة أقل." else "⚠ Many dropped frames: device too weak for this video."
+                            stStalls > 2 && bwM > 0 && vbr > 0 && bwM < vbr / 1_000_000f * 1.3f -> if (ar) "⚠ التقطيع من سرعة السيرفر/المسار (أبطأ من بث الفيديو)، وليس من الإنترنت عندك." else "⚠ Provider/route is slower than the stream, not your internet."
+                            stStalls > 2 -> if (ar) "⚠ توقفات متكررة بالتحميل: السيرفر غير مستقر وقت المشاهدة." else "⚠ Repeated buffering: provider unstable right now."
+                            else -> if (ar) "✓ لا توجد مشكلة ظاهرة حاليًا. شاهد دقيقة ثم افتح الصفحة مجددًا." else "✓ No problem detected so far."
+                        }
+                        RText(if (ar) "📊 حالة التشغيل" else "📊 Playback stats", 24, C.text, bold = true)
+                        val lines = listOf(
+                            (if (ar) "الفيديو" else "Video") to ((vf?.sampleMimeType ?: "-") + " " + (vf?.width ?: 0) + "x" + (vf?.height ?: 0) + (vf?.frameRate?.takeIf { it > 0 }?.let { " @" + it.toInt() } ?: "")),
+                            (if (ar) "معدل بث الفيديو" else "Stream bitrate") to (if (vbr > 0) String.format(Locale.US, "%.1f Mbps", vbr / 1_000_000f) else "-"),
+                            (if (ar) "فك الترميز" else "Decoder") to (stDecoder.ifBlank { "-" } + (if (sw) (if (ar) " (برمجي)" else " (software)") else "")),
+                            (if (ar) "إطارات مُسقطة" else "Dropped frames") to stDropped.toString(),
+                            (if (ar) "مرات التوقف للتحميل" else "Buffering stalls") to stStalls.toString(),
+                            (if (ar) "المخزن الحالي" else "Buffer") to String.format(Locale.US, "%.0f s", bufS),
+                            (if (ar) "سرعة التحميل المقدّرة" else "Est. download") to (if (bwM > 0) String.format(Locale.US, "%.1f Mbps", bwM) else "-"),
+                        )
+                        key(tick) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                lines.forEach { (k, v) -> RText("$k: $v", 15, C.text, maxLines = 2) }
+                            }
+                        }
+                        BodyText(verdict, 14, C.primaryLight, maxLines = 5)
+                        BodyText(if (ar) "شاهد دقيقة على القناة أو الفيلم المتقطع ثم افتح هذه الصفحة، وأرسل لي صورة منها." else "Watch a minute on the stuttering title, reopen this page and send me a photo.", 12, C.textDim, maxLines = 4)
+                        PanelItem(t("close"), modifier = Modifier.autoFocus()) { closePanel() }
                     }
 
                     Panel.COLORS -> {
