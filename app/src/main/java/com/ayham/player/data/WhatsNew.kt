@@ -2,8 +2,9 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "294"
+    const val id = "295"
     val ar = listOf(
+        "المواسم والحلقات بتصميم جديد: أقراص مواسم رفيعة، كادر كبير للحلقة المحددة بتفاصيلها وقصتها يتبدّل بنعومة، وشريط فيلم بلقطات صغيرة. وإرجاع قائمة الأفلام والمسلسلات للتصميم السلس السابق بدون الشريط الجانبي",
         "🎬 «المسرح»: واجهة سينمائية جديدة للأفلام والمسلسلات على التلفاز: شريط أقسام جانبي، خلفية حيّة تتلوّن بلون البوستر، بوسترات أكبر، وأرفف تابع المشاهدة وأعلى 10",
         "📊 حالة التشغيل بقائمة المشغّل: تكشف سبب التقطيع (فك الترميز أم سرعة السيرفر) بأرقام حقيقية: الإطارات المُسقطة، توقفات التحميل، المخزن، سرعة التحميل، والمفكّك المستخدم",
         "حذف الصوت الذكي والمزامنة وملفات التعليق ومسارات الصوت للقنوات (بث مباشر أخف وأكثر استقرارًا بدون معالجة صوت إضافية)، وإضافة «🎨 ألوان المباراة» للقنوات الرياضية فقط: أنماط جاهزة وضبط السطوع والتباين والتشبّع ودفء اللون",
@@ -64,6 +65,7 @@ object WhatsNew {
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "New seasons & episodes design: slim season pills, a large spotlight frame for the focused episode with its plot, and a film-strip of thumbnails. The movies/series list returns to the previous smooth layout without the side rail",
         "🎬 \"Theatre\": a new cinematic movies & series screen for TV with a side category rail, a live backdrop tinted by the poster colour, bigger posters, and continue-watching / top-10 shelves",
         "📊 Playback stats in the player menu: reveals the cause of stutter (decoder vs provider speed) with real numbers",
         "Removed smart audio, sync, commentary files and audio tracks for channels (lighter, more stable live playback with no extra audio processing), and added \"Match colors\" for sports channels only: presets plus brightness, contrast, saturation and warmth",
@@ -129,7 +131,7 @@ object WhatsNew {
 data class Release(val id: String, val ar: List<String>, val en: List<String>)
 
 val releaseHistory = listOf(
-    Release("294", WhatsNew.ar, WhatsNew.en),
+    Release("295", WhatsNew.ar, WhatsNew.en),
     Release("237", listOf("افتتاحية سينمائية جديدة بشعار Ayham"), listOf("New cinematic opening with the Ayham logo")),
     Release("227", listOf(
         "تقييمات متعددة (IMDb وRotten Tomatoes وMetacritic وTMDB وTrakt)",

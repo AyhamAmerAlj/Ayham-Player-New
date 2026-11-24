@@ -15,6 +15,8 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -352,77 +354,111 @@ private fun TvEpisodeStudio(
     }
     val done = doneBySeason[curSeason] ?: 0
     val listState = rememberLazyListState()
-    LaunchedEffect(curSeason, nextIdx) { runCatching { listState.scrollToItem(nextIdx) } }
+    var focusIdx by remember(curSeason, nextIdx) { mutableStateOf(nextIdx) }
+    LaunchedEffect(curSeason, nextIdx) { runCatching { listState.scrollToItem((nextIdx - 1).coerceAtLeast(0)) } }
 
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // ---------- المواسم: أقراص رفيعة مع تقدّم ----------
         if (seasons.size > 1) {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp)) {
-                items(seasons.keys.toList()) { s ->
-                    val sel = s == curSeason
-                    val total = seasons[s]?.size ?: 0
-                    val dn = doneBySeason[s] ?: 0
-                    val shape = RoundedCornerShape(16.dp)
-                    Focusable(Modifier.onFocusChanged { if (it.hasFocus && !sel) onSeason(s) }, shape, 1.08f, onClick = { onSeason(s) }) { f ->
-                        Box(
-                            Modifier.width(104.dp).height(74.dp).clip(shape)
-                                .background(if (sel) Brush.linearGradient(listOf(accent.copy(alpha = 0.95f), accent.copy(alpha = 0.45f))) else Brush.linearGradient(listOf(tc(0x66000000), tc(0x33000000))))
-                                .border(if (f) 2.dp else 1.dp, if (f) Color.White else if (sel) accent else tc(0x33FFFFFF), shape),
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 4.dp, horizontal = 4.dp)) {
+                items(seasons.keys.toList()) { sn ->
+                    val sel = sn == curSeason
+                    val total = seasons[sn]?.size ?: 0
+                    val dn = doneBySeason[sn] ?: 0
+                    val shape = RoundedCornerShape(50)
+                    Focusable(Modifier.onFocusChanged { if (it.hasFocus && !sel) onSeason(sn) }, shape, 1.06f, onClick = { onSeason(sn) }) { f ->
+                        Row(
+                            Modifier.clip(shape)
+                                .background(if (sel) accent.copy(alpha = 0.9f) else tc(0x55000000))
+                                .border(if (f) 2.dp else 1.dp, if (f) Color.White else if (sel) accent else tc(0x33FFFFFF), shape)
+                                .padding(horizontal = 16.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            androidx.compose.material3.Text(
-                                "$s", Modifier.align(Alignment.CenterStart).padding(start = 12.dp),
-                                style = TextStyle(fontFamily = AppFont, fontSize = 44.sp, fontWeight = FontWeight.Black, color = if (sel) Color.White else tc(0x88FFFFFF)),
-                            )
-                            Column(Modifier.align(Alignment.CenterEnd).padding(end = 10.dp), horizontalAlignment = Alignment.End) {
-                                RText(if (arL) "الموسم" else "Season", 11, if (sel) Color.White else C.textDim, bold = true, maxLines = 1)
-                                RText("$total " + (if (arL) "حلقة" else "ep"), 11, if (sel) Color.White else C.textDim, maxLines = 1)
-                            }
-                            if (total > 0) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(tc(0x44000000))) {
-                                Box(Modifier.fillMaxWidth(dn.toFloat() / total).fillMaxHeight().background(Color.White.copy(alpha = if (sel) 0.95f else 0.55f)))
-                            }
+                            RText((if (arL) "الموسم " else "Season ") + sn, 15, if (sel || f) Color.White else tc(0xFFC9BDE6), bold = true, maxLines = 1)
+                            RText(if (dn >= total && total > 0) "✓" else "$total", 12, if (sel) Color.White else C.textDim, bold = true, maxLines = 1)
                         }
                     }
                 }
             }
         }
+
+        // ---------- الكادر الرئيسي: الحلقة المحددة بحجم كبير مع تفاصيلها ----------
+        val cur = eps.getOrNull(focusIdx.coerceIn(0, (eps.size - 1).coerceAtLeast(0)))
+        if (cur != null) {
+            androidx.compose.animation.AnimatedContent(
+                targetState = cur,
+                transitionSpec = { androidx.compose.animation.fadeIn(tween(260)) togetherWith androidx.compose.animation.fadeOut(tween(120)) },
+                label = "epSpot",
+            ) { e ->
+                val frac = fracOf(e)
+                val shape = RoundedCornerShape(18.dp)
+                Row(Modifier.fillMaxWidth().height(176.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                    Box(Modifier.width(312.dp).fillMaxHeight().clip(shape).background(C.surface).border(1.dp, accent.copy(alpha = 0.5f), shape)) {
+                        Img(e.image.ifEmpty { series.image }, Modifier.fillMaxSize(), w = 640, h = 360)
+                        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to tc(0xDD000000))))
+                        Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.align(Alignment.Center).size(54.dp).background(accent.copy(alpha = 0.88f), RoundedCornerShape(50)).padding(10.dp))
+                        if (frac > 0.01f) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(5.dp).background(tc(0x66000000))) {
+                            Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(accent))
+                        }
+                    }
+                    Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.Center) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            RText("S$curSeason · E${e.num}", 14, accent, bold = true, maxLines = 1)
+                            if (e.duration.isNotBlank()) RText(e.duration, 13, C.textDim, maxLines = 1)
+                            if (frac > 0.92f) RText(if (arL) "✓ تمت المشاهدة" else "✓ Watched", 13, C.ok, bold = true, maxLines = 1)
+                            else if (eps.indexOf(e) == nextIdx) RText(if (frac > 0.01f) (if (arL) "▶ أكمل المشاهدة" else "▶ Resume") else (if (arL) "▶ التالية" else "▶ Up next"), 13, Color.White, bold = true, maxLines = 1)
+                        }
+                        androidx.compose.material3.Text(
+                            e.title.ifBlank { "${t("episode")} ${e.num}" }, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            style = TextStyle(fontFamily = AppFont, fontSize = 26.sp, fontWeight = FontWeight.Black, color = Color.White, lineHeight = 32.sp,
+                                shadow = androidx.compose.ui.graphics.Shadow(Color.Black, Offset(0f, 4f), 14f)),
+                        )
+                        if (e.plot.isNotBlank()) BodyText(e.plot, 14, tc(0xFFE5DEF5), maxLines = 3, modifier = Modifier.padding(top = 4.dp))
+                    }
+                }
+            }
+        }
+
+        // ---------- شريط الفيلم: لقطات صغيرة بثقوب فيلم ----------
         Row(Modifier.padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            RText((if (arL) "الموسم " else "Season ") + curSeason, 20, Color.White, bold = true)
-            RText("$done / ${eps.size} " + (if (arL) "تمت مشاهدتها" else "watched"), 14, accent, bold = true)
-            Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(tc(0x33FFFFFF))) {
+            RText("$done / ${eps.size} " + (if (arL) "تمت مشاهدتها" else "watched"), 13, accent, bold = true)
+            Box(Modifier.weight(1f).height(3.dp).clip(RoundedCornerShape(2.dp)).background(tc(0x33FFFFFF))) {
                 Box(Modifier.fillMaxWidth(if (eps.isEmpty()) 0f else done.toFloat() / eps.size).fillMaxHeight().background(Brush.horizontalGradient(listOf(accent, Color.White))))
             }
         }
-        LazyRow(state = listState, horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)) {
-            itemsIndexed(eps, key = { _, e -> e.key }) { i, ep ->
-                val frac = fracOf(ep)
-                val isDone = frac > 0.92f
-                val shape = RoundedCornerShape(16.dp)
-                Focusable(Modifier, shape, 1.07f, onClick = { vm.playEpisodes(series, eps, i) }) { f ->
-                    Box(
-                        Modifier.width(300.dp).height(168.dp).clip(shape).background(C.surface)
-                            .border(if (f) 2.5.dp else 1.dp, if (f) Brush.horizontalGradient(listOf(accent, Color.White)) else Brush.horizontalGradient(listOf(tc(0x22FFFFFF), tc(0x22FFFFFF))), shape),
-                    ) {
-                        Img(ep.image.ifEmpty { series.image }, Modifier.fillMaxSize(), w = 480, h = 270)
-                        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.25f to Color.Transparent, 1f to tc(if (f) 0xF2000000 else 0xDD000000))))
-                        androidx.compose.material3.Text(
-                            "${ep.num}", Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = if (f) 52.dp else 20.dp),
-                            style = TextStyle(fontFamily = AppFont, fontSize = 46.sp, fontWeight = FontWeight.Black, color = Color.Transparent, drawStyle = Stroke(width = 5f)),
-                        )
-                        androidx.compose.material3.Text(
-                            "${ep.num}", Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = if (f) 52.dp else 20.dp),
-                            style = TextStyle(fontFamily = AppFont, fontSize = 46.sp, fontWeight = FontWeight.Black, color = accent.copy(alpha = 0.55f)),
-                        )
-                        Column(Modifier.align(Alignment.BottomEnd).fillMaxWidth(0.72f).padding(end = 12.dp, bottom = 12.dp), horizontalAlignment = Alignment.End) {
-                            BodyText(ep.title.ifBlank { "${t("episode")} ${ep.num}" }, 13, Color.White, bold = true, maxLines = if (f) 1 else 2)
-                            if (f && ep.plot.isNotBlank()) BodyText(ep.plot, 11, tc(0xFFD9D0EE), maxLines = 2)
-                            if (ep.duration.isNotBlank()) BodyText(ep.duration, 11, accent, bold = true, maxLines = 1)
-                        }
-                        if (f) Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.align(Alignment.TopCenter).padding(top = 22.dp).size(40.dp).background(accent.copy(alpha = 0.85f), RoundedCornerShape(50)).padding(6.dp))
-                        if (i == nextIdx && !isDone) Box(Modifier.align(Alignment.TopStart).padding(10.dp).clip(RoundedCornerShape(8.dp)).background(accent).padding(horizontal = 9.dp, vertical = 2.dp)) {
-                            RText(if (frac > 0.01f) (if (arL) "أكمل" else "Resume") else (if (arL) "التالية" else "Up next"), 11, Color.White, bold = true, maxLines = 1)
-                        }
-                        if (isDone) Icon(Icons.Filled.CheckCircle, null, tint = C.ok, modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).size(24.dp))
-                        if (frac > 0.01f && !isDone) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(tc(0x66000000))) {
-                            Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(accent))
+        val holes = tc(0x33FFFFFF)
+        Box(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(tc(0xCC05020B))
+                .drawBehind {
+                    val step = 22.dp.toPx(); val w = 9.dp.toPx(); val h = 5.dp.toPx()
+                    var x = 6.dp.toPx()
+                    while (x < size.width) {
+                        drawRoundRect(holes, Offset(x, 4.dp.toPx()), androidx.compose.ui.geometry.Size(w, h), androidx.compose.ui.geometry.CornerRadius(2f, 2f))
+                        drawRoundRect(holes, Offset(x, size.height - 4.dp.toPx() - h), androidx.compose.ui.geometry.Size(w, h), androidx.compose.ui.geometry.CornerRadius(2f, 2f))
+                        x += step
+                    }
+                },
+        ) {
+            LazyRow(state = listState, horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 16.dp, horizontal = 12.dp)) {
+                itemsIndexed(eps, key = { _, e -> e.key }) { i, ep ->
+                    val frac = fracOf(ep)
+                    val isDone = frac > 0.92f
+                    val shape = RoundedCornerShape(8.dp)
+                    Focusable(Modifier.onFocusChanged { if (it.hasFocus) focusIdx = i }, shape, 1.1f, onClick = { vm.playEpisodes(series, eps, i) }) { f ->
+                        Box(
+                            Modifier.width(152.dp).height(86.dp).clip(shape).background(C.surface)
+                                .border(if (f) 2.5.dp else 1.dp, if (f) Color.White else if (i == nextIdx) accent else tc(0x22FFFFFF), shape),
+                        ) {
+                            Img(ep.image.ifEmpty { series.image }, Modifier.fillMaxSize(), w = 300, h = 170)
+                            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to tc(0xCC000000))))
+                            androidx.compose.material3.Text(
+                                "${ep.num}", Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = 2.dp),
+                                style = TextStyle(fontFamily = AppFont, fontSize = 26.sp, fontWeight = FontWeight.Black, color = if (f) Color.White else accent.copy(alpha = 0.9f)),
+                            )
+                            if (isDone) Icon(Icons.Filled.CheckCircle, null, tint = C.ok, modifier = Modifier.align(Alignment.TopEnd).padding(5.dp).size(18.dp))
+                            if (frac > 0.01f && !isDone) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(tc(0x66000000))) {
+                                Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(accent))
+                            }
                         }
                     }
                 }
