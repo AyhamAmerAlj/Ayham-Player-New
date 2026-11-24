@@ -17,8 +17,6 @@ class LoginServer(
     private val onCreds: ((server: String, user: String, pass: String) -> Unit)? = null,
     private val onUpload: ((name: String, bytes: ByteArray) -> Unit)? = null,
     private val photoMode: Boolean = false,
-    /** رفع ملف صوتي كبير: يُمرَّر الاسم والطول والمجرى ليُحفظ مباشرة على القرص. يرجع true عند النجاح. */
-    private val onAudio: ((name: String, len: Long, input: java.io.InputStream) -> Boolean)? = null,
 ) {
 
     @Volatile private var socket: ServerSocket? = null
@@ -75,14 +73,7 @@ class LoginServer(
             val len = Regex("(?i)content-length:\\s*(\\d+)").find(headStr)?.groupValues?.get(1)?.toIntOrNull() ?: 0
             val out = c.getOutputStream()
 
-            val lenL = Regex("(?i)content-length:\\s*(\\d+)").find(headStr)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
-            if (first.startsWith("POST /audio") && onAudio != null && lenL > 0) {
-                c.soTimeout = 30_000
-                val q = first.substringAfter("name=", "").substringBefore(" ").substringBefore("&")
-                val name = runCatching { URLDecoder.decode(q, "UTF-8") }.getOrDefault("commentary.mp3")
-                val ok = runCatching { onAudio!!.invoke(name, lenL, input) }.getOrDefault(false)
-                respond(out, if (ok) "ok" else "fail")
-            } else if (first.startsWith("POST /sub") && onUpload != null && len in 1..6_000_000) {
+            if (first.startsWith("POST /sub") && onUpload != null && len in 1..6_000_000) {
                 val buf = ByteArray(len)
                 var read = 0
                 while (read < len) {
@@ -127,7 +118,7 @@ class LoginServer(
                     respond(out, FORM_PAGE.replace("<!--ERR-->", "<p class=e>عبّي اسم المستخدم وكلمة المرور (والسيرفر إن لزم) أو الصق الرابط الكامل</p>"))
                 }
             } else {
-                respond(out, if (onAudio != null) AUDIO_PAGE else if (onUpload != null && onCreds == null) (if (photoMode) PHOTO_PAGE else SUB_PAGE) else FORM_PAGE)
+                respond(out, if (onUpload != null && onCreds == null) (if (photoMode) PHOTO_PAGE else SUB_PAGE) else FORM_PAGE)
             }
             out.flush()
         } catch (_: Exception) {
@@ -215,23 +206,6 @@ async function send(){
  m.textContent='جارٍ الإرسال...';
  try{var r=await fetch('/sub?name='+encodeURIComponent(f.name),{method:'POST',body:f});
  m.textContent=r.ok?'تم الإرسال ✓ ارجع للشاشة':'فشل الإرسال';}catch(e){m.textContent='فشل الإرسال'}
-}
-</script></div></body></html>"""
-
-        private const val AUDIO_PAGE = """<!doctype html><html dir=rtl lang=ar><head>$STYLE<title>Ayham Player</title></head><body><div class=c>
-<h1>إرسال ملف تعليق صوتي</h1>
-<p class=s>اختر الملف (أي صيغة: mp3 · m4a · aac · wav · ogg · flac · cfg …) وسيُحفظ داخل التطبيق</p>
-<input id=f type=file>
-<button onclick="send()">إرسال للشاشة</button>
-<p id=m class=s></p>
-<script>
-function send(){
- var f=document.getElementById('f').files[0]; var m=document.getElementById('m');
- if(!f){m.textContent='اختر ملفًا أولًا';return}
- var x=new XMLHttpRequest(); x.open('POST','/audio?name='+encodeURIComponent(f.name));
- x.upload.onprogress=function(e){if(e.lengthComputable)m.textContent='جارٍ الإرسال '+Math.round(e.loaded*100/e.total)+'%'};
- x.onload=function(){m.textContent=(x.status==200&&x.responseText=='ok')?'تم الإرسال ✓ ارجع للشاشة':'فشل الحفظ (الحجم الأقصى 400MB)'};
- x.onerror=function(){m.textContent='فشل الإرسال'}; x.send(f);
 }
 </script></div></body></html>"""
 

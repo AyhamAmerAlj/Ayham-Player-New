@@ -105,6 +105,12 @@ class Store(private val ctx: Context) {
         gsp.edit().putString("known_hosts", l.joinToString("\n")).apply()
     }
 
+    /** ألوان المباراة (للرياضة): مفعّلة أو لا + [سطوع، تباين، تشبّع، دفء]. */
+    fun colorOn(): Boolean = gsp.getBoolean("color_on", false)
+    fun setColorOn(b: Boolean) { gsp.edit().putBoolean("color_on", b).apply() }
+    fun colorVals(): List<Float> = (gsp.getString("color_vals", "") ?: "").split(',').mapNotNull { it.toFloatOrNull() }.let { if (it.size == 4) it else listOf(0f, 1f, 1f, 0f) }
+    fun setColorVals(v: List<Float>) { gsp.edit().putString("color_vals", v.joinToString(",")).apply() }
+
     fun saveAccount(a: Account?) {
         gsp.edit().apply {
             if (a == null) remove("account") else putString("account", gson.toJson(a))

@@ -1030,7 +1030,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun ensureLivePlayer(): ExoPlayer =
-        livePlayer ?: PlayerFactory.create(getApplication(), maxRes, com.ayham.player.audio.ExtAudioSession.mainTap, live = true).also { livePlayer = it }
+        livePlayer ?: PlayerFactory.create(getApplication(), maxRes, live = true).also { livePlayer = it }
 
     /** تشغيل قناة بالشاشة المصغّرة داخل قائمة القنوات. */
     // ---- إعلان الرئيسية ----

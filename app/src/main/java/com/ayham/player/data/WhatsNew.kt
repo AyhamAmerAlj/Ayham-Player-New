@@ -2,8 +2,9 @@ package com.ayham.player.data
 
 /** ما الجديد في التحديث: يُحدَّث النص مع كل إصدار. يظهر مرة واحدة لكل إصدار ويمكن إغلاقه. */
 object WhatsNew {
-    const val id = "291"
+    const val id = "292"
     val ar = listOf(
+        "حذف الصوت الذكي والمزامنة وملفات التعليق ومسارات الصوت للقنوات (بث مباشر أخف وأكثر استقرارًا بدون معالجة صوت إضافية)، وإضافة «🎨 ألوان المباراة» للقنوات الرياضية فقط: أنماط جاهزة وضبط السطوع والتباين والتشبّع ودفء اللون",
         "الإرسال عبر QR يقبل أي صيغة ملف (ومنها cfg): ملفات التعليق بأي صيغة، وصفحة تسجيل الدخول فيها خيار اختيار ملف الاشتراك (cfg · txt · m3u · json) لتعبئة الحقول تلقائيًا",
         "ملفات التعليق صارت قائمة مستقلة بقائمة مشغّل القنوات (🎙 ملفات التعليق) تظهر مباشرة تحت الصوت الذكي بدون تنزيل لآخر القائمة",
         "القنوات: ملفات تعليق صوتية داخلية. أضف ملفًا صوتيًا من هاتفك عبر QR (مثل الترجمة)، يُحفظ داخل التطبيق، ويعمل كتعليق فوق القناة مع المزامنة التلقائية وأزرار قفز للتقريب",
@@ -61,6 +62,7 @@ object WhatsNew {
         "تقييمات متعددة وبحث ذكي بالجملة ووصف القصة",
     )
     val en = listOf(
+        "Removed smart audio, sync, commentary files and audio tracks for channels (lighter, more stable live playback with no extra audio processing), and added \"Match colors\" for sports channels only: presets plus brightness, contrast, saturation and warmth",
         "QR upload now accepts any file format (including cfg): commentary files of any type, and the sign-in page can read a subscription file (cfg · txt · m3u · json) to fill the fields",
         "Commentary files now have their own entry in the channel player menu, right under Smart audio, no scrolling needed",
         "Channels: built-in commentary audio files. Add an audio file from your phone via QR (like subtitles); it is saved in the app and plays as commentary over the channel with auto sync and jump buttons",
@@ -123,7 +125,7 @@ object WhatsNew {
 data class Release(val id: String, val ar: List<String>, val en: List<String>)
 
 val releaseHistory = listOf(
-    Release("291", WhatsNew.ar, WhatsNew.en),
+    Release("292", WhatsNew.ar, WhatsNew.en),
     Release("237", listOf("افتتاحية سينمائية جديدة بشعار Ayham"), listOf("New cinematic opening with the Ayham logo")),
     Release("227", listOf(
         "تقييمات متعددة (IMDb وRotten Tomatoes وMetacritic وTMDB وTrakt)",

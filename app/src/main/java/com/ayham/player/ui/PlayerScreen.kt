@@ -78,6 +78,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -124,7 +125,7 @@ import com.ayham.player.data.PlayRequest
 import kotlinx.coroutines.delay
 import java.util.Locale
 
-private enum class Panel { MENU, SUBS, SUBURL, SUBPHONE, TRYSUB, AUDIO, EXT, SYNC, EPG, MATCH, RADIO, FILES }
+private enum class Panel { MENU, SUBS, SUBURL, SUBPHONE, TRYSUB, AUDIO, EPG, COLORS }
 
 /** قنوات المباريات: نكتشفها من اسم القناة (رياضة، beIN، SSC، دوري، كأس ...). */
 private val MATCH_RE = Regex(
@@ -234,20 +235,9 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
     }
     val nextCardOn = !queue[index].isLive && index + 1 < queue.size && !nextOff && remainMs in 1L..15_000L && errorMsg == null && !controls && panel == null
 
-    // الصوت الخارجي
-    var syncAudio by remember { mutableStateOf(true) }
-
     val liveSession = remember { req.queue.firstOrNull()?.isLive == true }
     // القنوات تستعمل مشغّل مشترك (حتى تبقى بالشاشة المصغّرة)، والأفلام لها مشغّل خاص
     val exo = remember { if (liveSession) vm.ensureLivePlayer() else PlayerFactory.create(ctx, vm.maxRes) }
-    val extSession = remember {
-        com.ayham.player.audio.ExtAudioSession(
-            ctx, exo, vm.maxRes, vm.lang == "ar", { vm.urlForLive(it) }, vm.maxConnectionsInt(),
-        ).also { it.autoSync = vm.extAuto }
-    }
-    val extName = extSession.name
-    val extVolume = extSession.volume
-    val offsetMs = extSession.delayMs
     val rootFocus = remember { FocusRequester() }
     val playFocus = remember { FocusRequester() }
     val tv = remember { isTvDevice(ctx) }
@@ -484,7 +474,6 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             val delta = target - pos
             if (kotlin.math.abs(delta) < 500L) { showToast(liveEdgeT); return }
             exo.seekTo(target)
-            extSession.followMain(delta)
             showToast(if (delta > 0) "+${delta / 1000}" else "${delta / 1000}")
             return
         }
@@ -507,75 +496,10 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         if (exo.isPlaying || exo.playWhenReady) exo.pause() else exo.play()
     }
 
-    fun startExt(item: Item) {
-        extSession.start(item)
-        vm.noteExt(item)
-        // Save channel choice immediately; later manual adjustments keep updating this profile.
-        vm.store.setAudioPref(queue[index].key, "e\t\t0\t${item.id ?: item.key.substringAfter(':')}\t${item.name}")
-    }
-
-    fun stopExt() {
-        extSession.stop()
-    }
-
-    /** حفظ اختيار المسار/قناة التعليق مع فارق المزامنة الحالي لهذا البث المباشر. */
-    fun persistAudioProfile() {
-        if (!queue[index].isLive) return
-        val channel = extSession.channel()
-        val offset = if (extSession.sameStream) -extSession.picDelayMs else extSession.manualMs
-        val value = if (extSession.sameStream) {
-            "s\t" + (extSession.wantTrack ?: "") + "\t" + offset + "\t\t"
-        } else if (extSession.player != null && channel != null && !extSession.isFile) {
-            "e\t\t" + offset + "\t" + (channel.id ?: "") + "\t" + channel.name
-        } else null
-        if (value != null) vm.store.setAudioPref(queue[index].key, value)
-    }
-
-    val matchLike = queue[index].isLive && MATCH_RE.containsMatchIn(queue[index].title)
-
-    /** تعديل مزامنة تعليق المباراة (موجب = التعليق متأخر). */
-    fun matchAdj(ms: Long, ar: Boolean) {
-        val cur0 = if (extSession.sameStream) -extSession.picDelayMs else extSession.manualMs
-        if (kotlin.math.abs(cur0 + ms) > 60_000L) { showToast(if (ar) "وصلت للحد الأقصى 60 ثانية" else "Max 60 seconds"); return }
-        val ok = runCatching {
-            if (!extSession.sameStream && extSession.player == null) {
-                val sel = tracks.groups.filter { it.type == MC.TRACK_TYPE_AUDIO }
-                    .flatMap { g -> (0 until g.length).filter { g.isTrackSelected(it) }.map { g.getTrackFormat(it) } }.firstOrNull()
-                extSession.start(com.ayham.player.data.Item(com.ayham.player.data.Kind.LIVE, queue[index].key.substringAfter(':'), queue[index].title), true, sel?.let { it.id ?: it.label })
-            }
-            if (extSession.sameStream) extSession.requestAdjust(-ms) else extSession.nudge(ms)
-        }.getOrDefault(false)
-        if (!ok) showToast(notSeekable) else persistAudioProfile()
-    }
-
-    /** الاختصارات اللونية: الأصفر يقدم الصوت 200ms، والأزرق يؤخره 200ms. */
-    fun syncShortcut(deltaMs: Long): Boolean {
-        if (!queue[index].isLive || extSession.player == null) return false
-        val oldOffset = if (extSession.sameStream) -extSession.picDelayMs else extSession.manualMs
-        val nextOffset = (oldOffset + deltaMs).coerceIn(-60_000L, 60_000L)
-        val applied = nextOffset - oldOffset
-        if (applied == 0L) {
-            showToast(if (vm.lang == "ar") "وصلت للحد الأقصى 60 ثانية" else "Max 60 seconds")
-            return true
-        }
-        val ok = runCatching {
-            if (extSession.sameStream) extSession.requestAdjust(-applied) else extSession.nudge(applied)
-        }.getOrDefault(false)
-        if (ok) {
-            persistAudioProfile()
-            val value = if (extSession.sameStream) -extSession.picDelayMs else extSession.manualMs
-            val signed = if (value >= 0) "+" else ""
-            showToast((if (vm.lang == "ar") "مزامنة الصوت: " else "Audio sync: ") + signed + value + " ms")
-        } else showToast(notSeekable)
-        return true
-    }
-
-    /** ضبط يدوي (تشخيص): delayMs موجب = تأخير الصوت الخارجي، سالب = تقديمه. */
-    fun shift(delayMs: Long) {
-        if (extSession.player == null) return
-        if (!extSession.nudge(if (syncAudio) delayMs else -delayMs)) showToast(notSeekable)
-        else persistAudioProfile()
-    }
+    /** ميزة ألوان المباراة للرياضة حصرًا: قنوات مباشرة يدل اسمها على رياضة/مباراة. */
+    val sportLike = queue[index].isLive && (MATCH_RE.containsMatchIn(queue[index].title) || SPORT_RE.containsMatchIn(queue[index].title))
+    var colorOn by remember { mutableStateOf(vm.store.colorOn()) }
+    var cv by remember { mutableStateOf(vm.store.colorVals()) }
 
     fun closePanel() {
         panel = null
@@ -599,26 +523,6 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             nextCardOn -> nextOff = true
             controls -> controls = false
             else -> exit()
-        }
-    }
-
-    // تطبيق الصوتيات المحفوظة للقناة تلقائيًا (بدون ما تفتح اللوحة كل مرة)
-    LaunchedEffect(index) {
-        if (!queue[index].isLive) return@LaunchedEffect
-        val pref = vm.store.audioPref(queue[index].key) ?: return@LaunchedEffect
-        delay(3500)
-        runCatching {
-            if (extSession.player != null) return@runCatching
-            val d = pref[2].toLongOrNull() ?: 0L
-            if (pref[0] == "s") {
-                extSession.start(com.ayham.player.data.Item(com.ayham.player.data.Kind.LIVE, queue[index].key.substringAfter(':'), queue[index].title), true, pref[1].ifBlank { null })
-                if (d != 0L) extSession.requestAdjust(-d)
-            } else if (pref[3].isNotBlank()) {
-                extSession.start(com.ayham.player.data.Item(com.ayham.player.data.Kind.LIVE, pref[3], pref[4]))
-                var w = 0
-                while (w < 60 && extSession.player?.playbackState != androidx.media3.common.Player.STATE_READY) { delay(250); w++ }
-                if (d != 0L) extSession.nudge(d)
-            }
         }
     }
 
@@ -649,12 +553,6 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             AKeyEvent.KEYCODE_MEDIA_NEXT, AKeyEvent.KEYCODE_CHANNEL_UP -> { go(1); return true }
             AKeyEvent.KEYCODE_MEDIA_PREVIOUS, AKeyEvent.KEYCODE_CHANNEL_DOWN -> { go(-1); return true }
             AKeyEvent.KEYCODE_MENU -> { panel = Panel.MENU; controls = false; return true }
-            AKeyEvent.KEYCODE_PROG_YELLOW -> {
-                if (panel == null && queue[index].isLive && extSession.player != null) return syncShortcut(-200L)
-            }
-            AKeyEvent.KEYCODE_PROG_BLUE -> {
-                if (panel == null && queue[index].isLive && extSession.player != null) return syncShortcut(200L)
-            }
         }
         if (errorMsg != null && (code == AKeyEvent.KEYCODE_DPAD_CENTER || code == AKeyEvent.KEYCODE_ENTER)) {
             retry()
@@ -718,7 +616,6 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         val l = object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
-                extSession.setPlaying(playing)
                 if (playing) playFrom = System.currentTimeMillis() else flushWatch()
             }
 
@@ -964,7 +861,6 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             if (!e.isLive && exo.duration > 0 && exo.currentPosition > 0) {
                 vm.saveProgress(req.item, e.key, exo.currentPosition, exo.duration)
             }
-            extSession.release()
             if (liveSession) {
                 exo.volume = 1f
                 vm.onLiveClosed(e.key)
@@ -980,7 +876,6 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         val obs = androidx.lifecycle.LifecycleEventObserver { _, ev ->
             if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
                 exo.pause()
-                extSession.pause()
             }
         }
         lifecycleOwner.lifecycle.addObserver(obs)
@@ -1021,10 +916,10 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             val ab by androidx.compose.animation.animateColorAsState(ambBot, androidx.compose.animation.core.tween(1800), label = "ab")
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to at, 0.22f to Color.Black, 0.78f to Color.Black, 1f to ab)))
         }
-        AndroidView(
+        key(sportLike && colorOn) { AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { c ->
-                PlayerView(c).apply {
+                (if (sportLike && colorOn) (android.view.LayoutInflater.from(c).inflate(com.ayham.player.R.layout.pip_view, null) as PlayerView) else PlayerView(c)).apply {
                     pv = this
                     useController = false
                     player = exo
@@ -1048,6 +943,9 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             },
             onRelease = { it.player = null },
             update = {
+                (it.videoSurfaceView as? android.view.TextureView)?.let { tv ->
+                    tv.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, colorPaint(cv))
+                }
                 it.subtitleView?.setBottomPaddingFraction(when (vm.subPos) { 0 -> 0.02f; 1 -> 0.08f; else -> 0.18f })
                 it.subtitleView?.setFractionalTextSize(when (vm.subSize) { 0 -> 0.042f; 1 -> 0.055f; else -> 0.075f })
                 it.subtitleView?.setStyle(subCaptionStyle(vm.subStyle, subTf))
@@ -1058,6 +956,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                 }
             },
         )
+        }
 
         if (dualText.isNotBlank() && !queue[index].isLive) {
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Bottom, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1201,49 +1100,6 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
             ) { RText(tmsg, 22, C.text, bold = true) }
         }
 
-        if (extName != null && !controls) {
-            Box(
-                Modifier.align(Alignment.TopStart).padding(18.dp)
-                    .clip(RoundedCornerShape(14.dp)).background(tc(0x99000000))
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-            ) { RText("🎧 " + extName.orEmpty(), 15, C.primaryLight, maxLines = 1) }
-        }
-
-        // صورة مصغّرة لقناة التعليق (يسار الشاشة): تكبير/تصغير/إزالة من الأزرار تحتها أو من الإعدادات
-        if (extSession.pip && extSession.player != null) {
-            val pw = when (extSession.pipSize) { 0 -> 190; 1 -> 290; else -> 430 }
-            val pwDp = (if (compact) pw * 0.55f else pw.toFloat()).dp
-            Column(
-                Modifier.align(Alignment.CenterStart).padding(start = if (compact) 8.dp else 20.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Box(
-                    Modifier.width(pwDp).aspectRatio(16f / 9f)
-                        .clip(RoundedCornerShape(12.dp)).background(Color.Black)
-                        .border(2.dp, C.primary, RoundedCornerShape(12.dp)),
-                ) {
-                    AndroidView(
-                        factory = { c ->
-                            (android.view.LayoutInflater.from(c).inflate(com.ayham.player.R.layout.pip_view, null) as PlayerView)
-                        },
-                        update = { it.player = extSession.player },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    BodyText(
-                        extName.orEmpty(), 11, Color.White, maxLines = 1,
-                        modifier = Modifier.align(Alignment.BottomStart).background(tc(0x99000000)).padding(horizontal = 6.dp, vertical = 1.dp),
-                    )
-                }
-                if (controls && panel == null) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        IconBtn(Icons.Filled.Remove, size = 40.dp) { extSession.cyclePipSize(-1); touch() }
-                        IconBtn(Icons.Filled.Add, size = 40.dp) { extSession.cyclePipSize(1); touch() }
-                        IconBtn(Icons.Filled.Close, size = 40.dp) { extSession.changePip(false); touch() }
-                    }
-                }
-            }
-        }
-
         // شاشة الإيقاف السينمائية
         AnimatedVisibility(pauseOn && !endCard, enter = fadeIn(androidx.compose.animation.core.tween(900)), exit = fadeOut(androidx.compose.animation.core.tween(250))) {
             PauseCinema(vm, req.item, queue[index].title, queue[index].image, pauseDet, pauseInfo, vm.lang == "ar", (exo.duration - exo.currentPosition).coerceAtLeast(0L))
@@ -1315,7 +1171,6 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     ) {
                         if (queue[index].isLive && vm.liveShift) LiveShiftRow(exo) {
                             exo.seekToDefaultPosition()
-                            extSession.goLive()
                             touch()
                         }
                         if (!queue[index].isLive) ProgressRow(exo, barFocus, onVisible = { barVisible = it }, onToggle = { togglePlay() }, tint = tint, ar = vm.lang == "ar", marks = remember(index) { vm.store.introProfile(queue[index].key)?.let { listOf(it.first, it.second) } ?: emptyList() }) { touch() }
@@ -1345,10 +1200,8 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                     touch()
                                 }
                             }
-                            if (queue[index].isLive && extName != null) {
-                                IconBtn(Icons.Filled.PictureInPictureAlt, active = extSession.pip) { extSession.changePip(!extSession.pip); touch() }
-                            }
-                            IconBtn(Icons.Filled.Audiotrack, active = extName != null) { panel = Panel.AUDIO; controls = false }
+                            if (!queue[index].isLive) IconBtn(Icons.Filled.Audiotrack) { panel = Panel.AUDIO; controls = false }
+                            if (sportLike) IconBtn(Icons.Filled.Tune, active = colorOn) { panel = Panel.COLORS; controls = false }
                             if (queue[index].isLive) IconBtn(Icons.Filled.GridView) { openMultiFromPlayer() }
                             IconBtn(Icons.Filled.Tune) { panel = Panel.MENU; controls = false }
                         }
@@ -1441,7 +1294,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
         val cur = panel
         if (cur != null && cur != Panel.TRYSUB) {
             Column(
-                Modifier.align(Alignment.CenterEnd).fillMaxHeight().widthIn(max = if (cur == Panel.AUDIO || cur == Panel.SYNC) 440.dp else 430.dp)
+                Modifier.align(Alignment.CenterEnd).fillMaxHeight().widthIn(max = if (cur == Panel.AUDIO) 440.dp else 430.dp)
                     .fillMaxWidth(if (compact) 0.88f else 1f)
                     .pointerInput(Unit) { detectTapGestures { } }
                     .background(if (cur == Panel.AUDIO) androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(tc(0xB30A0418), tc(0xE60F0720)))
@@ -1453,8 +1306,8 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     Panel.MENU -> {
                         RText(t("settings"), 26, C.text, bold = true)
                         if (!queue[index].isLive) PanelItem(t("subtitles"), modifier = Modifier.autoFocus()) { panel = Panel.SUBS }
-                        if (matchLike) PanelItem(if (vm.lang == "ar") "مزامنة المباراة" else "Match sync", sub = if (vm.lang == "ar") "صوت التعليق مع الصورة" else "Commentary vs picture", modifier = Modifier.autoFocus()) { panel = Panel.MATCH }
-                        PanelItem(t("audio_tracks"), modifier = if (queue[index].isLive && !matchLike) Modifier.autoFocus() else Modifier) { panel = Panel.AUDIO }
+                        if (sportLike) PanelItem(if (vm.lang == "ar") "🎨 ألوان المباراة" else "🎨 Match colors", selected = colorOn, modifier = Modifier.autoFocus()) { panel = Panel.COLORS }
+                        if (!queue[index].isLive) PanelItem(t("audio_tracks")) { panel = Panel.AUDIO }
                         if (!queue[index].isLive) {
                             PanelItem(t("speed"), sub = speedLabel(speed)) { cycleSpeed() }
                             PanelItem(t("skip_intro"), sub = t("skip_intro_sub")) { doSkip(); closePanel() }
@@ -1475,10 +1328,7 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                                 }
                             }
                         }
-                        PanelItem(t("smart_audio"), selected = extName != null, sub = extName) { panel = Panel.EXT }
-                        if (queue[index].isLive) PanelItem(if (vm.lang == "ar") "🎙 ملفات التعليق" else "🎙 Commentary files", selected = extSession.isFile, sub = if (extSession.isFile) extName else (if (vm.lang == "ar") "ملفات صوتية محفوظة بالتطبيق" else "Audio files saved in the app")) { panel = Panel.FILES }
-                        if (extName != null) PanelItem(t("sync")) { panel = Panel.SYNC }
-                        PanelItem(t("aspect"), sub = aspectLabels[aspect]) {
+                        PanelItem(t("aspect"), sub = aspectLabels[aspect], modifier = if (queue[index].isLive && !sportLike) Modifier.autoFocus() else Modifier) {
                             aspect = (aspect + 1) % 3
                             showToast(toastAspect + ": " + aspectLabels[aspect])
                         }
@@ -1656,447 +1506,76 @@ fun PlayerScreen(vm: AppViewModel, req: PlayRequest, onExit: () -> Unit) {
                     Panel.AUDIO -> {
                         val ar = vm.lang == "ar"
                         val audio = tracks.groups.filter { it.type == MC.TRACK_TYPE_AUDIO }
-                        val live = queue[index].isLive
-                        var tab by remember { mutableIntStateOf(0) }
-                        var q by remember { mutableStateOf("") }
-                        var results by remember { mutableStateOf<List<Item>>(emptyList()) }
-                        val recent = remember { vm.extRecent() }
-                        val searching = q.trim().length >= 2
-                        LaunchedEffect(q) {
-                            delay(300)
-                            results = if (q.trim().length >= 2) vm.search(q).first else emptyList()
-                        }
-                        val pager = rememberPager(Unit, 60) { off, lim -> vm.allItems(com.ayham.player.data.Kind.LIVE, lim, off) }
-                        val chosen = extSession.channel()?.key
-                        // التأخير: موجب = التعليق متأخر عن الصورة، سالب = الصورة متأخرة عن التعليق
-                        val commentary = if (extSession.sameStream) -extSession.picDelayMs else extSession.manualMs
-                        val extActive = extSession.player != null
-                        val lastAdj = remember { longArrayOf(0L) }
-                        fun ensureSame() {
-                            if (!extSession.sameStream && extSession.player == null) {
-                                val sel = audio.flatMap { g -> (0 until g.length).filter { g.isTrackSelected(it) }.map { g.getTrackFormat(it) } }.firstOrNull()
-                                extSession.start(com.ayham.player.data.Item(com.ayham.player.data.Kind.LIVE, queue[index].key.substringAfter(':'), queue[index].title), true, sel?.let { it.id ?: it.label })
-                            }
-                        }
-                        fun adj(ms: Long) {
-                            val nw = System.currentTimeMillis()
-                            if (nw - lastAdj[0] < 220L) return
-                            lastAdj[0] = nw
-                            if (kotlin.math.abs(commentary + ms) > 60_000L) { showToast(if (ar) "وصلت للحد الأقصى 60 ثانية" else "Max 60 seconds"); return }
-                            val ok = runCatching {
-                                ensureSame()
-                                if (extSession.sameStream) extSession.requestAdjust(-ms) else extSession.nudge(ms)
-                            }.getOrDefault(false)
-                            if (!ok) showToast(notSeekable) else persistAudioProfile()
-                        }
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Icon(Icons.Filled.Audiotrack, null, tint = C.accent, modifier = Modifier.size(28.dp))
-                            Column {
-                                RText(if (ar) "Ayham Smart Audio" else "Ayham Smart Audio", 23, C.text, bold = true)
-                                BodyText(if (ar) "المسارات والمزامنة للبث المباشر" else "Tracks and sync for Live TV", 13, C.primaryLight)
-                            }
-                        }
-                        if (live && extActive) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                GlowButton(
-                                    (if (ar) "المزامنة التلقائية: " else "Auto sync: ") +
-                                        (if (extSession.autoSync) (if (ar) "مفعّلة" else "On") else (if (ar) "متوقفة" else "Off")),
-                                    primary = extSession.autoSync, height = 54.dp,
-                                    modifier = Modifier.weight(1f).autoFocus(),
-                                ) {
-                                    extSession.setAuto(!extSession.autoSync)
-                                    vm.extAuto = extSession.autoSync
-                                }
-                                GlowButton(if (ar) "زامن الآن" else "Sync now", height = 54.dp, modifier = Modifier.weight(1f)) {
-                                    extSession.resyncNow()
-                                }
-                            }
+                            RText(t("audio_tracks"), 23, C.text, bold = true)
                         }
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
-                            if (live) {
-                                item {
-                                    val txt = when {
-                                        commentary > 0 -> (if (ar) "التعليق متأخر " else "Commentary late ") + String.format(Locale.US, "%.0f", commentary / 1000f) + (if (ar) " ث" else " s")
-                                        commentary < 0 -> (if (ar) "الصورة متأخرة " else "Picture late ") + String.format(Locale.US, "%.0f", -commentary / 1000f) + (if (ar) " ث" else " s")
-                                        else -> if (ar) "التأخير: 0 ث" else "Delay: 0 s"
-                                    }
-                                    val saved = vm.store.audioPref(queue[index].key)
-                                    Column(
-                                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.surface.copy(alpha = 0.9f))
-                                            .border(1.dp, if (commentary != 0L) C.accent else C.surfaceHi, RoundedCornerShape(14.dp)).padding(10.dp),
-                                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                    ) {
-                                        RText(txt, 20, if (commentary != 0L) C.accent else C.text, bold = true)
-                                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                            GlowButton("− 1.0 ث", primary = false, height = 54.dp, modifier = Modifier.weight(1f).autoFocus()) { adj(-1000L) }
-                                            GlowButton("+ 1.0 ث", primary = true, height = 54.dp, modifier = Modifier.weight(1f)) { adj(1000L) }
-                                        }
-                                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                            GlowButton("− 0.5 ث", primary = false, height = 54.dp, modifier = Modifier.weight(1f)) { adj(-500L) }
-                                            GlowButton("+ 0.5 ث", primary = false, height = 54.dp, modifier = Modifier.weight(1f)) { adj(500L) }
-                                        }
-                                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                            GlowButton("− 100 ms", primary = false, height = 54.dp, modifier = Modifier.weight(1f)) { adj(-100L) }
-                                            GlowButton("+ 100 ms", primary = false, height = 54.dp, modifier = Modifier.weight(1f)) { adj(100L) }
-                                        }
-                                        GlowButton(
-                                            if (ar) "إعادة ضبط المزامنة · 0 ms" else "Reset sync · 0 ms",
-                                            primary = false, height = 54.dp, modifier = Modifier.fillMaxWidth(),
-                                        ) {
-                                            runCatching {
-                                                if (extSession.sameStream) extSession.requestAdjust(extSession.picDelayMs)
-                                                else extSession.nudge(-extSession.manualMs)
-                                            }
-                                            persistAudioProfile()
-                                        }
-                                        BodyText(if (ar) "− يؤخر الصوت الخارجي | + يؤخر الصورة" else "− delays external audio | + delays video", 13, C.textDim)
-                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            GlowButton(if (ar) "الصوت الأصلي" else "Original", modifier = Modifier.weight(1f)) { runCatching { stopExt() } }
-                                            GlowButton(if (ar) "إغلاق" else "Close", modifier = Modifier.weight(1f)) { closePanel() }
-                                        }
-                                        GlowButton(
-                                            if (saved != null) (if (ar) "محفوظ ✓ (حدّث)" else "Saved ✓ (update)") else (if (ar) "حفظ التأخير لهذه القناة" else "Save for this channel"),
-                                            primary = saved == null, modifier = Modifier.fillMaxWidth(),
-                                        ) {
-                                            val v = if (extSession.sameStream) "s\t" + (extSession.wantTrack ?: "") + "\t" + commentary + "\t\t"
-                                            else if (extActive) "e\t\t" + commentary + "\t" + (extSession.channel()?.id ?: "") + "\t" + (extSession.channel()?.name ?: "")
-                                            else null
-                                            if (v == null) showToast(if (ar) "اضبط التأخير أو اختر تعليقًا أولًا" else "Set a delay or pick commentary first")
-                                            else { vm.store.setAudioPref(queue[index].key, v); showToast(if (ar) "تم حفظ التأخير لهذه القناة" else "Saved for this channel") }
-                                        }
-                                        if (saved != null) GlowButton(if (ar) "مسح المحفوظ" else "Clear saved", modifier = Modifier.fillMaxWidth()) {
-                                            vm.store.setAudioPref(queue[index].key, null); showToast(if (ar) "تم المسح" else "Cleared")
-                                        }
-                                        if (extActive && extSession.status.isNotBlank()) BodyText(extSession.status, 11, C.textDim)
-                                    }
+                            val flatAudio = audio.flatMap { g -> (0 until g.length).map { g to it } }
+                            if (flatAudio.isEmpty()) item { BodyText(if (ar) "لا توجد مسارات صوت في هذا العمل" else "No audio tracks", 14, C.textDim) }
+                            items(flatAudio.size) { n ->
+                                val (g, i) = flatAudio[n]
+                                val supported = g.isTrackSupported(i)
+                                PanelItem(
+                                    trackLabel(g.getTrackFormat(i), i, vm.lang),
+                                    selected = g.isTrackSelected(i),
+                                    sub = if (supported) null else audioUnsupported,
+                                    modifier = if (n == 0) Modifier.autoFocus() else Modifier,
+                                ) {
+                                    if (!supported) return@PanelItem
+                                    audioOverridden = true
+                                    exo.trackSelectionParameters = exo.trackSelectionParameters.buildUpon()
+                                        .setTrackTypeDisabled(MC.TRACK_TYPE_AUDIO, false)
+                                        .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, i))
+                                        .build()
+                                    if (req.item != null) vm.store.setShowAudioLang(showKey(), lang2(g.getTrackFormat(i).language))
                                 }
                             }
+                            item { PanelItem(t("back")) { closePanel() } }
+                        }
+                    }
+
+                    Panel.COLORS -> {
+                        val ar = vm.lang == "ar"
+                        fun setCv(n: List<Float>) { cv = n; vm.store.setColorVals(n) }
+                        RText(if (ar) "🎨 ألوان المباراة" else "🎨 Match colors", 24, C.text, bold = true)
+                        BodyText(if (ar) "للرياضة فقط. عند التفعيل يتبدّل عرض الفيديو لوضع يدعم الألوان (قد يستهلك أكثر على الأجهزة الضعيفة)." else "Sports only. Enabling switches video rendering to a mode that supports colour tuning (may use more resources on weak devices).", 12, C.textDim, maxLines = 4)
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
                             item {
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Chip(if (ar) "مسارات البث" else "Stream tracks", tab == 0) { tab = 0 }
-                                    Chip(if (ar) "قنوات التعليق" else "Commentary channels", tab == 1) { tab = 1 }
+                                PanelItem((if (ar) "تفعيل تعديل الألوان: " else "Colour tuning: ") + (if (colorOn) (if (ar) "مفعّل" else "On") else (if (ar) "متوقف" else "Off")), selected = colorOn, modifier = Modifier.autoFocus()) {
+                                    colorOn = !colorOn; vm.store.setColorOn(colorOn)
                                 }
                             }
-                            if (tab == 0) {
-                                val flatAudio = audio.flatMap { g -> (0 until g.length).map { g to it } }
-                                if (flatAudio.isEmpty()) item { BodyText(if (ar) "لا توجد مسارات صوت في هذا البث" else "No audio tracks in this stream", 14, C.textDim) }
-                                items(flatAudio.size) { n ->
-                                    val (g, i) = flatAudio[n]
-                                    val supported = g.isTrackSupported(i)
-                                    val key = g.getTrackFormat(i).let { it.id ?: it.label ?: "" }
-                                    PanelItem(
-                                        trackLabel(g.getTrackFormat(i), i, vm.lang),
-                                        selected = if (extSession.sameStream) key == extSession.wantTrack else (!extActive && g.isTrackSelected(i)),
-                                        sub = if (supported) null else audioUnsupported,
-                                    ) {
-                                        if (!supported) return@PanelItem
-                                        if (extSession.sameStream) { extSession.selectTrack(key); return@PanelItem }
-                                        if (extActive) stopExt()
-                                        audioOverridden = true
-                                        exo.trackSelectionParameters = exo.trackSelectionParameters.buildUpon()
-                                            .setTrackTypeDisabled(MC.TRACK_TYPE_AUDIO, false)
-                                            .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, i))
-                                            .build()
-                                        vm.store.setAudioPref(queue[index].key, "s\t$key\t0\t\t")
-                                        if (!live && req.item != null) vm.store.setShowAudioLang(showKey(), lang2(g.getTrackFormat(i).language))
-                                    }
-                                }
-                            } else {
-                                item {
-                                    AyhamField(q, { q = it }, t("search_hint"), Modifier, imeAction = androidx.compose.ui.text.input.ImeAction.Search)
-                                }
-                                if (extName != null && !extSession.sameStream) {
-                                    item { PanelItem(t("ext_audio_remove")) { stopExt() } }
-                                    item { PanelItem(t("sync")) { panel = Panel.SYNC } }
-                                }
-                                if (!searching && vm.lang.isNotEmpty()) {
-                                item { PanelItem(if (vm.lang == "ar") "🎙 ملفات التعليق (محفوظة في التطبيق)" else "🎙 Commentary files (saved in the app)", sub = if (vm.lang == "ar") "أضف ملفًا صوتيًا من هاتفك عبر QR" else "Add an audio file from your phone via QR") { panel = Panel.FILES } }
-                            }
-                            if (vm.radioOn && vm.radioCats().isNotEmpty() && !searching) {
-                                    item { PanelItem(if (ar) "📻 الراديو" else "📻 Radio", sub = if (ar) "اختر إذاعة كصوت تعليق" else "Pick a station as commentary") { panel = Panel.RADIO } }
-                                }
-                                if (searching) {
-                                    items(results, key = { "s" + it.key }) { ch ->
-                                        PanelItem(ch.name, selected = ch.key == chosen && !extSession.sameStream) { startExt(ch) }
-                                    }
-                                } else {
-                                    if (recent.isNotEmpty()) {
-                                        item { RText(t("ext_recent"), 16, C.primaryLight, bold = true) }
-                                        items(recent, key = { "r" + it.key }) { ch ->
-                                            PanelItem(ch.name, selected = ch.key == chosen && !extSession.sameStream) { startExt(ch) }
-                                        }
-                                        item { RText(t("ext_all"), 16, C.primaryLight, bold = true) }
-                                    }
-                                    itemsIndexed(pager.items, key = { _, it -> "a" + it.key }) { idx, ch ->
-                                        if (idx >= pager.items.size - 15) LaunchedEffect(pager.items.size) { pager.loadMore() }
-                                        PanelItem(ch.name, selected = ch.key == chosen && !extSession.sameStream) { startExt(ch) }
-                                    }
-                                }
-                            }
-                            if (!live) item { PanelItem(t("back"), modifier = Modifier.autoFocus()) { closePanel() } }
-                        }
-                    }
-
-                    Panel.EXT -> {
-                        RText(t("ext_audio_pick"), 24, C.text, bold = true)
-                        var q by remember { mutableStateOf("") }
-                        var results by remember { mutableStateOf<List<Item>>(emptyList()) }
-                        val recent = remember { vm.extRecent() }
-                        val searching = q.trim().length >= 2
-                        LaunchedEffect(q) {
-                            delay(300)
-                            results = if (q.trim().length >= 2) vm.search(q).first else emptyList()
-                        }
-                        val pager = rememberPager(Unit, 60) { off, lim -> vm.allItems(com.ayham.player.data.Kind.LIVE, lim, off) }
-                        val chosen = extSession.channel()?.key
-                        AyhamField(
-                            q, { q = it }, t("search_hint"), Modifier.autoFocus(),
-                            imeAction = androidx.compose.ui.text.input.ImeAction.Search,
-                        )
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
-                            if (extName != null) {
-                                item {
-                                    PanelItem(t("ext_audio_remove")) {
-                                        stopExt()
-                                        closePanel()
-                                    }
-                                }
-                            }
-                            if (vm.radioOn && vm.radioCats().isNotEmpty() && !searching) {
-                                item { PanelItem(if (vm.lang == "ar") "📻 الراديو" else "📻 Radio", sub = if (vm.lang == "ar") "اختر إذاعة كصوت تعليق" else "Pick a station as commentary") { panel = Panel.RADIO } }
-                            }
-                            if (searching) {
-                                items(results, key = { "s" + it.key }) { ch ->
-                                    PanelItem(ch.name, selected = ch.key == chosen) { startExt(ch); panel = Panel.SYNC }
-                                }
-                            } else {
-                                if (recent.isNotEmpty()) {
-                                    item { RText(t("ext_recent"), 16, C.primaryLight, bold = true) }
-                                    items(recent, key = { "r" + it.key }) { ch ->
-                                        PanelItem(ch.name, selected = ch.key == chosen) { startExt(ch); panel = Panel.SYNC }
-                                    }
-                                    item { RText(t("ext_all"), 16, C.primaryLight, bold = true) }
-                                }
-                                itemsIndexed(pager.items, key = { _, it -> "a" + it.key }) { idx, ch ->
-                                    if (idx >= pager.items.size - 15) LaunchedEffect(pager.items.size) { pager.loadMore() }
-                                    PanelItem(ch.name, selected = ch.key == chosen) { startExt(ch); panel = Panel.SYNC }
-                                }
-                            }
-                            item { PanelItem(t("back")) { panel = Panel.MENU } }
-                        }
-                    }
-
-                    Panel.FILES -> {
-                        val ar = vm.lang == "ar"
-                        var files by remember { mutableStateOf(com.ayham.player.data.CommentaryLib.list(ctx)) }
-                        var showQr by remember { mutableStateOf(false) }
-                        var url by remember { mutableStateOf<String?>(null) }
-                        DisposableEffect(showQr) {
-                            if (!showQr) return@DisposableEffect onDispose { }
-                            val main = android.os.Handler(android.os.Looper.getMainLooper())
-                            val srv = com.ayham.player.data.LoginServer(onAudio = { name, len, input ->
-                                val f = com.ayham.player.data.CommentaryLib.save(ctx, name, len, input)
-                                main.post {
-                                    files = com.ayham.player.data.CommentaryLib.list(ctx)
-                                    showToast(if (f != null) (if (ar) "تم حفظ الملف ✓" else "File saved ✓") else (if (ar) "فشل الحفظ: أكبر من 400MB أو الحفظ فشل" else "Save failed: over 400MB or save failed"))
-                                }
-                                f != null
-                            })
-                            val ip = com.ayham.player.data.LoginServer.localIp()
-                            if (ip != null && srv.start()) url = "http://$ip:${srv.port}"
-                            onDispose { srv.stop(); url = null }
-                        }
-                        RText(if (ar) "🎙 ملفات التعليق" else "🎙 Commentary files", 26, C.text, bold = true)
-                        BodyText(if (ar) "الملفات تبقى محفوظة بالتطبيق. المزامنة التلقائية تعمل عليها كالقنوات (ضمن ±15 ثانية، استخدم أزرار القفز للتقريب)." else "Files stay saved in the app. Auto sync works on them like channels (within ±15 s, use the jump buttons to get close).", 13, C.textDim, maxLines = 4)
-                        if (extSession.isFile) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                listOf("−5m" to -300_000L, "−1m" to -60_000L, "−10s" to -10_000L, "+10s" to 10_000L, "+1m" to 60_000L, "+5m" to 300_000L).forEach { (l, ms) ->
-                                    GlowButton(l, height = 50.dp, modifier = Modifier.weight(1f)) { extSession.seekFile(ms) }
-                                }
-                            }
-                        }
-                        if (showQr) {
-                            val u = url
-                            if (u != null) {
-                                val bmp = remember(u) { qrBitmap(u) }
-                                Box(Modifier.clip(RoundedCornerShape(16.dp)).background(Color.White).padding(10.dp).align(Alignment.CenterHorizontally)) {
-                                    androidx.compose.foundation.Image(bmp.asImageBitmap(), null, Modifier.size(200.dp))
-                                }
-                                BodyText(u, 14, C.primaryLight, modifier = Modifier.align(Alignment.CenterHorizontally))
-                            } else RText(t("qr_fail"), 16, C.danger)
-                        }
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
-                            item { PanelItem(if (showQr) (if (ar) "إخفاء الـQR" else "Hide QR") else (if (ar) "➕ إضافة ملف عبر QR" else "➕ Add a file via QR")) { showQr = !showQr } }
-                            if (files.isEmpty()) item { BodyText(if (ar) "لا توجد ملفات محفوظة بعد" else "No saved files yet", 14, C.textDim) }
-                            items(files, key = { "cf" + it.name }) { f ->
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Box(Modifier.weight(1f)) {
-                                        PanelItem(f.nameWithoutExtension, sub = com.ayham.player.data.CommentaryLib.sizeText(f), selected = extSession.isFile && extSession.name?.endsWith(f.nameWithoutExtension) == true) {
-                                            extSession.startFile(f); panel = Panel.SYNC
-                                        }
-                                    }
-                                    GlowButton("🗑", height = 50.dp) {
-                                        if (extSession.isFile && extSession.name?.endsWith(f.nameWithoutExtension) == true) stopExt()
-                                        com.ayham.player.data.CommentaryLib.delete(f)
-                                        files = com.ayham.player.data.CommentaryLib.list(ctx)
-                                    }
-                                }
-                            }
-                            item { PanelItem(t("back")) { panel = Panel.MENU } }
-                        }
-                    }
-
-                    Panel.RADIO -> {
-                        val ar = vm.lang == "ar"
-                        val rc = vm.radioCats()
-                        var rsel by remember { mutableStateOf(rc.firstOrNull()?.id.orEmpty()) }
-                        val rpager = rememberPager(rsel, 60) { off, lim -> vm.inCategory(com.ayham.player.data.Kind.LIVE, rsel, lim, off) }
-                        val chosenR = extSession.channel()?.key
-                        var rq by remember { mutableStateOf("") }
-                        var rfound by remember { mutableStateOf<List<Item>>(emptyList()) }
-                        val rsearching = rq.trim().length >= 2
-                        LaunchedEffect(rq) {
-                            delay(300)
-                            rfound = if (rq.trim().length >= 2) vm.searchRadio(rq) else emptyList()
-                        }
-                        val rshown = if (rsearching) rfound else rpager.items
-                        RText(if (ar) "📻 الراديو" else "📻 Radio", 24, C.text, bold = true)
-                        AyhamField(rq, { rq = it }, if (ar) "ابحث في الراديو" else "Search radio", Modifier.autoFocus(), imeAction = androidx.compose.ui.text.input.ImeAction.Search)
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
-                            if (rc.size > 1) item {
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                                    rc.forEach { c -> Chip(c.name, rsel == c.id && !rsearching) { rsel = c.id; rq = "" } }
-                                }
-                            }
-                            if (rsearching && rfound.isEmpty()) item { BodyText(if (ar) "لا توجد نتائج" else "No results", 14, C.textDim) }
-                            itemsIndexed(rshown, key = { _, it -> "rd" + it.key }) { idx, ch ->
-                                if (!rsearching && idx >= rpager.items.size - 15) LaunchedEffect(rpager.items.size) { rpager.loadMore() }
-                                PanelItem(ch.name, selected = ch.key == chosenR) { startExt(ch); panel = Panel.SYNC }
-                            }
-                            item { PanelItem(t("back")) { panel = Panel.EXT } }
-                        }
-                    }
-
-                    Panel.MATCH -> {
-                        val ar = vm.lang == "ar"
-                        val commentary = if (extSession.sameStream) -extSession.picDelayMs else extSession.manualMs
-                        val txt = when {
-                            commentary > 0 -> (if (ar) "التعليق متأخر " else "Commentary late ") + String.format(Locale.US, "%.1f", commentary / 1000f) + (if (ar) " ث" else " s")
-                            commentary < 0 -> (if (ar) "الصورة متأخرة " else "Picture late ") + String.format(Locale.US, "%.1f", -commentary / 1000f) + (if (ar) " ث" else " s")
-                            else -> if (ar) "التأخير: 0 ث" else "Delay: 0 s"
-                        }
-                        val st = extSession.status
-                        val stTxt = when {
-                            st.isNotBlank() -> (if (st.startsWith("تمت المزامنة") || st.startsWith("Synced")) "✓ " else "") + st
-                            extSession.player == null -> if (ar) "اختر قناة تعليق للمزامنة التلقائية" else "Pick a commentary channel for auto sync"
-                            extSession.autoSync -> if (ar) "المزامنة التلقائية: نسمع صوت الملعب…" else "Auto sync: listening to the stadium…"
-                            else -> if (ar) "المزامنة التلقائية متوقفة" else "Auto sync is off"
-                        }
-                        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Icon(Icons.Filled.Audiotrack, null, tint = C.accent, modifier = Modifier.size(28.dp))
-                                RText(if (ar) "مزامنة المباراة" else "Match sync", 24, C.text, bold = true)
-                            }
-                            BodyText(if (ar) "+ تأخير التعليق   − تأخير الصورة" else "+ delays commentary   − delays picture", 13, C.textDim)
-                            RText(txt, 30, if (commentary != 0L) C.accent else C.text, bold = true)
-                            BodyText(stTxt, 14, C.accent, maxLines = 3)
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                listOf("−5" to -5000L, "−1" to -1000L, "−½" to -500L, "+½" to 500L, "+1" to 1000L, "+5" to 5000L).forEachIndexed { i, (l, ms) ->
-                                    GlowButton(l, primary = ms > 0, height = 54.dp, modifier = if (i == 0) Modifier.weight(1f).autoFocus() else Modifier.weight(1f)) { matchAdj(ms, ar) }
-                                }
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                GlowButton(
-                                    (if (ar) "مزامنة تلقائية: " else "Auto sync: ") + (if (extSession.autoSync && extSession.player != null) (if (ar) "تعمل" else "On") else (if (ar) "متوقفة" else "Off")),
-                                    primary = extSession.autoSync && extSession.player != null, height = 54.dp, modifier = Modifier.weight(1f),
-                                ) {
-                                    if (extSession.player == null) { panel = Panel.EXT; showToast(if (ar) "اختر قناة تعليق أولاً" else "Pick a commentary channel first") }
-                                    else { extSession.setAuto(!extSession.autoSync); vm.extAuto = extSession.autoSync; if (extSession.autoSync) extSession.resyncNow() }
-                                }
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                GlowButton(if (ar) "قناة التعليق" else "Commentary", height = 54.dp, modifier = Modifier.weight(1f)) { panel = Panel.EXT }
-                                GlowButton(if (ar) "الصوت الأصلي" else "Original", height = 54.dp, modifier = Modifier.weight(1f)) { runCatching { stopExt() } }
-                                GlowButton(if (ar) "إغلاق" else "Close", height = 54.dp, modifier = Modifier.weight(1f)) { closePanel() }
-                            }
-                        }
-                    }
-
-                    Panel.SYNC -> {
-                        Column(
-                            Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            RText(t("smart_settings"), 26, C.text, bold = true)
-                            if (extName != null) BodyText("🎧 $extName", 15, C.primaryLight, maxLines = 2)
-                            else BodyText(t("ext_none"), 14, C.textDim)
-                            if (extSession.status.isNotBlank()) BodyText(extSession.status, 14, C.text)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Chip(t("auto_sync") + ": " + t(if (extSession.autoSync) "on" else "off"), extSession.autoSync) {
-                                    extSession.setAuto(!extSession.autoSync)
-                                    vm.extAuto = extSession.autoSync
-                                }
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                GlowButton(t("resync_now"), primary = true, modifier = Modifier.autoFocus()) { extSession.resyncNow() }
-                                GlowButton(t("change_channel")) { panel = Panel.EXT }
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                if (extSession.suspended) GlowButton(t("resume_ext")) { extSession.resume() }
-                                else if (extName != null) GlowButton(t("back_original")) { extSession.useOriginal() }
-                                GlowButton(t("ext_audio_remove")) { stopExt(); closePanel() }
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Chip(t("pip_show") + ": " + t(if (extSession.pip) "on" else "off"), extSession.pip) {
-                                    extSession.changePip(!extSession.pip)
-                                }
-                            }
-                            if (extSession.pip) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    GlowButton(t("pip_smaller")) { extSession.cyclePipSize(-1) }
-                                    GlowButton(t("pip_bigger")) { extSession.cyclePipSize(1) }
-                                }
-                            }
-                            RText(t("vol") + ": " + (extVolume * 100).toInt() + "%", 18, C.textDim)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                GlowButton("-") { extSession.setVolumeLevel(extSession.volume - 0.1f) }
-                                GlowButton("+") { extSession.setVolumeLevel(extSession.volume + 0.1f) }
-                            }
-                            RText(t("main_vol") + ": " + (extSession.mainVolume * 100).toInt() + "%", 18, C.textDim)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                GlowButton("-") { extSession.changeMainVolume(extSession.mainVolume - 0.1f) }
-                                GlowButton("+") { extSession.changeMainVolume(extSession.mainVolume + 0.1f) }
-                            }
-                            RText(t("manual_tools"), 16, C.textDim, bold = true)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Chip(t("target_audio"), syncAudio) { syncAudio = true }
-                                Chip(t("target_video"), !syncAudio) { syncAudio = false }
-                            }
-                            RText("${t("delay_audio")} (${t("sec")})", 16, C.textDim)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf(100L to "0.1", 500L to "0.5", 1000L to "1", 5000L to "5").forEach { (ms, label) ->
-                                    GlowButton(label) { shift(ms) }
-                                }
-                            }
-                            RText("${t("advance_audio")} (${t("sec")})", 16, C.textDim)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf(100L to "0.1", 500L to "0.5", 1000L to "1", 5000L to "5").forEach { (ms, label) ->
-                                    GlowButton(label) { shift(-ms) }
-                                }
-                            }
-                            BodyText(
-                                t("manual_offset") + ": " + (if (extSession.manualMs >= 0) "+" else "") + String.format(Locale.US, "%.1f", extSession.manualMs / 1000f) + t("sec"),
-                                14, C.text,
-                            )
-                            if (extSession.autoSync && extName != null && offsetMs != 0L) {
-                                BodyText(
-                                    t("last_measured") + ": " + (if (offsetMs >= 0) "+" else "") + String.format(Locale.US, "%.2f", offsetMs / 1000f) + t("sec"),
-                                    14, C.text,
+                            if (colorOn) {
+                                item { RText(if (ar) "أنماط جاهزة" else "Presets", 15, C.textDim) }
+                                val presets = listOf(
+                                    (if (ar) "طبيعي" else "Natural") to listOf(0f, 1f, 1f, 0f),
+                                    (if (ar) "ملعب زاهي" else "Vivid pitch") to listOf(0.02f, 1.12f, 1.35f, 0.05f),
+                                    (if (ar) "إضاءة ليلية" else "Floodlight") to listOf(0.08f, 1.15f, 1.25f, 0f),
+                                    (if (ar) "ساطع" else "Bright") to listOf(0.12f, 1.05f, 1.15f, 0f),
+                                    (if (ar) "سينمائي دافئ" else "Warm cinema") to listOf(-0.03f, 1.10f, 0.95f, 0.30f),
                                 )
+                                items(presets.size) { n ->
+                                    PanelItem(presets[n].first, selected = cv == presets[n].second) { setCv(presets[n].second) }
+                                }
+                                item { RText(if (ar) "ضبط يدوي" else "Manual", 15, C.textDim) }
+                                val rows = listOf(
+                                    Triple(if (ar) "السطوع" else "Brightness", 0, 0.02f),
+                                    Triple(if (ar) "التباين" else "Contrast", 1, 0.04f),
+                                    Triple(if (ar) "تشبّع اللون" else "Saturation", 2, 0.05f),
+                                    Triple(if (ar) "دفء اللون" else "Warmth", 3, 0.05f),
+                                )
+                                items(rows.size) { n ->
+                                    val (label, k, step) = rows[n]
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Box(Modifier.weight(1f)) { RText(label + ": " + String.format(Locale.US, "%.2f", cv[k]), 16, C.text) }
+                                        GlowButton("−", height = 48.dp) { setCv(cv.toMutableList().also { it[k] = colorClamp(k, it[k] - step) }) }
+                                        GlowButton("+", height = 48.dp) { setCv(cv.toMutableList().also { it[k] = colorClamp(k, it[k] + step) }) }
+                                    }
+                                }
+                                item { PanelItem(if (ar) "إعادة الضبط" else "Reset") { setCv(listOf(0f, 1f, 1f, 0f)) } }
                             }
-                            GlowButton(t("reset_feature")) { stopExt(); vm.resetExtSettings(); extSession.autoSync = true }
-                            GlowButton(t("close"), primary = true) { closePanel() }
+                            item { PanelItem(t("close")) { closePanel() } }
                         }
                     }
                 }
@@ -2615,4 +2094,24 @@ private fun PauseCinema(
             BodyText(if (ar) "اضغط أي زر للمتابعة" else "Press any key to continue", 13, C.textDim)
         }
     }
+}
+
+private val SPORT_RE = Regex("(sport|sports|bein|ssc|dazn|espn|arryadia|ontime|premier|champions|laliga|la liga|serie a|bundesliga|football|soccer|match|رياض|مباراة|مباريات|كأس|دوري|الكأس)", RegexOption.IGNORE_CASE)
+
+private fun colorClamp(k: Int, v: Float): Float = when (k) {
+    0 -> v.coerceIn(-0.3f, 0.3f)
+    1 -> v.coerceIn(0.7f, 1.6f)
+    2 -> v.coerceIn(0f, 2f)
+    else -> v.coerceIn(-1f, 1f)
+}
+
+/** مصفوفة الألوان: [سطوع, تباين, تشبّع, دفء]. */
+private fun colorPaint(v: List<Float>): android.graphics.Paint {
+    val bri = v.getOrElse(0) { 0f }; val con = v.getOrElse(1) { 1f }; val sat = v.getOrElse(2) { 1f }; val warm = v.getOrElse(3) { 0f }
+    val m = android.graphics.ColorMatrix()
+    m.setSaturation(sat)
+    val t = (1f - con) * 128f + bri * 255f
+    m.postConcat(android.graphics.ColorMatrix(floatArrayOf(con, 0f, 0f, 0f, t, 0f, con, 0f, 0f, t, 0f, 0f, con, 0f, t, 0f, 0f, 0f, 1f, 0f)))
+    m.postConcat(android.graphics.ColorMatrix(floatArrayOf(1f + warm * 0.15f, 0f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 0f, 1f - warm * 0.15f, 0f, 0f, 0f, 0f, 0f, 1f, 0f)))
+    return android.graphics.Paint().apply { colorFilter = android.graphics.ColorMatrixColorFilter(m) }
 }

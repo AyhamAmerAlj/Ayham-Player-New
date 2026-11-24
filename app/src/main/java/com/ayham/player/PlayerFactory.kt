@@ -12,12 +12,10 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.audio.AudioCapabilities
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
-import com.ayham.player.audio.EnvelopeTap
-import com.ayham.player.audio.TapAudioSink
 
 /** مصنع واحد للمشغّل: نفس الإعدادات الخفيفة للمشغّل الكبير والمصغّر. */
 object PlayerFactory {
-    fun create(ctx: Context, maxRes: Int, tap: EnvelopeTap? = null, pcmOnly: Boolean = false, delayProcessor: com.ayham.player.audio.DelayAudioProcessor? = null, lite: Boolean = false, live: Boolean = false): ExoPlayer {
+    fun create(ctx: Context, maxRes: Int, lite: Boolean = false, live: Boolean = false): ExoPlayer {
         val http = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
             .setUserAgent("AyhamPlayer/1.0")
@@ -48,30 +46,8 @@ object PlayerFactory {
             .setPrioritizeTimeOverSizeThresholds(false)
             .setBackBuffer(20_000, false))
             .build()
-        val renderers = object : DefaultRenderersFactory(ctx) {
-            override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink? {
-                val processors = mutableListOf<androidx.media3.common.audio.AudioProcessor>()
-                if (delayProcessor != null) {
-                    processors.add(delayProcessor)
-                }
-                
-                if (tap == null && delayProcessor == null) return super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams)
-                
-                val b = DefaultAudioSink.Builder(context)
-                    .setEnableFloatOutput(false)
-                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-                    
-                if (processors.isNotEmpty()) {
-                    b.setAudioProcessors(processors.toTypedArray())
-                }
-                
-                // قناة التعليق: نفك الترميز دائمًا (بدون تمرير مباشر) حتى نقدر نحلّل الصوت
-                if (pcmOnly) b.setAudioCapabilities(AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES)
-                
-                val builtSink = b.build()
-                return if (tap != null) TapAudioSink(builtSink, tap) else builtSink
-            }
-        }.setEnableDecoderFallback(true)
+        val renderers = DefaultRenderersFactory(ctx)
+            .setEnableDecoderFallback(true)
             // فك الترميز بالعتاد أولًا دائمًا (البرمجي بطيء جدًا مع 4K/HEVC) + طابور كودك غير متزامن يقلّل إسقاط الإطارات
             .setMediaCodecSelector { mime, secure, tunneling ->
                 androidx.media3.exoplayer.mediacodec.MediaCodecSelector.DEFAULT.getDecoderInfos(mime, secure, tunneling)
